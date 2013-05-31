@@ -155,7 +155,7 @@ MODULE paramopt_worker
    SUBROUTINE paramopt_worker_execute(this, cmd, report)
        TYPE(paramopt_worker_type), INTENT(INOUT)  :: this
        TYPE(swarm_message_type), INTENT(IN)       :: cmd
-       TYPE(swarm_message_type), INTENT(OUT)      :: report
+       TYPE(swarm_message_type), INTENT(INOUT)    :: report
 
        CHARACTER(len=default_string_length)     :: command
 

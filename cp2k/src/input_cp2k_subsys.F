@@ -49,6 +49,7 @@ MODULE input_cp2k_subsys
 
 PUBLIC :: create_subsys_section,&
           create_cell_section,&
+          create_coord_section,&
           create_structure_data_section,&
           create_rng_section
 !***

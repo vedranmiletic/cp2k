@@ -21,6 +21,7 @@ MODULE paramopt_master
                                              swarm_message_add,&
                                              swarm_message_get,&
                                              swarm_message_length
+  USE cp_para_types,                   ONLY: cp_para_env_type
 #include "cp_common_uses.h"
 
  IMPLICIT NONE
@@ -44,9 +45,11 @@ MODULE paramopt_master
 
 ! *****************************************************************************
 ! *****************************************************************************
- SUBROUTINE paramopt_master_init(this, swarm_section, n_walkers, iw, error)
+ SUBROUTINE paramopt_master_init(this, para_env, swarm_section, input_path, n_walkers, iw, error)
     TYPE(paramopt_master_type)               :: this
+    TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: swarm_section
+    CHARACTER(LEN=*), INTENT(IN)             :: input_path
     INTEGER, INTENT(IN)                      :: n_walkers, iw
     TYPE(cp_error_type), INTENT(inout)       :: error
     TYPE(section_vals_type), POINTER         :: paramopt_section
@@ -62,8 +65,8 @@ MODULE paramopt_master
 ! *****************************************************************************
  SUBROUTINE paramopt_master_steer(this, report, cmd, should_stop)
     TYPE(paramopt_master_type)               :: this
-    TYPE(swarm_message_type)                 :: report
-    TYPE(swarm_message_type)                 :: cmd
+    TYPE(swarm_message_type), INTENT(IN)     :: report
+    TYPE(swarm_message_type), INTENT(INOUT)  :: cmd
     LOGICAL, INTENT(INOUT)                   :: should_stop
 
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_steer called"
