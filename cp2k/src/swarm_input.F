@@ -13,7 +13,8 @@ MODULE swarm_input
   USE glbopt_input,                    ONLY: glbopt_declare_input
   USE input_constants,                 ONLY: add_last_numeric,&
                                              low_print_level,&
-                                             swarm_do_glbopt
+                                             swarm_do_glbopt,&
+                                             swarm_do_paramopt
   USE input_keyword_types,             ONLY: keyword_create,&
                                              keyword_release,&
                                              keyword_type
@@ -23,6 +24,7 @@ MODULE swarm_input
                                              section_release,&
                                              section_type
   USE input_val_types,                 ONLY: integer_t
+  USE paramopt_input,                  ONLY: paramopt_declare_input
   USE string_utilities,                ONLY: s2a
 #include "cp_common_uses.h"
 
@@ -58,8 +60,9 @@ MODULE swarm_input
          required=.TRUE.,&
          default_i_val=swarm_do_glbopt,&
          enum_c_vals=s2a("GLOBAL_OPT"),&
-         enum_desc=s2a("Runs global geometry optimisation"),&
-         enum_i_vals=(/swarm_do_glbopt/),&
+         enum_desc=s2a("Runs global geometry optimisation",&
+                       "Runs global parameter optimisation"),&
+         enum_i_vals=(/swarm_do_glbopt, swarm_do_paramopt/),&
          error=error)
     CALL section_add_keyword(swarm_section,keyword,error=error)
     CALL keyword_release(keyword,error=error)
@@ -114,6 +117,7 @@ MODULE swarm_input
 
 
     CALL glbopt_declare_input(swarm_section, error)
+    CALL paramopt_declare_input(swarm_section, error)
 
   END SUBROUTINE create_swarm_section
 

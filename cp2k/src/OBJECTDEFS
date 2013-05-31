@@ -455,6 +455,9 @@ OBJECTS_GENERIC =\
  pair_potential_types.o\
  pair_potential_util.o\
  parallel_rng_types.o\
+ paramopt_input.o\
+ paramopt_master.o\
+ paramopt_worker.o\
  particle_list_types.o\
  particle_types.o\
  paw_proj_set_types.o\

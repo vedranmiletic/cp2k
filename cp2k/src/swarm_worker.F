@@ -15,10 +15,15 @@ MODULE swarm_worker
                                              glbopt_worker_finalize,&
                                              glbopt_worker_init,&
                                              glbopt_worker_type
-  USE input_constants,                 ONLY: swarm_do_glbopt
+  USE input_constants,                 ONLY: swarm_do_glbopt,&
+                                             swarm_do_paramopt
   USE input_section_types,             ONLY: section_vals_type,&
                                              section_vals_val_get
   USE kinds,                           ONLY: default_string_length
+  USE paramopt_worker, ONLY: paramopt_worker_execute,&
+                                             paramopt_worker_finalize,&
+                                             paramopt_worker_init,&
+                                             paramopt_worker_type
   USE swarm_message,                   ONLY: swarm_message_add,&
                                              swarm_message_get,&
                                              swarm_message_haskey,&
@@ -41,6 +46,7 @@ MODULE swarm_worker
    TYPE(cp_error_type)                      :: error
    INTEGER                                  :: behavior = -1
    TYPE(glbopt_worker_type), POINTER        :: glbopt => Null()
+   TYPE(paramopt_worker_type), POINTER      :: paramopt => Null()
    !possbily more behaviors...
  END TYPE swarm_worker_type
 
@@ -77,6 +83,10 @@ MODULE swarm_worker
          ALLOCATE(worker%glbopt)
          CALL glbopt_worker_init(worker%glbopt, para_env, root_section,&
                  input_path, worker_id, worker%iw, error)
+      CASE(swarm_do_paramopt)
+         ALLOCATE(worker%paramopt)
+         CALL paramopt_worker_init(worker%paramopt, para_env, root_section,&
+                 input_path, worker_id, worker%iw, error)
       CASE DEFAULT
          STOP "swarm_worker_init: got unkown behavior"
     END SELECT
@@ -94,6 +104,9 @@ MODULE swarm_worker
       CASE(swarm_do_glbopt)
          CALL glbopt_worker_finalize(worker%glbopt)
          DEALLOCATE(worker%glbopt)
+      CASE(swarm_do_paramopt)
+         CALL paramopt_worker_finalize(worker%paramopt)
+         DEALLOCATE(worker%paramopt)
       CASE DEFAULT
          STOP "swarm_worker_finalize: got unkown behavior"
     END SELECT
@@ -123,6 +136,8 @@ MODULE swarm_worker
         SELECT CASE(worker%behavior)
            CASE(swarm_do_glbopt)
              CALL glbopt_worker_execute(worker%glbopt, cmd, report)
+           CASE(swarm_do_paramopt)
+             CALL paramopt_worker_execute(worker%paramopt, cmd, report)
            CASE DEFAULT
               STOP "swarm_worker_execute: got unkown behavior"
         END SELECT
