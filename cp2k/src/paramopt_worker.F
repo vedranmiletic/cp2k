@@ -41,7 +41,8 @@ MODULE paramopt_worker
   USE swarm_message,                   ONLY: swarm_message_type,&
                                              swarm_message_add,&
                                              swarm_message_get,&
-                                             swarm_message_length
+                                             swarm_message_length,&
+                                             swarm_message_haskey
 #include "cp_common_uses.h"
 
  IMPLICIT NONE
@@ -58,10 +59,11 @@ MODULE paramopt_worker
    INTEGER                                  :: id
    INTEGER                                  :: iw
    TYPE(cp_error_type)                      :: error
-   INTEGER                                  :: f_env_id
-   TYPE(f_env_type), POINTER                :: f_env
-   TYPE(force_env_type), POINTER            :: force_env
-   TYPE(cp_subsys_type), POINTER            :: subsys
+   TYPE(cp_para_env_type), POINTER          :: para_env
+   !INTEGER                                  :: f_env_id
+   !TYPE(f_env_type), POINTER                :: f_env
+   !TYPE(force_env_type), POINTER            :: force_env
+   !TYPE(cp_subsys_type), POINTER            :: subsys
  END TYPE paramopt_worker_type
 
 
@@ -83,8 +85,11 @@ MODULE paramopt_worker
         TYPE(cp_error_type), INTENT(inout)       :: error
 
         this%iw = iw
-
-        IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called"
+        this%para_env => para_env
+        this%error = error
+        this%id = worker_id
+        IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
+        WRITE(*,*) "paramopt_worker_init called. worker_id=", worker_id, " rank=",para_env%mepos
 
      !   CHARACTER(len=default_path_length)       :: output_path
      !   CHARACTER(len=default_string_length)     :: new_project_name, &
@@ -144,6 +149,9 @@ MODULE paramopt_worker
     INTEGER                                    :: ierr
 
      IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_finalize called"
+
+     WRITE(*,*) "paramopt_worker_finalize called. worker_id=", this%id, " rank=",this%para_env%mepos
+
      !CALL f_env_rm_defaults(this%f_env, worker%error)
      !CALL destroy_force_env(this%f_env_id, ierr)
      !IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
@@ -161,6 +169,10 @@ MODULE paramopt_worker
 
        CALL swarm_message_get(cmd, "command", command)
        IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_execute called with command ",command
+
+       WRITE(*,*) "paramopt_worker_execute called. worker_id=", this%id, " rank=",this%para_env%mepos
+
+       !WRITE(*,*) "This is walker ", this%id, " rank ", this%para_env%mepos
 
        !INTEGER                                  :: n_atoms
        !REAL(KIND=dp)                            :: temperature, Epot
