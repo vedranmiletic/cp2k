@@ -15,6 +15,7 @@ MODULE paramopt_master
                                              section_vals_type,&
                                              section_vals_val_get
   USE kinds,                           ONLY: dp
+  USE message_passing,                 ONLY: mp_bcast
   USE physcon,                         ONLY: angstrom,&
                                              kelvin
   USE powell,                          ONLY: powell_optimize, &
@@ -56,7 +57,7 @@ MODULE paramopt_master
                                         ev=27.2116_dp,&
                                         ev_kcal=23.06035_dp
    TYPE(opt_state_type),POINTER      :: powell_opt
-   TYPE(cp_para_env_type), POINTER          :: para_env
+   TYPE(cp_para_env_type), POINTER   :: para_env
  END TYPE paramopt_master_type
 
  TYPE :: ener_ref_type
@@ -112,10 +113,11 @@ MODULE paramopt_master
     !    -40._dp,0.05_dp,0.05_dp,-3._dp,0.05_dp,-5._dp,0._dp,0._dp,-100._dp/)
     !this%u_bound=(/-0.5_dp,1.0_dp,1.5_dp,-0.5_dp,10._dp,400._dp,300._dp,&
     !    -20._dp,0.4_dp,3._dp,-2._dp,5._dp,-2._dp,10._dp,400._dp,300._dp/)
-    this%l_bound=(/-40._dp,0.05_dp,0._dp,-5._dp,             0._dp,0._dp,-100._dp,&
-                   -40._dp,0.05_dp,0._dp,-5._dp,0._dp,-5._dp,0._dp,0._dp,-100._dp/)
-    this%u_bound=(/-0.5_dp,1._dp,5._dp,-0.5_dp,              10._dp,400._dp,300._dp,&
-                   -0.5_dp,1._dp,5._dp,-0.5_dp,5._dp,-0.5_dp,10._dp,400._dp,300._dp/)
+                !  energy  charge  Zeta   H_core Zeta   H_core     A      C       D
+    this%l_bound=(/-40._dp,0.05_dp,-5._dp,-5._dp ,                 0._dp ,-100._dp  ,-100._dp,&
+                   -40._dp,0.05_dp,-5._dp,-5._dp ,-5._dp ,-5._dp , 0._dp ,-100._dp  ,-100._dp/)
+    this%u_bound=(/5._dp  ,5._dp  ,5._dp ,0._dp  ,                 10._dp,400._dp,400._dp,&
+                   5._dp  ,5._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  , 10._dp,400._dp,400._dp/)
     !-----read x --------
     CALL read4file(this%num_var,this%x,restart)
     IF(this%iw>0) CALL para2file(this%num_var,this%x,"para.xml",2222)
@@ -127,8 +129,8 @@ MODULE paramopt_master
     allocate(this%powell_opt)
     this%powell_opt%state = 0
     this%powell_opt%maxfun = 500 !----change that to imput files value
-    this%powell_opt%rhobeg = 0.1_dp
-    this%powell_opt%rhoend = 0.0001_dp
+    this%powell_opt%rhobeg = 0.5_dp
+    this%powell_opt%rhoend = 0.000001_dp
     this%powell_opt%iprint = 1
     this%powell_opt%nvar = this%num_var
     this%obj_f => this%powell_opt%f
@@ -166,6 +168,7 @@ MODULE paramopt_master
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
+    REAL(KIND=dp)                            :: report_rmsd
     LOGICAL                                  :: dummy
 
 
@@ -178,6 +181,7 @@ MODULE paramopt_master
 
     IF(.NOT. swarm_message_haskey(report, "initial_hello")) THEN
         CALL swarm_message_get(report, "Epot", report_Epot)
+        CALL swarm_message_get(report, "rmsd", report_rmsd)
         CALL swarm_message_get(report, "timings", report_timings)
         !print *,report_Epot
         !---------------energy references-------------------------------------------
@@ -223,25 +227,37 @@ MODULE paramopt_master
                             report_timings(i)
                           END IF
                     END DO
+
+        this%obj_f = sum(this%res) + 100000._dp*report_rmsd
+        !this%obj_f = 10000._dp*report_rmsd
+        this%xold  = this%x
+
+
         IF(this%iw>0) THEN
           WRITE (this%iw,'(A,5X,F15.8,F15.8)') &
              " PARAMOPT| Total time for Energy Calculations", sum(report_timings),maxval(report_timings)
           WRITE (this%iw,'(A,5X,F15.8)')&
              " PARAMOPT| Total Energy Error", sum(this%res)
+          WRITE (this%iw,'(A,5X,F15.8)')&
+             " PARAMOPT| Total RMSD        ", report_rmsd
+          WRITE (this%iw,'(A,5X,F15.8)')&
+             " PARAMOPT| Total             ", this%obj_f
         END IF
-
-        this%obj_f = sum(this%res)
-        this%xold  = this%x
-        
-        CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
-        CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
-        do i=1,this%num_var 
-            if (this%x(i) .lt. this%l_bound(i)) this%x(i) = this%l_bound(i)
-            if (this%x(i) .gt. this%u_bound(i)) this%x(i) = this%u_bound(i)
-        enddo
+       
+        !IF (this%para_env%mepos .eq. 0) THEN 
+        !CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
+        !CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+        !do i=1,this%num_var 
+        !    if (this%x(i) .lt. this%l_bound(i)) this%x(i) = this%l_bound(i)
+        !    if (this%x(i) .gt. this%u_bound(i)) this%x(i) = this%u_bound(i)
+        !enddo
+        !ENDIF
+        !CALL mp_bcast(this%x,0,this%para_env%group)
+        !CALL mp_bcast(this%xtrans,0,this%para_env%group)
         !------------------------------------------------------------------
-        !IF(this%iw>0) CALL sample(this%num_var,this%x,this%l_bound,this%u_bound)
-        !IF(this%iw>0) CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+        !=========have to make sure all process do the same sampling or bcast result???
+        CALL sample(this,this%num_var,this%x,this%l_bound,this%u_bound)
+        CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
         !------------------------------------------------------------------
         IF(this%iw>0) CALL para2file(this%num_var,this%x,"para.xml",2222)
         IF(this%iw>0) THEN
@@ -254,21 +270,15 @@ MODULE paramopt_master
         !  WRITE (this%iw,*) 'this should be old x',this%xold
         !  WRITE (this%iw,*) '-------------------------------------------------'
         !  WRITE (this%iw,*) 'this should be new x',this%x
-        !  open(999,ACCESS="APPEND")
-        !  write(999,*) this%xold,this%obj_f
-        !  close(999)
+          open(999,ACCESS="APPEND")
+          write(999,*) this%xold,sum(this%res),report_rmsd
+          close(999)
         !  open(998,ACCESS="APPEND")
         !  write(998,*) this%xold-this%x
         !  close(998)
         END IF
     END IF
-    !!IF(paramopt%Elowest<paramopt%Emin .AND. .NOT. master%should_stop) THEN
-    !IF(paramopt%Elowest<paramopt%Emin) THEN
-    !   IF(paramopt%iw>0)  WRITE (paramopt%iw, *)  "PARAMOPT| Reached Emin > Epot. Quitting."
-    !   should_stop = .TRUE.
-    !ELSE
-    !   CALL minhop_steer(paramopt%minhop, report, cmd)
-    !ENDIF
+
  END SUBROUTINE paramopt_master_steer
 
 
@@ -426,8 +436,9 @@ end subroutine
       real(kind=dp),dimension(:) :: x,y,lbnd,ubnd
       y = x*(ubnd-lbnd) + lbnd
       end subroutine
-subroutine sample(n,x,l_bound,u_bound)
+subroutine sample(this,n,x,l_bound,u_bound)
     !--------------------------------------------------------------
+    TYPE(paramopt_master_type)               :: this
     integer,intent(in) :: n
     integer,parameter :: dp=8
     integer :: irand,t,j
@@ -440,19 +451,20 @@ subroutine sample(n,x,l_bound,u_bound)
     sampler=1._dp/(2._dp*sqrt(real(n)))
     generate=.TRUE.
     step=1._dp/2._dp
-    step=1._dp/8._dp
+    step=1._dp/4._dp
 !    t=1
 !    irand=7
             do while (generate)
 !--------------------------random only one variable---------------------------
-                 call random_number(rnum)
-                 irand=int(rnum*n)+1
+                if (this%para_env%mepos .eq. 0) call random_number(rnum)
+                call mp_bcast(rnum,0,this%para_env%group)
+                irand=int(rnum*n)+1
 
-          !       irand = 4 
-                print *,'change var',irand
+                !irand = 4 
                 call var_trans(x,tmpx,l_bound,u_bound)
                 !print *,'after var trans',tmpx(irand)
-                call random_number(rnum)
+                if (this%para_env%mepos .eq. 0) call random_number(rnum)
+                call mp_bcast(rnum,0,this%para_env%group)
                 if (rnum .gt. 0.5_dp) then
                     step=step
                 else
@@ -467,7 +479,6 @@ subroutine sample(n,x,l_bound,u_bound)
                 if (tmpx(irand) .lt. 0._dp) then
                     tmpx(irand) = tmpx(irand) + 2*abs(step)
                 endif
-               
              !   print *,'test',tmpx(irand)
              !   print *,'old var',x(irand), &
              !   'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
@@ -510,30 +521,32 @@ subroutine sample(n,x,l_bound,u_bound)
 !-------------------------------------------------------------------------------
                 call var_back_trans(tmpx,tmpx2,l_bound,u_bound)
 
-                do j=1,n
-                    if (tmpx2(j) .lt. l_bound(j)) then
-                        generate = .TRUE. 
-                        print *,j,tmpx2(j)
-                        exit
-                    else
-                        generate = .FALSE.
-                    endif
-                    if (tmpx2(j) .gt. u_bound(j)) then
-                        generate = .TRUE.
-                        print *,j,tmpx2(j)
-                        exit
-                    else
-                        generate = .FALSE.
-                    endif   
-                    !    call random_number(random)
-                    !    j = random*n
-                    !    if (j .eq. 0) j = 1
-                    !    call random_number(random)
-                    !    x(j) = random*abs(u_bound(j)-l_bound(j)) + l_bound(j)
-                enddo
+            !    do j=1,n
+            !        if (tmpx2(j) .lt. l_bound(j)) then
+            !            generate = .TRUE. 
+            !            print *,j,tmpx2(j)
+            !            exit
+            !        else
+            !            generate = .FALSE.
+            !        endif
+            !        if (tmpx2(j) .gt. u_bound(j)) then
+            !            generate = .TRUE.
+            !            print *,j,tmpx2(j)
+            !            exit
+            !        else
+            !            generate = .FALSE.
+            !        endif   
+            !        !    call random_number(random)
+            !        !    j = random*n
+            !        !    if (j .eq. 0) j = 1
+            !        !    call random_number(random)
+            !        !    x(j) = random*abs(u_bound(j)-l_bound(j)) + l_bound(j)
+            !    enddo
+                    generate = .FALSE.
             enddo
             x = tmpx2
 
+            if (this%para_env%mepos .eq. 0) print *,'change var',irand,'new value',x(irand)
 end subroutine
 END MODULE paramopt_master
 
