@@ -45,7 +45,7 @@ MODULE mulliken
 
 ! *** Public subroutines ***
 
-  PUBLIC :: mulliken_charges, mulliken_restraint, multipoles
+  PUBLIC :: mulliken_charges, mulliken_restraint, multipoles, compute_multipoles
 
   INTERFACE mulliken_charges
      MODULE PROCEDURE mulliken_charges_a, mulliken_charges_b, mulliken_charges_c

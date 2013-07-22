@@ -131,7 +131,7 @@ MODULE paramopt_worker
     INTEGER                                  :: i, ierr, n_groups_created
     TYPE(cp_logger_type), POINTER            :: logger
 
-    LOGICAL                                  :: failure
+    LOGICAL                                  :: failure,restart
     INTEGER, DIMENSION(:), POINTER           :: group_distribution_p
     INTEGER, &
       DIMENSION(0:para_env%num_pe-1), TARGET :: group_distribution
@@ -172,7 +172,6 @@ MODULE paramopt_worker
       this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
       this%input_files(this%num_inp-1) = 'dipole.inp'
       this%input_files(this%num_inp-0) = 'geo_opt.inp'
-
       ! IF (para_env%mepos+1 .le. this%num_inp) WRITE(*,*) "input files",this%input_files(para_env%mepos+1),para_env%mepos
 
       ! ====== Create Comm for each Calculation ======
@@ -1038,6 +1037,5 @@ END FUNCTION pythag
     ENDIF
     CALL f_env_rm_defaults(f_env,error,ierr)
   END SUBROUTINE calc_multipole
-
 END MODULE paramopt_worker
 
