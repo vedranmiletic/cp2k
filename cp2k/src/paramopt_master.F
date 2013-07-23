@@ -181,7 +181,7 @@ MODULE paramopt_master
     TYPE(swarm_message_type), INTENT(INOUT)  :: cmd
     LOGICAL, INTENT(INOUT)                   :: should_stop
     INTEGER                                  :: i
-    REAL(KIND=dp),POINTER                    :: report_Epot(:),report_timings(:)
+    REAL(KIND=dp),ALLOCATABLE                :: report_Epot(:),report_timings(:)
     INTEGER                                  :: report_worker_id
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref

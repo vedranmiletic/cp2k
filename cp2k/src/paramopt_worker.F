@@ -74,7 +74,7 @@ MODULE paramopt_worker
    TYPE(cp_para_env_type), POINTER                  :: para_env_glob
    CHARACTER(len=default_string_length),POINTER     :: input_files(:)
    INTEGER                                          :: subgroup
-   REAL(kind=dp),POINTER                            :: x(:)
+   REAL(kind=dp),ALLOCATABLE                        :: x(:)
    REAL(kind=dp),POINTER                            :: Epot(:)
    REAL(kind=dp),POINTER                            :: timings(:)
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
