@@ -213,19 +213,19 @@ MODULE paramopt_master
        CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
        IF(this%iw>0) THEN
           WRITE (this%iw,'(A,46X,I8)')&
-                 " GLBOPT| Reporting worker ", report_worker_id
+                 " PRMOPT| Reporting worker ", report_worker_id
           WRITE (this%iw,'(A,20X,E15.8)')&
-                 " GLBOPT| Reported potential Energy [Hartree] ", this%Epot(report_worker_id)
+                 " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(report_worker_id)
        END IF
     ELSE 
        CALL swarm_message_add(cmd, "command", "nop")
     !   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
     !   CALL swarm_message_add(cmd, "x", this%x)
       ! IF(this%iw > 0) WRITE(this%iw,'(A,10X,A,I10)') &
-      !               " GLBOPT| Sending initial command to worker", &
+      !               " PRMOPT| Sending initial command to worker", &
       !               trim(this%input_files(report_worker_id)),report_worker_id
        IF(this%iw > 0) WRITE(this%iw,'(A,10X,I10)') &
-                     " GLBOPT| Sending initial command to worker",report_worker_id
+                     " PRMOPT| Sending initial command to worker",report_worker_id
        RETURN
 
        CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
