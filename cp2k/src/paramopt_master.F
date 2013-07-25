@@ -158,35 +158,35 @@ MODULE paramopt_master
     this%obj_f => this%powell_opt%f
     CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
     !---------------------
-    OPEN(88,file='WATER27structures/mol_list.txt')
-    DO i=1,this%num_inp-5
-          READ(88,*) str
-          this%input_files(i)= TRIM(str) // ".inp"
-    ENDDO
-    CLOSE(88)
-    this%input_files(this%num_inp-4) = 'eaip_H2O.inp'
-    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
-    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
-    this%input_files(this%num_inp-1) = 'dipole.inp'
-    this%input_files(this%num_inp-0) = 'geo_opt.inp' 
-    !---------------------
-    open(99,file='WATER27.dat')
-      ! only the first 30 mol have ref data...so 35 - 5 ;/
-      do i=1,this%num_inp-5
-          read(99,*) this%ener_ref(i)%id, &
-          this%ener_ref(i)%mol, &
-          this%ener_ref(i)%mol_ref1, &
-          this%ener_ref(i)%mol_ref2, &
-          this%ener_ref(i)%mol_ref3, &
-          this%ener_ref(i)%mol_ref4, &
-          this%ener_ref(i)%stoch1, &
-          this%ener_ref(i)%stoch2, &
-          this%ener_ref(i)%stoch3, &
-          this%ener_ref(i)%stoch4, &
-          this%ener_ref(i)%stoch5, &
-          this%ener_ref(i)%ref
-      enddo
-    close(99)
+!    OPEN(88,file='WATER27structures/mol_list.txt')
+!    DO i=1,this%num_inp-5
+!          READ(88,*) str
+!          this%input_files(i)= TRIM(str) // ".inp"
+!    ENDDO
+!    CLOSE(88)
+!    this%input_files(this%num_inp-4) = 'eaip_H2O.inp'
+!    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
+!    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
+!    this%input_files(this%num_inp-1) = 'dipole.inp'
+!    this%input_files(this%num_inp-0) = 'geo_opt.inp' 
+!    !---------------------
+!    open(99,file='WATER27.dat')
+!      ! only the first 30 mol have ref data...so 35 - 5 ;/
+!      do i=1,this%num_inp-5
+!          read(99,*) this%ener_ref(i)%id, &
+!          this%ener_ref(i)%mol, &
+!          this%ener_ref(i)%mol_ref1, &
+!          this%ener_ref(i)%mol_ref2, &
+!          this%ener_ref(i)%mol_ref3, &
+!          this%ener_ref(i)%mol_ref4, &
+!          this%ener_ref(i)%stoch1, &
+!          this%ener_ref(i)%stoch2, &
+!          this%ener_ref(i)%stoch3, &
+!          this%ener_ref(i)%stoch4, &
+!          this%ener_ref(i)%stoch5, &
+!          this%ener_ref(i)%ref
+!      enddo
+!    close(99)
     !------------------------
     allocate(this%function_matrix(this%num_para_set,this%num_inp))
     !------------------------
@@ -217,23 +217,26 @@ MODULE paramopt_master
           WRITE (this%iw,'(A,20X,E15.8)')&
                  " GLBOPT| Reported potential Energy [Hartree] ", this%Epot(report_worker_id)
        END IF
-    END IF   
-    
-    IF(swarm_message_haskey(report, "initial_hello")) THEN
+    ELSE 
        CALL swarm_message_add(cmd, "command", "nop")
-       CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
+    !   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
        CALL swarm_message_add(cmd, "x", this%x)
-       IF(this%iw > 0) WRITE(this%iw,'(A,10X,A,I10)') &
-                     " GLBOPT| Sending initial command to worker", &
-                     trim(this%input_files(report_worker_id)),report_worker_id
+      ! IF(this%iw > 0) WRITE(this%iw,'(A,10X,A,I10)') &
+      !               " GLBOPT| Sending initial command to worker", &
+      !               trim(this%input_files(report_worker_id)),report_worker_id
+       IF(this%iw > 0) WRITE(this%iw,'(A,10X,I10)') &
+                     " GLBOPT| Sending initial command to worker",report_worker_id
        RETURN
+
+       CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
     ENDIF
-    CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
 
      
     CALL swarm_message_add(cmd, "command", "nop")
-    CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
+    CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
+!   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
     CALL swarm_message_add(cmd, "x", this%x)
+
  END SUBROUTINE paramopt_master_steer
 
 

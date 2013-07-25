@@ -275,25 +275,26 @@ MODULE paramopt_worker
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
 
     CALL swarm_message_get(cmd,"command",command)
-    CALL swarm_message_get(cmd,"input",input_file)
+!    CALL swarm_message_get(cmd,"input",input_file)
     CALL swarm_message_get(cmd,"x",this%x)
-    WRITE(*,*) "paramopt_worker_exec called with: ",command
-    print *,this%iw,this%id,this%para_env%mepos
+    WRITE(*,*) "paramopt_worker_exec called with: ",this%id,command !,input_file
+    print *,this%id,this%iw,this%para_env%mepos,this%para_env%num_pe
 !    WRITE(*,*) "paramopt_worker_exec called. worker_id=", this%id, " rank=",this%para_env%mepos 
 !    WRITE(*,*) 'this is new x',this%x,input_file,i 
     !WRITE (*,*) output_path,this%para_env%mepos,this%para_env%group, &
     !           trim(adjustl(this%input_files(this%para_env%mepos+1))),f_env_id,this%Epot(id),i
-    !WRITE(output_path,*) input_file
-    output_path=TRIM(ADJUSTL(input_file))//".out"
-    CALL create_force_env(this%f_env_id, &
-                         input_path=TRIM(ADJUSTL(input_file)), &
-                         output_path=output_path, &
-                         mpi_comm=this%para_env%group, &
-                         ierr=ierr)
-    IF (ierr .ne. 0) STOP
-    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-    CALL get_energy(this%f_env_id,energy,ierr) 
-    CALL destroy_force_env(this%f_env_id, ierr)
+!    WRITE(output_path,*) input_file
+!    output_path=TRIM(ADJUSTL(input_file))//".out"
+!    CALL create_force_env(this%f_env_id, &
+!                         input_path=TRIM(ADJUSTL(input_file)), &
+!                         output_path=output_path, &
+!                         mpi_comm=this%para_env%group, &
+!                         ierr=ierr)
+!    IF (ierr .ne. 0) STOP
+!    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+!    CALL get_energy(this%f_env_id,energy,ierr) 
+!    CALL destroy_force_env(this%f_env_id, ierr)
+    energy=real(this%id)
     CALL swarm_message_add(report, "Epot", energy) 
    END SUBROUTINE paramopt_worker_execute
 
