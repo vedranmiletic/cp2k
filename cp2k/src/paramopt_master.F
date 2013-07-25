@@ -144,9 +144,9 @@ MODULE paramopt_master
     this%u_bound=(/5._dp  ,5._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
                    5._dp  ,5._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
     !-----read x --------
-    CALL read4file(this%num_var,this%x,restart)
-    CALL para2file(this%num_var,this%x,"para.xml",2222)
-    CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+!    CALL read4file(this%num_var,this%x,restart)
+!    CALL para2file(this%num_var,this%x,"para.xml",2222)
+!    CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
     !----gauss------------
     allocate(this%powell_opt)
     this%powell_opt%state = 0
@@ -220,7 +220,7 @@ MODULE paramopt_master
     ELSE 
        CALL swarm_message_add(cmd, "command", "nop")
     !   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
-       CALL swarm_message_add(cmd, "x", this%x)
+    !   CALL swarm_message_add(cmd, "x", this%x)
       ! IF(this%iw > 0) WRITE(this%iw,'(A,10X,A,I10)') &
       !               " GLBOPT| Sending initial command to worker", &
       !               trim(this%input_files(report_worker_id)),report_worker_id
@@ -235,7 +235,7 @@ MODULE paramopt_master
     CALL swarm_message_add(cmd, "command", "nop")
     CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
 !   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
-    CALL swarm_message_add(cmd, "x", this%x)
+!   CALL swarm_message_add(cmd, "x", this%x)
 
  END SUBROUTINE paramopt_master_steer
 

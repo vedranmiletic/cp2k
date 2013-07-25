@@ -276,7 +276,7 @@ MODULE paramopt_worker
 
     CALL swarm_message_get(cmd,"command",command)
 !    CALL swarm_message_get(cmd,"input",input_file)
-    CALL swarm_message_get(cmd,"x",this%x)
+!    CALL swarm_message_get(cmd,"x",this%x)
     WRITE(*,*) "paramopt_worker_exec called with: ",this%id,command !,input_file
     print *,this%id,this%iw,this%para_env%mepos,this%para_env%num_pe
 !    WRITE(*,*) "paramopt_worker_exec called. worker_id=", this%id, " rank=",this%para_env%mepos 
