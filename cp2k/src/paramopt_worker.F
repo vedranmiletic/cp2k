@@ -69,14 +69,10 @@ MODULE paramopt_worker
    INTEGER                                          :: num_inp
    INTEGER                                          :: num_var
    TYPE(cp_error_type)                              :: error
-   TYPE(cp_error_type)                              :: error_glob
    TYPE(cp_para_env_type), POINTER                  :: para_env
-   TYPE(cp_para_env_type), POINTER                  :: para_env_glob
-   CHARACTER(len=default_string_length),POINTER     :: input_files(:)
-   INTEGER                                          :: subgroup
-   REAL(kind=dp),ALLOCATABLE                        :: x(:)
-   REAL(kind=dp),POINTER                            :: Epot(:)
-   REAL(kind=dp),POINTER                            :: timings(:)
+   REAL(KIND=dp),ALLOCATABLE                            :: x(:)
+   REAL(kind=dp)                                    :: Epot
+   REAL(kind=dp)                                    :: timings
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
    REAL(kind=dp)                                    :: rmsd
    INTEGER                                          :: f_env_id
@@ -141,117 +137,101 @@ MODULE paramopt_worker
         failure = .FALSE.
 
         this%iw = iw
-        this%para_env_glob => para_env
+        this%para_env => para_env
         this%root_section_glob => root_section
-        this%error_glob = error
         this%error = error
         this%id = worker_id
-        this%pid = this%para_env_glob%mepos+1
+        this%pid = this%para_env%mepos+1
         !---------------
         this%num_inp = 35
         this%num_var = 16
-        ALLOCATE(this%x(this%num_var))
-        ALLOCATE(this%input_files(this%num_inp))
-        ALLOCATE(this%Epot(this%num_inp))
-        ALLOCATE(this%timings(this%num_inp))
+        allocate(this%x(this%num_var))
+        this%x = 0._dp
         this%Epot = 0._dp
         this%timings = 0._dp
         this%rmsd = 0._dp
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
 
-!---------------------input file(s)--------------------------------------
-!     file i/o should be changed!!!!
-      OPEN(88,file='WATER27structures/mol_list.txt')
-      DO i=1,this%num_inp-5
-          READ(88,*) str
-          this%input_files(i)= TRIM(str) // ".inp"
-      ENDDO
-      CLOSE(88)
-      this%input_files(this%num_inp-4) = 'eaip_H2O.inp'
-      this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
-      this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
-      this%input_files(this%num_inp-1) = 'dipole.inp'
-      this%input_files(this%num_inp-0) = 'geo_opt.inp'
-      ! IF (para_env%mepos+1 .le. this%num_inp) WRITE(*,*) "input files",this%input_files(para_env%mepos+1),para_env%mepos
-
-      ! ====== Create Comm for each Calculation ======
-      group_distribution_p => group_distribution
-      CALL mp_comm_split(comm=this%para_env_glob%group, sub_comm=this%subgroup, ngroups=n_groups_created, &
-                        group_distribution=group_distribution_p, n_subgroups=this%num_inp)
-
-      ! ======= Create f_env =======
-      WRITE(output_path,*) this%para_env_glob%mepos
-      output_path=TRIM(ADJUSTL(output_path))//"out"
-      CALL create_force_env(this%f_env_id, &
-                            input_path=TRIM(ADJUSTL(this%input_files(this%pid))), &
-                            output_path=output_path, &
-                            mpi_comm=this%subgroup, &
-                            ierr=ierr)
-      CALL get_natom(this%f_env_id,this%n_atoms,ierr)
-      ALLOCATE(this%pos(3*this%n_atoms))
-
-      ! ======= More setup stuff =======
-      CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
-      IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
-      this%force_env => this%f_env%force_env 
-      this%qs_env => this%force_env%qs_env 
-      
-      CALL force_env_get(this%force_env, globenv=this%globenv, subsys=this%subsys, &
-                         root_section=this%root_section, &
-                         para_env=this%para_env, error=this%error)
-
-      ! getting an output unit for logging
-      logger => cp_error_get_logger(this%error_glob)
-      this%iw = cp_print_key_unit_nr(logger,this%root_section_glob,&
-          "SWARM%PRINT%WORKER_RUN_INFO",extension=".workerLog", error=this%error)
- 
-      ! getting qs and scptb control and parameters 
-      !CALL cp_subsys_get(this%subsys, natom=this%n_atoms, error=error)
-      !allocate(this%pos(3*this%n_atoms))
-      
-                    !dft section
-      this%dft_section =>  section_vals_get_subs_vals(this%qs_env%input, "DFT", error = error )
-      CALL get_qs_env(this%qs_env, dft_control=this%dft_control, &
-                      atomic_kind_set=this%atomic_kind_set,error=error)
-                    ! here more things should be added 
-      
-                    !qs section 
-      this%qs_section => section_vals_get_subs_vals(this%dft_section, "QS", error = error )
-      this%qs_control => this%dft_control%qs_control
-      
-                    ! scptb section
-      this%scptb_control => this%qs_control%scptb_control
-      this%nkind = SIZE(this%atomic_kind_set)
-   
-      this%subsys_section => section_vals_get_subs_vals(this%force_env%force_env_section, &
-                                                        "SUBSYS",error=error) 
-      this%print_section => section_vals_get_subs_vals(this%subsys_section, &
-                                                        "PRINT",error=this%error)
-      !print *,'initial energy',this%Epot(this%pid),this%pid,this%iw
-      ! ====== for dipole the scp env needs to be implemented first
-!      IF (this%input_files(this%pid)(1:6) .eq. 'dipole') then
-!       this%dipole = 0._dp
-!       print *,'calculate dipole',this%input_files(this%pid),this%pid
-!       call calc_multipole(this%f_env_id, this%dipole, ierr)
-!       print *,'dipole',this%dipole
-!      ELSE
-                  ! calc initial energy
-        IF (this%input_files(this%pid)(1:7) .EQ. 'geo_opt') THEN
-            ALLOCATE(this%pos2(3*this%n_atoms))
-            ALLOCATE(this%g(2,3*this%n_atoms))
-            CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-            CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
-            CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
-            CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
-                                   RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
-                                   0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-            CALL cp_set_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-            print *,'rmsd',this%rmsd
-        ELSE
-      CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-      CALL cp_calc_energy(this%f_env_id, this%pos,3*this%n_atoms,this%Epot(this%pid),ierr)
-        ENDIF
-!      ENDIF 
+!      ! ====== Create Comm for each Calculation ======
+!      group_distribution_p => group_distribution
+!      CALL mp_comm_split(comm=this%para_env_glob%group, sub_comm=this%subgroup, ngroups=n_groups_created, &
+!                        group_distribution=group_distribution_p, n_subgroups=this%num_inp)
+!       IF (this%iw>0) WRITE(this%iw,*) "split mp comm done"
+!      ! ======= Create f_env =======
+!      WRITE(output_path,*) this%para_env_glob%mepos
+!      output_path=TRIM(ADJUSTL(output_path))//"out"
+!      CALL create_force_env(this%f_env_id, &
+!                            input_path=TRIM(ADJUSTL(this%input_files(this%pid))), &
+!                            output_path=output_path, &
+!                            mpi_comm=this%subgroup, &
+!                            ierr=ierr)
+!      CALL get_natom(this%f_env_id,this%n_atoms,ierr)
+!      ALLOCATE(this%pos(3*this%n_atoms))
+!      IF (this%iw>0) WRITE(this%iw,*) "create f_env done"
+!      ! ======= More setup stuff =======
+!      CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
+!      IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
+!      this%force_env => this%f_env%force_env 
+!      this%qs_env => this%force_env%qs_env 
+!      
+!      CALL force_env_get(this%force_env, globenv=this%globenv, subsys=this%subsys, &
+!                         root_section=this%root_section, &
+!                         para_env=this%para_env, error=this%error)
+!
+!      ! getting an output unit for logging
+!      logger => cp_error_get_logger(this%error_glob)
+!      this%iw = cp_print_key_unit_nr(logger,this%root_section_glob,&
+!          "SWARM%PRINT%WORKER_RUN_INFO",extension=".workerLog", error=this%error)
+! 
+!      ! getting qs and scptb control and parameters 
+!      !CALL cp_subsys_get(this%subsys, natom=this%n_atoms, error=error)
+!      !allocate(this%pos(3*this%n_atoms))
+!      
+!                    !dft section
+!      this%dft_section =>  section_vals_get_subs_vals(this%qs_env%input, "DFT", error = error )
+!      CALL get_qs_env(this%qs_env, dft_control=this%dft_control, &
+!                      atomic_kind_set=this%atomic_kind_set,error=error)
+!                    ! here more things should be added 
+!      
+!                    !qs section 
+!      this%qs_section => section_vals_get_subs_vals(this%dft_section, "QS", error = error )
+!      this%qs_control => this%dft_control%qs_control
+!      
+!                    ! scptb section
+!      this%scptb_control => this%qs_control%scptb_control
+!      this%nkind = SIZE(this%atomic_kind_set)
+!   
+!      this%subsys_section => section_vals_get_subs_vals(this%force_env%force_env_section, &
+!                                                        "SUBSYS",error=error) 
+!      this%print_section => section_vals_get_subs_vals(this%subsys_section, &
+!                                                        "PRINT",error=this%error)
+!      !print *,'initial energy',this%Epot(this%pid),this%pid,this%iw
+!      ! ====== for dipole the scp env needs to be implemented first
+!!      IF (this%input_files(this%pid)(1:6) .eq. 'dipole') then
+!!       this%dipole = 0._dp
+!!       print *,'calculate dipole',this%input_files(this%pid),this%pid
+!!       call calc_multipole(this%f_env_id, this%dipole, ierr)
+!!       print *,'dipole',this%dipole
+!!      ELSE
+!                  ! calc initial energy
+!        IF (this%input_files(this%pid)(1:7) .EQ. 'geo_opt') THEN
+!            ALLOCATE(this%pos2(3*this%n_atoms))
+!            ALLOCATE(this%g(2,3*this%n_atoms))
+!            CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+!            CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
+!            CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
+!            CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
+!                                   RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
+!                                   0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
+!            CALL cp_set_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+!            print *,'rmsd',this%rmsd
+!        ELSE
+!            CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+!            CALL cp_calc_energy(this%f_env_id, this%pos,3*this%n_atoms,this%Epot(this%pid),ierr)
+!            print *,'energy',this%Epot(this%pid),this%pid-1
+!        ENDIF
+!!      ENDIF
+     IF (this%iw>0)  WRITE(*,*) "paramopt_worker_init done."
   END SUBROUTINE paramopt_worker_init
 
 
@@ -268,10 +248,10 @@ MODULE paramopt_worker
 
 !     WRITE(*,*) "paramopt_worker_finalize called. worker_id=", this%id, &
 !      " rank=",this%para_env%mepos 
-     DEALLOCATE(this%pos)
-     CALL f_env_rm_defaults(this%f_env, this%error)
-     CALL destroy_force_env(this%f_env_id, ierr)
-     IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
+!     DEALLOCATE(this%pos)
+!     CALL f_env_rm_defaults(this%f_env, this%error)
+!     CALL destroy_force_env(this%f_env_id, ierr)
+!     IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
    END SUBROUTINE paramopt_worker_finalize
 
 
@@ -284,8 +264,9 @@ MODULE paramopt_worker
     TYPE(swarm_message_type), INTENT(INOUT)  :: report
 
     CHARACTER(len=default_string_length)     :: command, iname
+    CHARACTER(len=default_string_length)     :: output_path, input_file
     INTEGER                                  :: clock_max, clock_rate, ierr, &
-                                                ikind, t1, t2
+                                                ikind, t1, t2, i
     INTEGER, DIMENSION(0:3)                  :: norb
     LOGICAL                                  :: failure
     REAL(KIND=dp)                            :: ag, energy
@@ -293,116 +274,27 @@ MODULE paramopt_worker
     REAL(KIND=dp), DIMENSION(3)              :: crep
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
 
-!------------------timing----------------------------------
-!-----------------parameter---------------------------------
-!atomic number
-!effective core charge
-!total number of orbitals
-!max angular momentum orbitals
-!max angular momentum scp density
-!number of orbitals per l QN
-!principal quantum numbers
-!orbital exponents
-!core potential energy
-!free atom occupation
-!free atom energy
-!core repulsion parameters
-!polarization for SCP
-!width of SCP charge
-!cutoff radius for core pair potentials
-!----------------------------------------------------------
-
-       failure = .FALSE.
-
-       this%Epot = 0._dp
-       this%timings = 0._dp
-       this%rmsd = 0._dp
-
-       CALL swarm_message_get(cmd, "command", command)
-       IF (this%para_env_glob%ionode) WRITE(*,*) "paramopt_worker_execute called with command ",command
-       IF (command .EQ. "nop") CALL swarm_message_get(cmd, "newx",this%x)  
-        
-       !IF (this%para_env_glob%ionode) WRITE(*,*) 'this is new x',this%x 
-       !WRITE (*,*) output_path,this%para_env%mepos,this%para_env%group, &
-       !           trim(adjustl(this%input_files(this%para_env%mepos+1))),f_env_id,this%Epot(id),i
-    
-    !==================================================================
-       
-       DO ikind=1,this%nkind
-         atomic_kind => this%atomic_kind_set(ikind)
-         CALL get_atomic_kind(atomic_kind=atomic_kind, &
-                               name=iname, scptb_parameter=this%scptb_parameter)
-         !----------update parameters-------------------------------------
-         CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
-         !IF (this%para_env_glob%ionode) print *,'first get',hcore(1:2,0:1)
-         !-----------map x to parameter----------------------------------- 
-         IF (iname .EQ. 'H') THEN
-           energy = this%x(1)
-           ag = this%x(2)
-           zeta(1,0) = this%x(3)
-           hcore(1,0) = this%x(4)
-           crep(1) = this%x(5)
-           crep(2) = this%x(6)
-           crep(3) = this%x(7)
-         ELSE IF (iname .EQ. 'O') THEN
-           energy = this%x(8)
-           ag = this%x(9)
-           zeta(1,0) = this%x(10)
-           hcore(1,0) = this%x(11)
-           zeta(1,1) = this%x(12)
-           hcore(1,1) = this%x(13)
-           crep(1) = this%x(14)
-           crep(2) = this%x(15)
-           crep(3) = this%x(16)
-         ELSE
-            PRINT *,'failure'
-         ENDIF
-
-         CALL set_scptb_parameter(this%scptb_parameter,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
-         !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore)
-         !IF (this%para_env_glob%ionode) print *,'second get',hcore(1:2,0:1)
-       END DO
-
-    !===================================================================
-
-       ! ======= Energy Calculations and timings =======
-       CALL SYSTEM_CLOCK ( t1, clock_rate, clock_max )
-       IF (this%input_files(this%pid)(1:7) .EQ. 'geo_opt') THEN
-            !CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-            !NULLIFY (this%f_env)
-            !CALL f_env_rm_defaults(this%f_env, this%error)
-            !CALL f_env_add_defaults(this%f_env_id,this%f_env,this%error,failure)
-            !IF (.NOT.failure) THEN
-            CALL cp_geo_opt(this%f_env%force_env, this%globenv, rm_restart_info=.TRUE., &
-                             eval_opt_geo=.FALSE.,error=this%error)
-            !END IF
-            !CALL f_env_rm_defaults(this%f_env,this%error,ierr) 
-            
-            CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
-            CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
-                                   RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
-                                   0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-            CALL cp_set_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-        ELSE
-       CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-       CALL get_energy(this%f_env_id,this%Epot(this%pid),ierr)
-        ENDIF
-       CALL SYSTEM_CLOCK ( t2, clock_rate, clock_max )  
-       this%timings(this%pid) =  REAL ( t2 - t1 ) / REAL ( clock_rate )
-    
-        
-       ! should be mp_reduce...mpi_reduce or something more efficient?
-       CALL mp_sum(this%Epot,this%para_env_glob%group)
-       CALL mp_sum(this%timings,this%para_env_glob%group)
-       CALL mp_sum(this%rmsd,this%para_env_glob%group)
-              ! assemble report
-       !CALL swarm_message_add(report, "iframe", worker%iframe) 
-       CALL swarm_message_add(report, "Epot", this%Epot)
-       CALL swarm_message_add(report, "rmsd", this%rmsd)
-       CALL swarm_message_add(report, "timings", this%timings)
-!       
+    CALL swarm_message_get(cmd,"command",command)
+    CALL swarm_message_get(cmd,"input",input_file)
+    CALL swarm_message_get(cmd,"x",this%x)
+    WRITE(*,*) "paramopt_worker_exec called with: ",command
+    print *,this%iw,this%id,this%para_env%mepos
+!    WRITE(*,*) "paramopt_worker_exec called. worker_id=", this%id, " rank=",this%para_env%mepos 
+!    WRITE(*,*) 'this is new x',this%x,input_file,i 
+    !WRITE (*,*) output_path,this%para_env%mepos,this%para_env%group, &
+    !           trim(adjustl(this%input_files(this%para_env%mepos+1))),f_env_id,this%Epot(id),i
+    !WRITE(output_path,*) input_file
+    output_path=TRIM(ADJUSTL(input_file))//".out"
+    CALL create_force_env(this%f_env_id, &
+                         input_path=TRIM(ADJUSTL(input_file)), &
+                         output_path=output_path, &
+                         mpi_comm=this%para_env%group, &
+                         ierr=ierr)
+    IF (ierr .ne. 0) STOP
+    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+    CALL get_energy(this%f_env_id,energy,ierr) 
+    CALL destroy_force_env(this%f_env_id, ierr)
+    CALL swarm_message_add(report, "Epot", energy) 
    END SUBROUTINE paramopt_worker_execute
 
 
