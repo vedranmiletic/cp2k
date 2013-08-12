@@ -27,9 +27,14 @@ MODULE paramopt_worker
                                              f_env_rm_defaults,&
                                              f_env_type,&
                                              get_energy,&
-                                             get_natom
+                                             get_natom, &
+                                             get_pos, &
+                                             calc_energy
+  USE force_env_methods,               ONLY: ep_create_force_env,&
+                                             force_env_calc_energy_force
   USE force_env_types,                 ONLY: force_env_get,&
                                              force_env_type
+
   USE geo_opt,                         ONLY: cp_geo_opt
   USE global_types,                    ONLY: global_environment_type
   USE input_section_types,             ONLY: section_vals_get_subs_vals,&
@@ -68,6 +73,7 @@ MODULE paramopt_worker
    INTEGER                                          :: iw
    INTEGER                                          :: num_inp
    INTEGER                                          :: num_var
+   INTEGER,POINTER                                  :: group
    TYPE(cp_error_type)                              :: error
    TYPE(cp_para_env_type), POINTER                  :: para_env
    REAL(KIND=dp),ALLOCATABLE                            :: x(:)
@@ -138,6 +144,7 @@ MODULE paramopt_worker
 
         this%iw = iw
         this%para_env => para_env
+        this%group => this%para_env%group
         this%root_section_glob => root_section
         this%error = error
         this%id = worker_id
@@ -267,35 +274,132 @@ MODULE paramopt_worker
     CHARACTER(len=default_string_length)     :: output_path, input_file
     INTEGER                                  :: clock_max, clock_rate, ierr, &
                                                 ikind, t1, t2, i
+    INTEGER                                  :: iter,i_inp
     INTEGER, DIMENSION(0:3)                  :: norb
     LOGICAL                                  :: failure
     REAL(KIND=dp)                            :: ag, energy
     REAL(KIND=dp), DIMENSION(10, 0:3)        :: hcore, zeta
     REAL(KIND=dp), DIMENSION(3)              :: crep
+    REAL(KIND=dp), DIMENSION(:),allocatable  :: pos
+    integer                                  :: natoms
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    integer                                  :: iidle
+    logical                                  :: idle
 
-    CALL swarm_message_get(cmd,"command",command)
-!    CALL swarm_message_get(cmd,"input",input_file)
-!    CALL swarm_message_get(cmd,"x",this%x)
-    WRITE(*,*) "paramopt_worker_exec called with: ",this%id,command !,input_file
-    print *,this%id,this%iw,this%para_env%mepos,this%para_env%num_pe
-!    WRITE(*,*) "paramopt_worker_exec called. worker_id=", this%id, " rank=",this%para_env%mepos 
-!    WRITE(*,*) 'this is new x',this%x,input_file,i 
-    !WRITE (*,*) output_path,this%para_env%mepos,this%para_env%group, &
-    !           trim(adjustl(this%input_files(this%para_env%mepos+1))),f_env_id,this%Epot(id),i
-!    WRITE(output_path,*) input_file
-!    output_path=TRIM(ADJUSTL(input_file))//".out"
-!    CALL create_force_env(this%f_env_id, &
-!                         input_path=TRIM(ADJUSTL(input_file)), &
-!                         output_path=output_path, &
-!                         mpi_comm=this%para_env%group, &
-!                         ierr=ierr)
-!    IF (ierr .ne. 0) STOP
-!    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-!    CALL get_energy(this%f_env_id,energy,ierr) 
-!    CALL destroy_force_env(this%f_env_id, ierr)
-    energy=real(this%id)
-    CALL swarm_message_add(report, "Epot", energy) 
+    iidle = 0
+
+
+    CALL swarm_message_get(cmd, "command", command)
+    if (command .eq. 'energy') then
+    CALL swarm_message_get(cmd,"input",input_file)
+    CALL swarm_message_get(cmd,"num_inp",i_inp)
+    CALL swarm_message_get(cmd,"iter",iter)
+    CALL swarm_message_get(cmd,"x",this%x)
+    CALL swarm_message_get(cmd,"idle",iidle)
+    output_path=TRIM(ADJUSTL(input_file))//".out"
+    !-------------------create force env------------------------
+    CALL create_force_env(this%f_env_id, &
+                         input_path=TRIM(ADJUSTL(input_file)), &
+                         output_path=output_path, &
+                         mpi_comm=this%group, &
+                         ierr=ierr)
+    IF (ierr .ne. 0) STOP
+    !------------------------------------------------------------
+    ! not sure if nullify is needed ? 
+    Nullify(this%f_env)
+    nullify(this%force_env)
+    nullify(this%qs_env)
+    nullify(this%scptb_parameter)
+    nullify(atomic_kind)
+    CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
+    IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
+      this%force_env => this%f_env%force_env 
+      this%qs_env => this%force_env%qs_env
+
+      CALL force_env_get(this%force_env, globenv=this%globenv, subsys=this%subsys, &
+                         root_section=this%root_section, &
+                         para_env=this%para_env, error=this%error)
+                    !dft section
+      this%dft_section =>  section_vals_get_subs_vals(this%qs_env%input, "DFT", error = this%error )
+      CALL get_qs_env(this%qs_env, dft_control=this%dft_control, &
+                      atomic_kind_set=this%atomic_kind_set,error=this%error)
+                    ! here more things should be added 
+      
+                    !qs section 
+      this%qs_section => section_vals_get_subs_vals(this%dft_section, "QS", error = this%error )
+      this%qs_control => this%dft_control%qs_control
+      
+                    ! scptb section
+      this%scptb_control => this%qs_control%scptb_control
+      this%nkind = SIZE(this%atomic_kind_set)
+      this%subsys_section => section_vals_get_subs_vals(this%force_env%force_env_section, &
+                                                        "SUBSYS",error=this%error) 
+      this%print_section => section_vals_get_subs_vals(this%subsys_section, &
+                                                        "PRINT",error=this%error)
+!    !----------------update parameters---------------------------
+    !==================================================================
+       DO ikind=1,this%nkind
+         atomic_kind => this%atomic_kind_set(ikind)
+         CALL get_atomic_kind(atomic_kind=atomic_kind, &
+                               name=iname, scptb_parameter=this%scptb_parameter)
+         !----------update parameters-------------------------------------
+         CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore, &
+                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
+         !IF (this%para_env%ionode) print *,'first get hcore',ikind,hcore(1:2,0:1)
+         !IF (this%para_env%ionode) print *,'first get energy',ikind,energy
+         !-----------map x to parameter----------------------------------- 
+         IF (iname .EQ. 'H') THEN
+           energy = this%x(1)
+           ag = this%x(2)
+           zeta(1,0) = this%x(3)
+           hcore(1,0) = this%x(4)
+           crep(1) = this%x(5)
+           crep(2) = this%x(6)
+           crep(3) = this%x(7)
+         ELSE IF (iname .EQ. 'O') THEN
+           energy = this%x(8)
+           ag = this%x(9)
+           zeta(1,0) = this%x(10)
+           hcore(1,0) = this%x(11)
+           zeta(1,1) = this%x(12)
+           hcore(1,1) = this%x(13)
+           crep(1) = this%x(14)
+           crep(2) = this%x(15)
+           crep(3) = this%x(16)
+         ELSE
+            PRINT *,'failure'
+         ENDIF
+         CALL set_scptb_parameter(this%scptb_parameter,hcore=hcore, &
+                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
+         !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore)
+         !IF (this%para_env%ionode) print *,'second get',ikind,hcore(1:2,0:1)
+         !IF (this%para_env%ionode) print *,'second get energy',ikind,energy
+       END DO
+      !================================================================== 
+    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+    CALL get_energy(this%f_env_id,energy,ierr)
+
+    !call get_natom(this%f_env_id, natoms, ierr)
+    !allocate(pos(3*natoms)) 
+    !call get_pos(this%f_env_id, pos, 3*natoms, ierr)
+    !call calc_energy(this%f_env_id, pos, 3*natoms,energy,ierr)
+    !!---------------cleanup 
+    CALL f_env_rm_defaults(this%f_env, this%error)
+    CALL destroy_force_env(this%f_env_id, ierr)
+    !deallocate(pos)
+
+    else
+    iidle = 1
+    endif
+
+    CALL swarm_message_add(report, "idle", iidle) 
+    
+    if (iidle .eq. 0) then
+    CALL swarm_message_add(report, "num_inp", i_inp) 
+    CALL swarm_message_add(report, "iter", iter) 
+    CALL swarm_message_add(report, "Epot", energy)
+    endif
+
    END SUBROUTINE paramopt_worker_execute
 
 

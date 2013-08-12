@@ -49,6 +49,12 @@ MODULE paramopt_master
    INTEGER                           :: num_inp
    INTEGER                           :: num_var
    INTEGER                           :: num_para_set
+   INTEGER                           :: n_walkers
+   INTEGER                           :: i_inp
+   INTEGER                           :: inp_iter
+   INTEGER                           :: run_iter
+   INTEGER,ALLOCATABLE               :: i_recv(:)
+   INTEGER                           :: idle
    TYPE(cp_error_type),POINTER       :: error
    TYPE(ener_ref_type),POINTER       :: ener_ref(:)
    CHARACTER(len=default_string_length),POINTER     :: input_files(:)
@@ -56,7 +62,7 @@ MODULE paramopt_master
    REAL(KIND=dp),POINTER             :: res(:)
    REAL(KIND=dp),POINTER             :: function_matrix(:,:)
    REAL(KIND=dp),POINTER             :: obj_f
-   REAL(KIND=dp),ALLOCATABLE             :: x(:)
+   REAL(KIND=dp),ALLOCATABLE         :: x(:)
    REAL(KIND=dp),POINTER             :: xtrans(:)
    REAL(KIND=dp),POINTER             :: xtransold(:)
    REAL(KIND=dp),POINTER             :: xold(:)
@@ -69,6 +75,7 @@ MODULE paramopt_master
    TYPE(opt_state_type),POINTER      :: powell_opt
    TYPE(cp_para_env_type), POINTER   :: para_env
    TYPE(rng_stream_type),POINTER     :: rng_stream
+   LOGICAL                           :: sampling
  END TYPE paramopt_master_type
 
  TYPE :: ener_ref_type
@@ -105,18 +112,18 @@ MODULE paramopt_master
     INTEGER                                  :: time(3)
     LOGICAL                                  :: restart
     REAL(kind=dp),DIMENSION(3,2)             :: seed
-
-    this%iw = iw
-    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
-    this%para_env => para_env
     !---------------------
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init called"
     !------------------
     this%num_var = 16
     !-------------------
-    this%num_inp = 35
-    !-------------------
-    this%num_para_set = 1
+    this%num_inp = 30
+    !--------------------
+    this%iw = iw
+    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+    CALL section_vals_val_get(paramopt_section,"SAMPLING", l_val=this%sampling, error=error)
+    this%para_env => para_env
+    this%n_walkers = n_walkers
     !-------------------
     allocate(this%ener_ref(this%num_inp))
     allocate(this%res(this%num_inp))
@@ -128,9 +135,17 @@ MODULE paramopt_master
     allocate(this%u_bound(this%num_var))
     ALLOCATE(this%input_files(this%num_inp))
     allocate(this%rng_stream)
-    allocate(this%Epot(this%num_var))
-    allocate(this%timings(this%num_var))
-    
+    allocate(this%Epot(this%num_inp))
+    allocate(this%timings(this%num_inp))
+    allocate(this%i_recv(10))
+    !-------------------
+    this%num_para_set = 1
+    this%i_inp = 1
+    this%inp_iter = this%num_inp
+    this%run_iter = 1
+    this%i_recv = 0
+    this%idle = 0
+    this%Epot = 0._dp 
     call itime(time)
     seed(:,1) = REAL(time)
     seed(:,2) = (/ 1._dp, 2._dp, 3._dp /)
@@ -144,9 +159,9 @@ MODULE paramopt_master
     this%u_bound=(/5._dp  ,5._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
                    5._dp  ,5._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
     !-----read x --------
-!    CALL read4file(this%num_var,this%x,restart)
-!    CALL para2file(this%num_var,this%x,"para.xml",2222)
-!    CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+    CALL read4file(this%num_var,this%x,restart)
+    CALL para2file(this%num_var,this%x,"para.xml",2222)
+    CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
     !----gauss------------
     allocate(this%powell_opt)
     this%powell_opt%state = 0
@@ -158,35 +173,37 @@ MODULE paramopt_master
     this%obj_f => this%powell_opt%f
     CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
     !---------------------
-!    OPEN(88,file='WATER27structures/mol_list.txt')
-!    DO i=1,this%num_inp-5
-!          READ(88,*) str
-!          this%input_files(i)= TRIM(str) // ".inp"
-!    ENDDO
-!    CLOSE(88)
+    OPEN(88,file='WATER27structures/mol_list.txt')
+    DO i=1,this%num_inp !-5
+          !-----watch out num_inp 30 or 35 !!
+          READ(88,*) str
+          this%input_files(i)= TRIM(str) // ".inp"
+    ENDDO
+    CLOSE(88)
 !    this%input_files(this%num_inp-4) = 'eaip_H2O.inp'
 !    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
 !    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
 !    this%input_files(this%num_inp-1) = 'dipole.inp'
 !    this%input_files(this%num_inp-0) = 'geo_opt.inp' 
-!    !---------------------
-!    open(99,file='WATER27.dat')
-!      ! only the first 30 mol have ref data...so 35 - 5 ;/
-!      do i=1,this%num_inp-5
-!          read(99,*) this%ener_ref(i)%id, &
-!          this%ener_ref(i)%mol, &
-!          this%ener_ref(i)%mol_ref1, &
-!          this%ener_ref(i)%mol_ref2, &
-!          this%ener_ref(i)%mol_ref3, &
-!          this%ener_ref(i)%mol_ref4, &
-!          this%ener_ref(i)%stoch1, &
-!          this%ener_ref(i)%stoch2, &
-!          this%ener_ref(i)%stoch3, &
-!          this%ener_ref(i)%stoch4, &
-!          this%ener_ref(i)%stoch5, &
-!          this%ener_ref(i)%ref
-!      enddo
-!    close(99)
+    !---------------------
+    open(99,file='WATER27.dat')
+      ! only the first 30 mol have ref data...so 35 - 5 ;/
+      do i=1,this%num_inp !-5
+          !---watch out num_inp 30 or 35 !!!!!
+          read(99,*) this%ener_ref(i)%id, &
+          this%ener_ref(i)%mol, &
+          this%ener_ref(i)%mol_ref1, &
+          this%ener_ref(i)%mol_ref2, &
+          this%ener_ref(i)%mol_ref3, &
+          this%ener_ref(i)%mol_ref4, &
+          this%ener_ref(i)%stoch1, &
+          this%ener_ref(i)%stoch2, &
+          this%ener_ref(i)%stoch3, &
+          this%ener_ref(i)%stoch4, &
+          this%ener_ref(i)%stoch5, &
+          this%ener_ref(i)%ref
+      enddo
+    close(99)
     !------------------------
     allocate(this%function_matrix(this%num_para_set,this%num_inp))
     !------------------------
@@ -200,42 +217,99 @@ MODULE paramopt_master
     TYPE(swarm_message_type), INTENT(IN)     :: report
     TYPE(swarm_message_type), INTENT(INOUT)  :: cmd
     LOGICAL, INTENT(INOUT)                   :: should_stop
-    INTEGER                                  :: i
+    INTEGER                                  :: i,i_inp,r_iter
     INTEGER                                  :: report_worker_id
+    INTEGER                                  :: idle
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
     REAL(KIND=dp)                            :: report_rmsd
 
     CALL swarm_message_get(report, "worker_id", report_worker_id)
-
+   ! print *,'I am the master'
     IF(.NOT. swarm_message_haskey(report, "initial_hello")) THEN
-       CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
-       IF(this%iw>0) THEN
-          WRITE (this%iw,'(A,46X,I8)')&
-                 " PRMOPT| Reporting worker ", report_worker_id
-          WRITE (this%iw,'(A,20X,E15.8)')&
-                 " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(report_worker_id)
-       END IF
-    ELSE 
-       CALL swarm_message_add(cmd, "command", "nop")
-    !   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
-    !   CALL swarm_message_add(cmd, "x", this%x)
-      ! IF(this%iw > 0) WRITE(this%iw,'(A,10X,A,I10)') &
-      !               " PRMOPT| Sending initial command to worker", &
-      !               trim(this%input_files(report_worker_id)),report_worker_id
-       IF(this%iw > 0) WRITE(this%iw,'(A,10X,I10)') &
-                     " PRMOPT| Sending initial command to worker",report_worker_id
-       RETURN
+       !------------------get report -------------------------
+       CALL swarm_message_get(report, "idle", idle)
+       IF(idle .eq. 0) THEN
+       CALL swarm_message_get(report, "num_inp", i_inp)
+       CALL swarm_message_get(report, "iter", r_iter)
+       CALL swarm_message_get(report, "Epot", this%Epot(i_inp))
+       !--------------------------------------------------------
+       !  IF(this%iw>0) THEN
+       !     WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+       !            " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
+       !     WRITE (this%iw,'(A,20X,E15.8)')&
+       !            " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
+       !  END IF
+         this%i_recv(r_iter) = this%i_recv(r_iter) + 1   
+       END IF 
+     ENDIF  
+!    
+!    !--------------send command----------------------------
+    if (this%idle .eq. 0) then 
+    CALL swarm_message_add(cmd, "command", "energy")
+    CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
+    CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
+    CALL swarm_message_add(cmd, "iter", this%run_iter)
+    CALL swarm_message_add(cmd, "x", this%x)
+    CALL swarm_message_add(cmd, "idle", this%idle)
+    else
+     CALL swarm_message_add(cmd, "command", "nop")
+    endif
+!    !--------------------------------------------------------
+!       IF(this%iw>0) THEN
+!          WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+!                 " PRMOPT| cmd send worker ", report_worker_id,  &
+!                 this%inp_iter, this%run_iter
+!       END IF
+!    !-------------------------------------------------------
+!
+!    print *,'idle',this%idle
+!    print *,'adfklaidfal',this%i_recv
+    IF (this%inp_iter .gt. 1 ) THEN
+    this%inp_iter = this%inp_iter - 1
+    ELSE
+        this%idle = 1
+!        print *,'=========new send iteration==========='
+!        this%run_iter = this%run_iter + 1
+    END IF
+!
+    IF (this%i_recv(1) .eq. this%num_inp) THEN
+        print *,'=========new recv iteration==========='
+        this%i_recv(1) = 0
+        this%idle = 0
+        call calc_obj_f(this, this%x, this%Epot, this%obj_f) 
+        IF(this%iw>0) THEN
+          print *,'-------Epot-------'
+          print *,this%Epot
+          open(999,file='Epot.out',position='append')
+          write(999,*) this%Epot
+          close(999)
+          open(998,file='obj_f.out',position='append')
+          write(998,*) this%xtrans,this%obj_f
+          close(998)
+        ENDIF
+        !----new x-------------------
+        !=========have to make sure all process do the same sampling or bcast result???
+        IF (this%sampling) THEN
+          CALL sample(this,this%num_var,this%x,this%l_bound,this%u_bound)
+          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+        ELSE
+        !========================powell optimizer=============================
+          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+          print *,this%xtrans
+          CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
+          do i=1,this%num_var 
+              if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
+              if (this%xtrans(i) .gt. 1._dp) this%xtrans(i) = 1._dp
+          enddo
+          CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+          print *,this%xtrans
 
-       CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
-    ENDIF
-
-     
-    CALL swarm_message_add(cmd, "command", "nop")
-    CALL swarm_message_get(report, "Epot", this%Epot(report_worker_id))
-!   CALL swarm_message_add(cmd, "input", this%input_files(report_worker_id))
-!   CALL swarm_message_add(cmd, "x", this%x)
+        ENDIF
+        !---------reset inp_iter--------
+         this%inp_iter = this%num_inp 
+    END IF
 
  END SUBROUTINE paramopt_master_steer
 
@@ -421,11 +495,10 @@ subroutine sample(this,n,x,l_bound,u_bound)
                  rnum = next_random_number(this%rng_stream,error=this%error)
                  irand=int(rnum*n)+1
 !
-!                !irand = 4 
+!                irand = 4 
                 call var_trans(x,tmpx,l_bound,u_bound)
                  rnum = next_random_number(this%rng_stream,error=this%error)
 !                !print *,'after var trans',tmpx(irand)
-!                call random_number(rnum)
                 if (rnum .gt. 0.5_dp) then
                     step=step
                 else
@@ -440,9 +513,10 @@ subroutine sample(this,n,x,l_bound,u_bound)
                 if (tmpx(irand) .lt. 0._dp) then
                     tmpx(irand) = tmpx(irand) + 2*abs(step)
                 endif
-             !   print *,'test',tmpx(irand)
-             !   print *,'old var',x(irand), &
-             !   'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
+                call var_back_trans(tmpx,x,l_bound,u_bound)
+!             !   print *,'test',tmpx(irand)
+!             !   print *,'old var',x(irand), &
+!             !   'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
 !--------------------------random ball walk-------------------------------------  
 !                call random_number(sampx)   
 !                call var_trans(x,tmpx,l_bound,u_bound)
@@ -480,7 +554,7 @@ subroutine sample(this,n,x,l_bound,u_bound)
 !                print *,'old var',x(irand), &
 !                'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
 !-------------------------------------------------------------------------------
-                call var_back_trans(tmpx,x,l_bound,u_bound)
+!                call var_back_trans(tmpx,x,l_bound,u_bound)
 
             !    do j=1,n
             !        if (tmpx2(j) .lt. l_bound(j)) then
@@ -507,7 +581,59 @@ subroutine sample(this,n,x,l_bound,u_bound)
 !            enddo
 !            x = tmpx2
 
-            if (this%para_env%mepos .eq. 0) print *,'change var',irand,'new value',x(irand)
+!            if (this%para_env%mepos .eq. 0) print *,'change var',irand,'new value',x(irand)
 end subroutine
+ SUBROUTINE calc_obj_f(this, x, Epot, obj_f)
+    TYPE(paramopt_master_type)               :: this
+    REAL(KIND=dp),intent(in)                 :: x(:)
+    REAL(KIND=dp),intent(in)                 :: Epot(:)
+    REAL(KIND=dp),intent(out)                :: obj_f
+    REAL(KIND=dp)                            :: energy
+    real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
+    integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11 !,h2o_eaip_id=31
+    integer                                  :: i 
+
+
+        !---------------energy references-------------------------------------------
+        h2o_ref      = Epot(h2o_id)
+        !h2o_eaip_ref = Epot(h2o_eaip_id)
+        h3op_ref     = Epot(h3o_id)
+        ohm_ref      = Epot(ohm_id) 
+        h2o8s4_ref   = Epot(h2o8s4_id)
+        !---------------------------------------------------------------------------
+                    write(*,*) '==============================asdfkjalsdkjfl==================='
+                    DO i=1,this%num_inp
+                          ! calculate energy error
+                          energy = (this%ener_ref(i)%stoch1*Epot(i) + &
+                          this%ener_ref(i)%stoch2*h3op_ref + &
+                          this%ener_ref(i)%stoch3*ohm_ref + &
+                          this%ener_ref(i)%stoch4*h2o_ref + & 
+                          this%ener_ref(i)%stoch5*h2o8s4_ref)*this%kcalmol
+                          this%res(i) = abs(energy-this%ener_ref(i)%ref)
+                          ! print eneregy error
+                          IF(this%iw>0) THEN
+!                            write(*,'(A15,1X,I2,1X,I1,1X,I1,1X,I2,1X,I2,F10.2, &
+!                                      1X,F10.2,1X,F10.2,F10.2,1X,F10.2,1X,L1,1X,F10.2)') &
+                            write(*,'(A15,1X,I2,1X,I1,1X,I1,1X,I2,1X,I2,F10.2, &
+                                      1X,F10.2,1X,F10.2,F10.2,1X,F10.2,1X)') &
+                            trim(this%ener_ref(i)%mol), &
+                            this%ener_ref(i)%stoch1, &
+                            this%ener_ref(i)%stoch2, &
+                            this%ener_ref(i)%stoch3, &
+                            this%ener_ref(i)%stoch4, &
+                            this%ener_ref(i)%stoch5, &
+                            Epot(i), &
+                            Epot(i)*this%kcalmol, &
+                            energy, &
+                            this%ener_ref(i)%ref, &
+                            this%res(i) !, &
+!                            dummy, &
+!                            report_timings(i)
+                          END IF
+                    END DO
+                    write(*,*) '==============================asdfkjalsdkjfl==================='
+          obj_f = sum(this%res)
+                    write(*,*) obj_f
+ END SUBROUTINE
 END MODULE paramopt_master
 
