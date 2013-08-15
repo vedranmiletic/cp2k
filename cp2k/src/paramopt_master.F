@@ -224,10 +224,12 @@ MODULE paramopt_master
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
     REAL(KIND=dp)                            :: report_rmsd
+    CHARACTER(len=default_string_length)     :: status
 
     CALL swarm_message_get(report, "worker_id", report_worker_id)
+    CALL swarm_message_get(report, "status", status)
    ! print *,'I am the master'
-    IF(.NOT. swarm_message_haskey(report, "initial_hello")) THEN
+    IF(TRIM(status) /= "initial_hello") THEN
        !------------------get report -------------------------
        CALL swarm_message_get(report, "idle", idle)
        IF(idle .eq. 0) THEN
