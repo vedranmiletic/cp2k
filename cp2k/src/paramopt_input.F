@@ -57,10 +57,15 @@ MODULE paramopt_input
 
     CALL keyword_create(keyword, name="SAMPLING",&
         description="balba TODO.",&
-        default_l_val=.TRUE.,lone_keyword_l_val=.TRUE.,error=error)
+        default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
-    
+
+    CALL keyword_create(keyword, name="STEP_SIZE",&
+        description="balba TODO.",&
+        default_r_val= 0.1_dp,error=error)
+    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error) 
     CALL section_add_subsection(swarm_section, paramopt_section, error=error)
     CALL section_release(paramopt_section,error=error)
 

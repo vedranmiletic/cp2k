@@ -54,7 +54,7 @@ MODULE paramopt_master
    INTEGER                           :: inp_iter
    INTEGER                           :: run_iter
    INTEGER,ALLOCATABLE               :: i_recv(:)
-   INTEGER                           :: idle
+   INTEGER                           :: condition
    TYPE(cp_error_type),POINTER       :: error
    TYPE(ener_ref_type),POINTER       :: ener_ref(:)
    CHARACTER(len=default_string_length),POINTER     :: input_files(:)
@@ -76,6 +76,7 @@ MODULE paramopt_master
    TYPE(cp_para_env_type), POINTER   :: para_env
    TYPE(rng_stream_type),POINTER     :: rng_stream
    LOGICAL                           :: sampling
+   REAL(KIND=dp)                     :: step_size
  END TYPE paramopt_master_type
 
  TYPE :: ener_ref_type
@@ -121,7 +122,10 @@ MODULE paramopt_master
     !--------------------
     this%iw = iw
     paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+    this%sampling = .false.
     CALL section_vals_val_get(paramopt_section,"SAMPLING", l_val=this%sampling, error=error)
+    CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
+    print *,'are we doing sampling?',this%sampling,'step size',this%step_size
     this%para_env => para_env
     this%n_walkers = n_walkers
     !-------------------
@@ -144,8 +148,9 @@ MODULE paramopt_master
     this%inp_iter = this%num_inp
     this%run_iter = 1
     this%i_recv = 0
-    this%idle = 0
-    this%Epot = 0._dp 
+    this%condition = 0
+    this%Epot = 0._dp
+    this%obj_f = 0._dp 
     call itime(time)
     seed(:,1) = REAL(time)
     seed(:,2) = (/ 1._dp, 2._dp, 3._dp /)
@@ -154,10 +159,10 @@ MODULE paramopt_master
 
     this%res = 0._dp
                 !  energy  width  Zeta   H_core Zeta   H_core       A      C        D
-    this%l_bound=(/-50._dp,0.05_dp,-5._dp,-50._dp ,                 0._dp ,-100._dp ,-100._dp,&
-                   -50._dp,0.05_dp,-5._dp,-50._dp ,-5._dp ,-50._dp ,0._dp ,-100._dp ,-100._dp/)
-    this%u_bound=(/5._dp  ,5._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
-                   5._dp  ,5._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
+    this%l_bound=(/-50._dp,0.05_dp,-5._dp,-50._dp ,                 0._dp , 0._dp , 0._dp,&
+                   -50._dp,0.05_dp,-5._dp,-50._dp ,-5._dp ,-50._dp ,0._dp , 0._dp , 0._dp/)
+    this%u_bound=(/5._dp  ,1._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
+                   5._dp  ,1._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
     !-----read x --------
     CALL read4file(this%num_var,this%x,restart)
     CALL para2file(this%num_var,this%x,"para.xml",2222)
@@ -166,7 +171,7 @@ MODULE paramopt_master
     allocate(this%powell_opt)
     this%powell_opt%state = 0
     this%powell_opt%maxfun = 500 !----change that to imput files value
-    this%powell_opt%rhobeg = 0.5_dp
+    this%powell_opt%rhobeg = 0.001_dp
     this%powell_opt%rhoend = 0.000001_dp
     this%powell_opt%iprint = 1
     this%powell_opt%nvar = this%num_var
@@ -219,67 +224,38 @@ MODULE paramopt_master
     LOGICAL, INTENT(INOUT)                   :: should_stop
     INTEGER                                  :: i,i_inp,r_iter
     INTEGER                                  :: report_worker_id
-    INTEGER                                  :: idle
+    INTEGER                                  :: condition
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
     REAL(KIND=dp)                            :: report_rmsd
-    CHARACTER(len=default_string_length)     :: status
+    CHARACTER(len=default_string_length)     :: report_status
 
+    r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
-    CALL swarm_message_get(report, "status", status)
-   ! print *,'I am the master'
-    IF(TRIM(status) /= "initial_hello") THEN
-       !------------------get report -------------------------
-       CALL swarm_message_get(report, "idle", idle)
-       IF(idle .eq. 0) THEN
+    CALL swarm_message_get(report, "status",report_status)
+    IF (report_status == "ene_calc") THEN
+    !---------we got a new message, deal with it :)---------------
        CALL swarm_message_get(report, "num_inp", i_inp)
        CALL swarm_message_get(report, "iter", r_iter)
        CALL swarm_message_get(report, "Epot", this%Epot(i_inp))
-       !--------------------------------------------------------
-       !  IF(this%iw>0) THEN
-       !     WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-       !            " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
-       !     WRITE (this%iw,'(A,20X,E15.8)')&
-       !            " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
-       !  END IF
-         this%i_recv(r_iter) = this%i_recv(r_iter) + 1   
-       END IF 
-     ENDIF  
-!    
-!    !--------------send command----------------------------
-    if (this%idle .eq. 0) then 
-    CALL swarm_message_add(cmd, "command", "energy")
-    CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
-    CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
-    CALL swarm_message_add(cmd, "iter", this%run_iter)
-    CALL swarm_message_add(cmd, "x", this%x)
-    CALL swarm_message_add(cmd, "idle", this%idle)
-    else
-     CALL swarm_message_add(cmd, "command", "nop")
-    endif
-!    !--------------------------------------------------------
-!       IF(this%iw>0) THEN
-!          WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-!                 " PRMOPT| cmd send worker ", report_worker_id,  &
-!                 this%inp_iter, this%run_iter
-!       END IF
-!    !-------------------------------------------------------
-!
-!    print *,'idle',this%idle
-!    print *,'adfklaidfal',this%i_recv
-    IF (this%inp_iter .gt. 1 ) THEN
-    this%inp_iter = this%inp_iter - 1
-    ELSE
-        this%idle = 1
-!        print *,'=========new send iteration==========='
-!        this%run_iter = this%run_iter + 1
-    END IF
-!
-    IF (this%i_recv(1) .eq. this%num_inp) THEN
-        print *,'=========new recv iteration==========='
-        this%i_recv(1) = 0
-        this%idle = 0
+       !------------change status---------------------------------
+       report_status = "wait_done"
+       !------------deal with condition---------------------------
+       this%i_recv(r_iter) = this%i_recv(r_iter) + 1
+       !---------------print------------------------------------
+!         IF(this%iw>0) THEN
+!            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+!                   " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
+!            WRITE (this%iw,'(A,20X,E15.8)')&
+!                   " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
+!         END IF
+    ENDIF
+!    IF (report_status == 'initial_hello' .or. report_status == 'ok') then
+!    CALL swarm_message_add(cmd, "command", "wait")
+!    endif
+    IF (this%i_recv(r_iter) .eq. this%num_inp) THEN
+    !--------------we are done with the iteration/condition--------   
         call calc_obj_f(this, this%x, this%Epot, this%obj_f) 
         IF(this%iw>0) THEN
           print *,'-------Epot-------'
@@ -290,29 +266,137 @@ MODULE paramopt_master
           open(998,file='obj_f.out',position='append')
           write(998,*) this%xtrans,this%obj_f
           close(998)
+          CALL para2file(this%num_var,this%x,"para.xml",2222)
         ENDIF
         !----new x-------------------
-        !=========have to make sure all process do the same sampling or bcast result???
         IF (this%sampling) THEN
           CALL sample(this,this%num_var,this%x,this%l_bound,this%u_bound)
           CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
         ELSE
-        !========================powell optimizer=============================
+        !------------------------powell optimizer-----------------------------
           CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
-          print *,this%xtrans
           CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
           do i=1,this%num_var 
               if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
               if (this%xtrans(i) .gt. 1._dp) this%xtrans(i) = 1._dp
           enddo
           CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
-          print *,this%xtrans
-
         ENDIF
         !---------reset inp_iter--------
-         this%inp_iter = this%num_inp 
-    END IF
+         this%inp_iter = this%num_inp
+         this%i_recv(r_iter) = 0 
+    ENDIF
+    
+    IF (this%inp_iter .gt. 0 .and. report_status == "wait_done" ) THEN
+    !--------------master have a task to distr---------
+            !send new task to idle worker
+         CALL swarm_message_add(cmd, "command", "energy")
+         CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
+         CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
+         CALL swarm_message_add(cmd, "iter", this%run_iter)
+         CALL swarm_message_add(cmd, "x", this%x)
 
+         !wid = lbound(this%idle_list) 
+         !do while (.not. this%idle_list(wid)) 
+         !      wid = wid + 1 
+         !      if (wid > ubound(this%idle_list)) exit 
+         !end do 
+!       IF(this%iw>0) THEN
+!          WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+!                 " PRMOPT| cmd send worker ", report_worker_id,  &
+!                 this%inp_iter, this%run_iter
+!       END IF
+         this%inp_iter = this%inp_iter - 1
+    ELSE
+    !-----else wait cmd----------------
+         CALL swarm_message_add(cmd, "command", "wait")
+
+    ENDIF
+
+
+!    CALL swarm_message_get(report, "worker_id", report_worker_id)
+!   ! print *,'I am the master'
+!    IF(.NOT. swarm_message_haskey(report, "initial_hello")) THEN
+!       !------------------get report -------------------------
+!       CALL swarm_message_get(report, "condition", condition)
+!       IF(condition .eq. 0) THEN
+!       CALL swarm_message_get(report, "num_inp", i_inp)
+!       CALL swarm_message_get(report, "iter", r_iter)
+!       CALL swarm_message_get(report, "Epot", this%Epot(i_inp))
+!       !--------------------------------------------------------
+!         IF(this%iw>0) THEN
+!            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+!                   " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
+!            WRITE (this%iw,'(A,20X,E15.8)')&
+!                   " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
+!         END IF
+!         this%i_recv(r_iter) = this%i_recv(r_iter) + 1   
+!       END IF 
+!     ENDIF  
+!
+!!    !--------------send command----------------------------
+!    if (this%condition .eq. 0 .or. this%condition .eq. 2) then
+!       ! dont send new commands since condition! 
+!    CALL swarm_message_add(cmd, "command", "energy")
+!    CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
+!    CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
+!    CALL swarm_message_add(cmd, "iter", this%run_iter)
+!    CALL swarm_message_add(cmd, "x", this%x)
+!    CALL swarm_message_add(cmd, "condition", this%condition)
+!    idle_list(report_worker_id) = .false.
+!    !    !--------------------------------------------------------
+!       IF(this%iw>0) THEN
+!          WRITE (this%iw,'(A,20X,I8,I8,I8,I8)')&
+!                 " PRMOPT| cmd send worker ", report_worker_id,  &
+!                 this%inp_iter, this%run_iter,condition
+!       END IF
+!!    !-------------------------------------------------------
+!    else
+!     CALL swarm_message_add(cmd, "command", "nop")
+!     CALL swarm_message_add(cmd, "condition", 1)
+!    endif
+!
+!    ELSE
+!        this%condition = 1
+!!        print *,'=========new send iteration==========='
+!!        this%run_iter = this%run_iter + 1
+!    END IF
+!  !------------------report and rcv done--------------------------  
+!    IF (this%i_recv(1) .eq. this%num_inp) THEN
+!        print *,'=========new recv iteration==========='
+!        this%i_recv(1) = 0
+!        this%condition = 0
+!        call calc_obj_f(this, this%x, this%Epot, this%obj_f) 
+!        IF(this%iw>0) THEN
+!          print *,'-------Epot-------'
+!          print *,this%Epot
+!          open(999,file='Epot.out',position='append')
+!          write(999,*) this%Epot
+!          close(999)
+!          open(998,file='obj_f.out',position='append')
+!          write(998,*) this%xtrans,this%obj_f
+!          close(998)
+!        ENDIF
+!        !----new x-------------------
+!        IF (this%sampling) THEN
+!          CALL sample(this,this%num_var,this%x,this%l_bound,this%u_bound)
+!          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+!        ELSE
+!        !========================powell optimizer=============================
+!          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+!          print *,this%xtrans
+!          CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
+!          do i=1,this%num_var 
+!              if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
+!              if (this%xtrans(i) .gt. 1._dp) this%xtrans(i) = 1._dp
+!          enddo
+!          CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+!          print *,this%xtrans
+!
+!        ENDIF
+!        !---------reset inp_iter--------
+!         this%inp_iter = this%num_inp 
+!    END IF
  END SUBROUTINE paramopt_master_steer
 
 
@@ -483,8 +567,8 @@ subroutine sample(this,n,x,l_bound,u_bound)
     
     sampler=1._dp/(2._dp*sqrt(real(n)))
     generate=.TRUE.
-    step=1._dp/2._dp
-    step=1._dp/4._dp
+!    step=1._dp/2._dp
+    step = this%step_size
     !=================random uniform sampling======================
 !    tmpx = next_random_number(this%rng_stream,error=this%error)
 !    call var_back_trans(tmpx,x,l_bound,u_bound)

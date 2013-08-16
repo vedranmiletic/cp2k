@@ -295,7 +295,6 @@ MODULE paramopt_worker
     CALL swarm_message_get(cmd,"num_inp",i_inp)
     CALL swarm_message_get(cmd,"iter",iter)
     CALL swarm_message_get(cmd,"x",this%x)
-    CALL swarm_message_get(cmd,"idle",iidle)
     output_path=TRIM(ADJUSTL(input_file))//".out"
     !-------------------create force env------------------------
     CALL create_force_env(this%f_env_id, &
@@ -388,16 +387,10 @@ MODULE paramopt_worker
     CALL destroy_force_env(this%f_env_id, ierr)
     !deallocate(pos)
 
-    else
-    iidle = 1
-    endif
-
-    CALL swarm_message_add(report, "idle", iidle) 
-    
-    if (iidle .eq. 0) then
+    CALL swarm_message_add(report, "status", "ene_calc") 
     CALL swarm_message_add(report, "num_inp", i_inp) 
     CALL swarm_message_add(report, "iter", iter) 
-    CALL swarm_message_add(report, "Epot", energy)
+    CALL swarm_message_add(report, "Epot", energy) 
     endif
 
    END SUBROUTINE paramopt_worker_execute
