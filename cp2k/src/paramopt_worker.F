@@ -73,7 +73,7 @@ MODULE paramopt_worker
    INTEGER                                          :: iw
    INTEGER                                          :: num_inp
    INTEGER                                          :: num_var
-   INTEGER,POINTER                                  :: group
+   INTEGER                                          :: group
    TYPE(cp_error_type)                              :: error
    TYPE(cp_para_env_type), POINTER                  :: para_env
    REAL(KIND=dp),ALLOCATABLE                            :: x(:)
@@ -144,7 +144,7 @@ MODULE paramopt_worker
 
         this%iw = iw
         this%para_env => para_env
-        this%group => this%para_env%group
+        this%group = this%para_env%group
         this%root_section_glob => root_section
         this%error = error
         this%id = worker_id
@@ -253,12 +253,12 @@ MODULE paramopt_worker
 
      IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_finalize called"
 
-!     WRITE(*,*) "paramopt_worker_finalize called. worker_id=", this%id, &
-!      " rank=",this%para_env%mepos 
+     WRITE(*,*) "paramopt_worker_finalize called. worker_id=", this%id, &
+      " rank=",this%para_env%mepos 
 !     DEALLOCATE(this%pos)
-!     CALL f_env_rm_defaults(this%f_env, this%error)
-!     CALL destroy_force_env(this%f_env_id, ierr)
-!     IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
+     CALL f_env_rm_defaults(this%f_env, this%error)
+     CALL destroy_force_env(this%f_env_id, ierr)
+     IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
    END SUBROUTINE paramopt_worker_finalize
 
 
@@ -283,13 +283,11 @@ MODULE paramopt_worker
     REAL(KIND=dp), DIMENSION(:),allocatable  :: pos
     integer                                  :: natoms
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    integer                                  :: iidle
-    logical                                  :: idle
-
-    iidle = 0
-
 
     CALL swarm_message_get(cmd, "command", command)
+
+
+
     if (command .eq. 'energy') then
     CALL swarm_message_get(cmd,"input",input_file)
     CALL swarm_message_get(cmd,"num_inp",i_inp)
@@ -302,14 +300,17 @@ MODULE paramopt_worker
                          output_path=output_path, &
                          mpi_comm=this%group, &
                          ierr=ierr)
-    IF (ierr .ne. 0) STOP
+    IF (ierr .ne. 0) THEN
+        print *, "Create force env failed",trim(input_file)
+        STOP
+    ENDIF
     !------------------------------------------------------------
     ! not sure if nullify is needed ? 
-    Nullify(this%f_env)
-    nullify(this%force_env)
-    nullify(this%qs_env)
-    nullify(this%scptb_parameter)
-    nullify(atomic_kind)
+!    Nullify(this%f_env)
+!    nullify(this%force_env)
+!    nullify(this%qs_env)
+!    nullify(this%scptb_parameter)
+!    nullify(atomic_kind)
     CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
     IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
       this%force_env => this%f_env%force_env 
@@ -385,6 +386,7 @@ MODULE paramopt_worker
     !!---------------cleanup 
     CALL f_env_rm_defaults(this%f_env, this%error)
     CALL destroy_force_env(this%f_env_id, ierr)
+    IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed"
     !deallocate(pos)
 
     CALL swarm_message_add(report, "status", "ene_calc") 

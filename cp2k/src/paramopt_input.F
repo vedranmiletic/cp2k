@@ -56,16 +56,29 @@ MODULE paramopt_input
          repeats=.FALSE., supported_feature=.TRUE.,error=error)
 
     CALL keyword_create(keyword, name="SAMPLING",&
-        description="balba TODO.",&
-        default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
+         description="balba TODO.",&
+         default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
 
     CALL keyword_create(keyword, name="STEP_SIZE",&
-        description="balba TODO.",&
-        default_r_val= 0.1_dp,error=error)
+         description="balba TODO.",&
+         default_r_val= 0.1_dp,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
-    CALL keyword_release(keyword,error=error) 
+    CALL keyword_release(keyword,error=error)
+    
+    CALL keyword_create(keyword, name="UPPER_BOUNDS",&
+         description="blabla TODO",&
+         n_var=-1,type_of_var=real_t,error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+    
+    CALL keyword_create(keyword, name="LOWER_BOUNDS",&
+         description="blabla TODO",&
+         n_var=-1,type_of_var=real_t,error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)    
+     
     CALL section_add_subsection(swarm_section, paramopt_section, error=error)
     CALL section_release(paramopt_section,error=error)
 

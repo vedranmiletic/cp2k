@@ -121,11 +121,7 @@ MODULE paramopt_master
     this%num_inp = 30
     !--------------------
     this%iw = iw
-    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
-    this%sampling = .false.
-    CALL section_vals_val_get(paramopt_section,"SAMPLING", l_val=this%sampling, error=error)
-    CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
-    print *,'are we doing sampling?',this%sampling,'step size',this%step_size
+
     this%para_env => para_env
     this%n_walkers = n_walkers
     !-------------------
@@ -143,6 +139,17 @@ MODULE paramopt_master
     allocate(this%timings(this%num_inp))
     allocate(this%i_recv(10))
     !-------------------
+    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+    this%sampling = .false.
+    CALL section_vals_val_get(paramopt_section,"SAMPLING", l_val=this%sampling, error=error)
+    CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
+    CALL section_vals_val_get(paramopt_section,"UPPER_BOUNDS", r_vals=this%u_bound, error=error)
+    CALL section_vals_val_get(paramopt_section,"LOWER_BOUNDS", r_vals=this%l_bound, error=error)
+    print *,'are we doing sampling?',this%sampling,'step size',this%step_size
+    print *,'upper bounds',this%u_bound
+    print *,'lower bounds',this%l_bound
+    
+    !-------------------
     this%num_para_set = 1
     this%i_inp = 1
     this%inp_iter = this%num_inp
@@ -159,19 +166,19 @@ MODULE paramopt_master
 
     this%res = 0._dp
                 !  energy  width  Zeta   H_core Zeta   H_core       A      C        D
-    this%l_bound=(/-50._dp,0.05_dp,-5._dp,-50._dp ,                 0._dp , 0._dp , 0._dp,&
-                   -50._dp,0.05_dp,-5._dp,-50._dp ,-5._dp ,-50._dp ,0._dp , 0._dp , 0._dp/)
-    this%u_bound=(/5._dp  ,1._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
-                   5._dp  ,1._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
+!    this%l_bound=(/-50._dp,0.05_dp,-0._dp,-50._dp ,                 0._dp , 0._dp , 0._dp,&
+!                   -50._dp,0.05_dp,-0._dp,-50._dp ,-0._dp ,-50._dp ,0._dp , 0._dp , 0._dp/)
+!    this%u_bound=(/-0._dp  ,1._dp  ,5._dp ,0._dp  ,                  10._dp, 300._dp ,300._dp,&
+!                   -0._dp  ,1._dp  ,5._dp ,0._dp  ,5._dp  ,0._dp  ,  10._dp, 300._dp ,300._dp/)
     !-----read x --------
     CALL read4file(this%num_var,this%x,restart)
-    CALL para2file(this%num_var,this%x,"para.xml",2222)
+    CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
     CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
     !----gauss------------
     allocate(this%powell_opt)
     this%powell_opt%state = 0
     this%powell_opt%maxfun = 500 !----change that to imput files value
-    this%powell_opt%rhobeg = 0.001_dp
+    this%powell_opt%rhobeg = this%step_size
     this%powell_opt%rhoend = 0.000001_dp
     this%powell_opt%iprint = 1
     this%powell_opt%nvar = this%num_var
@@ -266,7 +273,7 @@ MODULE paramopt_master
           open(998,file='obj_f.out',position='append')
           write(998,*) this%xtrans,this%obj_f
           close(998)
-          CALL para2file(this%num_var,this%x,"para.xml",2222)
+         
         ENDIF
         !----new x-------------------
         IF (this%sampling) THEN
@@ -284,7 +291,9 @@ MODULE paramopt_master
         ENDIF
         !---------reset inp_iter--------
          this%inp_iter = this%num_inp
-         this%i_recv(r_iter) = 0 
+         this%i_recv(r_iter) = 0
+         !--------------------new x to file?--------------------
+          CALL para2file(this%num_var,this%x,"para.xml","para.xml.out") 
     ENDIF
     
     IF (this%inp_iter .gt. 0 .and. report_status == "wait_done" ) THEN
@@ -296,11 +305,6 @@ MODULE paramopt_master
          CALL swarm_message_add(cmd, "iter", this%run_iter)
          CALL swarm_message_add(cmd, "x", this%x)
 
-         !wid = lbound(this%idle_list) 
-         !do while (.not. this%idle_list(wid)) 
-         !      wid = wid + 1 
-         !      if (wid > ubound(this%idle_list)) exit 
-         !end do 
 !       IF(this%iw>0) THEN
 !          WRITE (this%iw,'(A,20X,I8,I8,I8)')&
 !                 " PRMOPT| cmd send worker ", report_worker_id,  &
@@ -313,90 +317,6 @@ MODULE paramopt_master
 
     ENDIF
 
-
-!    CALL swarm_message_get(report, "worker_id", report_worker_id)
-!   ! print *,'I am the master'
-!    IF(.NOT. swarm_message_haskey(report, "initial_hello")) THEN
-!       !------------------get report -------------------------
-!       CALL swarm_message_get(report, "condition", condition)
-!       IF(condition .eq. 0) THEN
-!       CALL swarm_message_get(report, "num_inp", i_inp)
-!       CALL swarm_message_get(report, "iter", r_iter)
-!       CALL swarm_message_get(report, "Epot", this%Epot(i_inp))
-!       !--------------------------------------------------------
-!         IF(this%iw>0) THEN
-!            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-!                   " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
-!            WRITE (this%iw,'(A,20X,E15.8)')&
-!                   " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
-!         END IF
-!         this%i_recv(r_iter) = this%i_recv(r_iter) + 1   
-!       END IF 
-!     ENDIF  
-!
-!!    !--------------send command----------------------------
-!    if (this%condition .eq. 0 .or. this%condition .eq. 2) then
-!       ! dont send new commands since condition! 
-!    CALL swarm_message_add(cmd, "command", "energy")
-!    CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
-!    CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
-!    CALL swarm_message_add(cmd, "iter", this%run_iter)
-!    CALL swarm_message_add(cmd, "x", this%x)
-!    CALL swarm_message_add(cmd, "condition", this%condition)
-!    idle_list(report_worker_id) = .false.
-!    !    !--------------------------------------------------------
-!       IF(this%iw>0) THEN
-!          WRITE (this%iw,'(A,20X,I8,I8,I8,I8)')&
-!                 " PRMOPT| cmd send worker ", report_worker_id,  &
-!                 this%inp_iter, this%run_iter,condition
-!       END IF
-!!    !-------------------------------------------------------
-!    else
-!     CALL swarm_message_add(cmd, "command", "nop")
-!     CALL swarm_message_add(cmd, "condition", 1)
-!    endif
-!
-!    ELSE
-!        this%condition = 1
-!!        print *,'=========new send iteration==========='
-!!        this%run_iter = this%run_iter + 1
-!    END IF
-!  !------------------report and rcv done--------------------------  
-!    IF (this%i_recv(1) .eq. this%num_inp) THEN
-!        print *,'=========new recv iteration==========='
-!        this%i_recv(1) = 0
-!        this%condition = 0
-!        call calc_obj_f(this, this%x, this%Epot, this%obj_f) 
-!        IF(this%iw>0) THEN
-!          print *,'-------Epot-------'
-!          print *,this%Epot
-!          open(999,file='Epot.out',position='append')
-!          write(999,*) this%Epot
-!          close(999)
-!          open(998,file='obj_f.out',position='append')
-!          write(998,*) this%xtrans,this%obj_f
-!          close(998)
-!        ENDIF
-!        !----new x-------------------
-!        IF (this%sampling) THEN
-!          CALL sample(this,this%num_var,this%x,this%l_bound,this%u_bound)
-!          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
-!        ELSE
-!        !========================powell optimizer=============================
-!          CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
-!          print *,this%xtrans
-!          CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
-!          do i=1,this%num_var 
-!              if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
-!              if (this%xtrans(i) .gt. 1._dp) this%xtrans(i) = 1._dp
-!          enddo
-!          CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
-!          print *,this%xtrans
-!
-!        ENDIF
-!        !---------reset inp_iter--------
-!         this%inp_iter = this%num_inp 
-!    END IF
  END SUBROUTINE paramopt_master_steer
 
 
@@ -467,19 +387,22 @@ subroutine read4file(n,x,ex)
     close(fileid)
     end subroutine
 
-subroutine para2file(n,x,inputstr,fileid2)
+subroutine para2file(n,x,inputstr,outputstr)
     implicit none
-    integer,intent(in)          :: n,fileid2
+    integer,intent(in)          :: n
+    integer                     :: fileid2
     integer                     :: i,rank,ierr,fileid,k
     real(kind=dp),intent(in)    :: x(n)
     real(kind=dp)               :: dummy=0._dp
     character(len=*),intent(in) :: inputstr
+    character(len=*),intent(in) :: outputstr
     character(200)              :: line
     character(24)              :: str,str2
-  
+    
+    fileid = 2222
     fileid=fileid2+100 
     open(fileid,file=adjustl(trim(inputstr)))
-    open(fileid2,file='temp')
+    open(fileid2,status='replace',file=adjustl(trim(outputstr)))
     k=1 
 !   print *,'x to file',k,x
     do i=1,59
@@ -535,10 +458,10 @@ subroutine para2file(n,x,inputstr,fileid2)
     enddo
 
     print *,'file written'
-    call RENAME(inputstr,"para.xml.restart",ierr)
-    if (ierr .ne. 0) print*,'shit...moving file failed'
-    call RENAME('temp',inputstr,ierr)
-    if (ierr .ne. 0) print*,'shit...moving file failed'
+!    call RENAME(inputstr,"para.xml.restart",ierr)
+!    if (ierr .ne. 0) print*,'shit...moving file failed'
+!    call RENAME('temp',inputstr,ierr)
+!    if (ierr .ne. 0) print*,'shit...moving file failed'
    
     close(fileid)
     close(fileid2)
