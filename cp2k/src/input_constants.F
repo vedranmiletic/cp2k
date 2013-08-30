@@ -1003,4 +1003,12 @@ MODULE input_constants
   INTEGER, PARAMETER, PUBLIC               :: glbopt_do_minhop  =1,&
                                               glbopt_do_mincrawl=2
 
+  ! Run Types of Paramopt Code
+  INTEGER, PARAMETER, PUBLIC               :: paramopt_no_run=1,&
+                                              paramopt_sampling_run=2,&
+                                              paramopt_powell_run=3,&
+                                              paramopt_gaussian_run=4,&
+                                              paramopt_lbfgs_run=5, &
+                                              paramopt_cmaes_run=6
+
 END MODULE input_constants

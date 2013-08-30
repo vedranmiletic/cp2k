@@ -13,7 +13,11 @@ MODULE paramopt_input
   USE input_constants,                 ONLY: add_last_numeric,&
                                              low_print_level,&
                                              swarm_do_glbopt,&
-                                             swarm_do_paramopt
+                                             swarm_do_paramopt,&
+                                             paramopt_no_run,&
+                                             paramopt_sampling_run,&
+                                             paramopt_powell_run,&
+                                             paramopt_gaussian_run
   USE input_keyword_types,             ONLY: keyword_create,&
                                              keyword_release,&
                                              keyword_type
@@ -55,10 +59,15 @@ MODULE paramopt_input
          description="blah TODO.",&
          repeats=.FALSE., supported_feature=.TRUE.,error=error)
 
-    CALL keyword_create(keyword, name="SAMPLING",&
-         description="balba TODO.",&
-         default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
-    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_create(keyword, name="RUN_TYPE",&
+         description="Type of run that you want to perform ",&
+         usage="RUN_TYPE SAMPLING",&
+         default_i_val=paramopt_powell_run,&
+         enum_c_vals=s2a("NONE","SAMPLING","POWELL","GAUSSIAN"),&
+         enum_i_vals=(/paramopt_no_run, paramopt_sampling_run, &
+         paramopt_powell_run, paramopt_gaussian_run/),&
+         supported_feature=.FALSE.,error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
     CALL keyword_release(keyword,error=error)
 
     CALL keyword_create(keyword, name="STEP_SIZE",&
@@ -66,7 +75,13 @@ MODULE paramopt_input
          default_r_val= 0.1_dp,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
-    
+
+     CALL keyword_create(keyword, name="C_T",&
+         description="balba TODO.",&
+         default_r_val= 1._dp,error=error)
+    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error)   
+
     CALL keyword_create(keyword, name="UPPER_BOUNDS",&
          description="blabla TODO",&
          n_var=-1,type_of_var=real_t,error=error)
@@ -77,8 +92,14 @@ MODULE paramopt_input
          description="blabla TODO",&
          n_var=-1,type_of_var=real_t,error=error)
     CALL section_add_keyword(paramopt_section,keyword,error=error)
-    CALL keyword_release(keyword,error=error)    
+    CALL keyword_release(keyword,error=error)   
      
+    CALL keyword_create(keyword, name="WEIGHTS",&
+         description="blabla TODO",&
+         n_var=-1,type_of_var=real_t,error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)    
+
     CALL section_add_subsection(swarm_section, paramopt_section, error=error)
     CALL section_release(paramopt_section,error=error)
 

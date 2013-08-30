@@ -38,8 +38,16 @@ MODULE paramopt_worker
   USE geo_opt,                         ONLY: cp_geo_opt
   USE global_types,                    ONLY: global_environment_type
   USE input_section_types,             ONLY: section_vals_get_subs_vals,&
-                                             section_vals_type
+                                             section_vals_get,&
+                                             section_vals_val_set,&
+                                             section_vals_val_unset,&
+                                             section_vals_val_get,&
+                                             section_vals_type, &
+                                             section_release, &
+                                             section_get_subsection_index, &
+                                             section_vals_remove_values
   USE kinds,                           ONLY: default_string_length,&
+                                             default_path_length,&
                                              dp
   USE message_passing,                 ONLY: mp_comm_split,&
                                              mp_sum
@@ -68,6 +76,7 @@ MODULE paramopt_worker
 
   TYPE paramopt_worker_type
    PRIVATE
+   CHARACTER(len=default_path_length)               :: input_path
    INTEGER                                          :: id
    INTEGER                                          :: pid
    INTEGER                                          :: iw
@@ -86,10 +95,10 @@ MODULE paramopt_worker
    TYPE(force_env_type), POINTER                    :: force_env
    TYPE(cp_subsys_type), POINTER                    :: subsys
    TYPE(section_vals_type), POINTER                 :: subsys_section
+   TYPE(section_vals_type), POINTER                 :: topology_section
    TYPE(section_vals_type), POINTER                 :: print_section
    TYPE(global_environment_type), POINTER           :: globenv
    TYPE(section_vals_type), POINTER                 :: root_section
-   TYPE(section_vals_type), POINTER                 :: root_section_glob
    TYPE(scptb_parameter_type), POINTER              :: scptb_para
    TYPE(section_vals_type), POINTER                 :: dft_section
    TYPE(dft_control_type), POINTER                  :: dft_control
@@ -136,19 +145,18 @@ MODULE paramopt_worker
     LOGICAL                                  :: failure,restart
     INTEGER, DIMENSION(:), POINTER           :: group_distribution_p
     INTEGER, &
-      DIMENSION(0:para_env%num_pe-1), TARGET :: group_distribution
+    DIMENSION(0:para_env%num_pe-1), TARGET :: group_distribution
 
-!--------rmsd-----------------
 
         failure = .FALSE.
-
         this%iw = iw
         this%para_env => para_env
         this%group = this%para_env%group
-        this%root_section_glob => root_section
+        this%root_section => root_section
         this%error = error
         this%id = worker_id
         this%pid = this%para_env%mepos+1
+        this%input_path = input_path
         !---------------
         this%num_inp = 35
         this%num_var = 16
@@ -158,87 +166,7 @@ MODULE paramopt_worker
         this%timings = 0._dp
         this%rmsd = 0._dp
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
-
-!      ! ====== Create Comm for each Calculation ======
-!      group_distribution_p => group_distribution
-!      CALL mp_comm_split(comm=this%para_env_glob%group, sub_comm=this%subgroup, ngroups=n_groups_created, &
-!                        group_distribution=group_distribution_p, n_subgroups=this%num_inp)
-!       IF (this%iw>0) WRITE(this%iw,*) "split mp comm done"
-!      ! ======= Create f_env =======
-!      WRITE(output_path,*) this%para_env_glob%mepos
-!      output_path=TRIM(ADJUSTL(output_path))//"out"
-!      CALL create_force_env(this%f_env_id, &
-!                            input_path=TRIM(ADJUSTL(this%input_files(this%pid))), &
-!                            output_path=output_path, &
-!                            mpi_comm=this%subgroup, &
-!                            ierr=ierr)
-!      CALL get_natom(this%f_env_id,this%n_atoms,ierr)
-!      ALLOCATE(this%pos(3*this%n_atoms))
-!      IF (this%iw>0) WRITE(this%iw,*) "create f_env done"
-!      ! ======= More setup stuff =======
-!      CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
-!      IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
-!      this%force_env => this%f_env%force_env 
-!      this%qs_env => this%force_env%qs_env 
-!      
-!      CALL force_env_get(this%force_env, globenv=this%globenv, subsys=this%subsys, &
-!                         root_section=this%root_section, &
-!                         para_env=this%para_env, error=this%error)
-!
-!      ! getting an output unit for logging
-!      logger => cp_error_get_logger(this%error_glob)
-!      this%iw = cp_print_key_unit_nr(logger,this%root_section_glob,&
-!          "SWARM%PRINT%WORKER_RUN_INFO",extension=".workerLog", error=this%error)
-! 
-!      ! getting qs and scptb control and parameters 
-!      !CALL cp_subsys_get(this%subsys, natom=this%n_atoms, error=error)
-!      !allocate(this%pos(3*this%n_atoms))
-!      
-!                    !dft section
-!      this%dft_section =>  section_vals_get_subs_vals(this%qs_env%input, "DFT", error = error )
-!      CALL get_qs_env(this%qs_env, dft_control=this%dft_control, &
-!                      atomic_kind_set=this%atomic_kind_set,error=error)
-!                    ! here more things should be added 
-!      
-!                    !qs section 
-!      this%qs_section => section_vals_get_subs_vals(this%dft_section, "QS", error = error )
-!      this%qs_control => this%dft_control%qs_control
-!      
-!                    ! scptb section
-!      this%scptb_control => this%qs_control%scptb_control
-!      this%nkind = SIZE(this%atomic_kind_set)
-!   
-!      this%subsys_section => section_vals_get_subs_vals(this%force_env%force_env_section, &
-!                                                        "SUBSYS",error=error) 
-!      this%print_section => section_vals_get_subs_vals(this%subsys_section, &
-!                                                        "PRINT",error=this%error)
-!      !print *,'initial energy',this%Epot(this%pid),this%pid,this%iw
-!      ! ====== for dipole the scp env needs to be implemented first
-!!      IF (this%input_files(this%pid)(1:6) .eq. 'dipole') then
-!!       this%dipole = 0._dp
-!!       print *,'calculate dipole',this%input_files(this%pid),this%pid
-!!       call calc_multipole(this%f_env_id, this%dipole, ierr)
-!!       print *,'dipole',this%dipole
-!!      ELSE
-!                  ! calc initial energy
-!        IF (this%input_files(this%pid)(1:7) .EQ. 'geo_opt') THEN
-!            ALLOCATE(this%pos2(3*this%n_atoms))
-!            ALLOCATE(this%g(2,3*this%n_atoms))
-!            CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-!            CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
-!            CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
-!            CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
-!                                   RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
-!                                   0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-!            CALL cp_set_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-!            print *,'rmsd',this%rmsd
-!        ELSE
-!            CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-!            CALL cp_calc_energy(this%f_env_id, this%pos,3*this%n_atoms,this%Epot(this%pid),ierr)
-!            print *,'energy',this%Epot(this%pid),this%pid-1
-!        ENDIF
-!!      ENDIF
-     IF (this%iw>0)  WRITE(*,*) "paramopt_worker_init done."
+        IF (this%iw>0)  WRITE(*,*) "paramopt_worker_init done."
   END SUBROUTINE paramopt_worker_init
 
 
@@ -271,35 +199,75 @@ MODULE paramopt_worker
     TYPE(swarm_message_type), INTENT(INOUT)  :: report
 
     CHARACTER(len=default_string_length)     :: command, iname
-    CHARACTER(len=default_string_length)     :: output_path, input_file
+    CHARACTER(len=default_string_length)     :: output_path, input_file, coord_file
     INTEGER                                  :: clock_max, clock_rate, ierr, &
                                                 ikind, t1, t2, i
-    INTEGER                                  :: iter,i_inp
+    INTEGER                                  :: iter,i_inp,charge
     INTEGER, DIMENSION(0:3)                  :: norb
-    LOGICAL                                  :: failure
+    LOGICAL                                  :: failure,explicit
     REAL(KIND=dp)                            :: ag, energy
     REAL(KIND=dp), DIMENSION(10, 0:3)        :: hcore, zeta
     REAL(KIND=dp), DIMENSION(3)              :: crep
     REAL(KIND=dp), DIMENSION(:),allocatable  :: pos
-    integer                                  :: natoms
+    integer                                  :: natoms,test
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(section_vals_type), POINTER         ::  work_section
+
 
     CALL swarm_message_get(cmd, "command", command)
 
-
-
-    if (command .eq. 'energy') then
+    if (command .eq. 'energy' .or. command .eq. 'geo_opt') then
     CALL swarm_message_get(cmd,"input",input_file)
+    CALL swarm_message_get(cmd,"coord",coord_file)
+    CALL swarm_message_get(cmd,"charge",charge)
     CALL swarm_message_get(cmd,"num_inp",i_inp)
     CALL swarm_message_get(cmd,"iter",iter)
     CALL swarm_message_get(cmd,"x",this%x)
     output_path=TRIM(ADJUSTL(input_file))//".out"
+
+!    if (this%iw > 0 ) print *,'before set coordinate file name',trim(coord_file),charge
+    CALL section_vals_val_set(this%root_section, &
+                              "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
+                              c_val=coord_file, error = this%error)
+
+
+!    CALL section_vals_val_get(this%root_section, &
+!                              "FORCE_EVAL%SUBSYS%COORD%UNIT", &
+!                              c_val=test, error = this%error)
+!    print *, "asdfasdf",test
+    CALL section_vals_val_set(this%root_section, &
+                              "FORCE_EVAL%DFT%CHARGE", &
+                              i_val=charge, error = this%error)
+!    if (this%iw > 0 )  print *,'before force env create'
+!    CALL section_vals_val_get(this%root_section, &
+!                              "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
+!                              c_val=coord_file, error = this%error)
+!    CALL section_vals_val_set(this%root_section, &
+!                              "FORCE_EVAL%SUBSYS%TOPOLOGY%NUMBER_OF_ATOMS", &
+!                              i_val=-1,error=this%error)
+!    CALL section_vals_val_get(this%root_section, &
+!                              "FORCE_EVAL%SUBSYS%TOPOLOGY%NUMBER_OF_ATOMS", &
+!                              i_val=this%n_atoms,error=this%error)
+!    if (this%iw > 0 ) print *,'after set',coord_file,this%n_atoms
     !-------------------create force env------------------------
+!    CALL create_force_env(this%f_env_id, &
+!                         input_path=TRIM(ADJUSTL(input_file)), &
+!                         output_path=output_path, &
+!                         mpi_comm=this%group, &
+!                         ierr=ierr)
+!    nullify(this%topology_section,atomic_kind,this%subsys_section)
+!    nullify(this%atomic_kind_set)
+!    nullify(this%force_env,this%qs_env,this%dft_section)
+!    nullify(this%qs_section,this%qs_control)
+!    nullify(this%scptb_control)
     CALL create_force_env(this%f_env_id, &
-                         input_path=TRIM(ADJUSTL(input_file)), &
-                         output_path=output_path, &
-                         mpi_comm=this%group, &
-                         ierr=ierr)
+                            input_path=this%input_path, &
+                            input=this%root_section, &
+                            output_path=output_path, &
+                            mpi_comm=this%group, &
+                            ierr=ierr)
+    CALL get_natom(this%f_env_id,this%n_atoms,ierr)
+!    if (this%iw > 0 )  print *,'force env created',this%n_atoms,trim(output_path)
     IF (ierr .ne. 0) THEN
         print *, "Create force env failed",trim(input_file)
         STOP
@@ -317,7 +285,6 @@ MODULE paramopt_worker
       this%qs_env => this%force_env%qs_env
 
       CALL force_env_get(this%force_env, globenv=this%globenv, subsys=this%subsys, &
-                         root_section=this%root_section, &
                          para_env=this%para_env, error=this%error)
                     !dft section
       this%dft_section =>  section_vals_get_subs_vals(this%qs_env%input, "DFT", error = this%error )
@@ -333,7 +300,9 @@ MODULE paramopt_worker
       this%scptb_control => this%qs_control%scptb_control
       this%nkind = SIZE(this%atomic_kind_set)
       this%subsys_section => section_vals_get_subs_vals(this%force_env%force_env_section, &
-                                                        "SUBSYS",error=this%error) 
+                                                        "SUBSYS",error=this%error)
+      this%topology_section => section_vals_get_subs_vals(this%subsys_section, &
+                                                        "TOPOLOGY",error=this%error)  
       this%print_section => section_vals_get_subs_vals(this%subsys_section, &
                                                         "PRINT",error=this%error)
 !    !----------------update parameters---------------------------
@@ -376,25 +345,54 @@ MODULE paramopt_worker
          !IF (this%para_env%ionode) print *,'second get energy',ikind,energy
        END DO
       !================================================================== 
-    CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-    CALL get_energy(this%f_env_id,energy,ierr)
+    endif
 
-    !call get_natom(this%f_env_id, natoms, ierr)
-    !allocate(pos(3*natoms)) 
-    !call get_pos(this%f_env_id, pos, 3*natoms, ierr)
-    !call calc_energy(this%f_env_id, pos, 3*natoms,energy,ierr)
+    if (command .eq. 'energy') then
+      CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+      CALL get_energy(this%f_env_id,energy,ierr)
+      !-------------report--------------------------------
+      CALL swarm_message_add(report, "status", "ene_calc") 
+      CALL swarm_message_add(report, "num_inp", i_inp) 
+      CALL swarm_message_add(report, "iter", iter) 
+      CALL swarm_message_add(report, "Epot", energy)
+
+    else if (command .eq. 'geo_opt') then
+        
+      ALLOCATE(this%pos2(3*this%n_atoms))
+      ALLOCATE(this%pos(3*this%n_atoms))
+      ALLOCATE(this%g(2,3*this%n_atoms))
+      CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+
+      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
+      CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
+      CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
+                             RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
+                             0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
+      work_section => section_vals_get_subs_vals(this%subsys_section,"COORD",error=this%error)
+      CALL section_vals_remove_values(work_section, this%error)
+      !CALL section_vals_remove_values(this%subsys_section%coord,this%error)
+      !CALL cp_set_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+      !CALL section_vals_get(this%subsys_section%coord,explicit=explicit,error=this%error)
+      !print *,'adfadfad',explicit
+!       CALL section_vals_val_unset(this%force_env%force_env_section,"SUBSYS%COORD",error=this%error)
+!      CALL section_release(this%force_env%force_env_section%subsys_section, this%error)
+!      CALL cp_subsys_release(this%subsys, this%error)
+ 
+!      if (this%iw > 0 ) print *,'rmsd is doooooooone',this%rmsd
+      deallocate(this%pos,this%pos2,this%g)
+      
+          !-------------report--------------------------------
+      CALL swarm_message_add(report, "status", "rmsd_calc") 
+      CALL swarm_message_add(report, "num_inp", i_inp) 
+      CALL swarm_message_add(report, "iter", iter) 
+      CALL swarm_message_add(report, "rmsd", this%rmsd)
+    
+     
+    endif
     !!---------------cleanup 
     CALL f_env_rm_defaults(this%f_env, this%error)
     CALL destroy_force_env(this%f_env_id, ierr)
     IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed"
-    !deallocate(pos)
-
-    CALL swarm_message_add(report, "status", "ene_calc") 
-    CALL swarm_message_add(report, "num_inp", i_inp) 
-    CALL swarm_message_add(report, "iter", iter) 
-    CALL swarm_message_add(report, "Epot", energy) 
-    endif
-
    END SUBROUTINE paramopt_worker_execute
 
 
