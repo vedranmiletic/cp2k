@@ -70,7 +70,6 @@ MODULE paramopt_master
    INTEGER                                          :: num_obj
    INTEGER                                          :: num_para_set
    INTEGER                                          :: n_walkers
-   INTEGER                                          :: i_inp
    INTEGER                                          :: inp_iter
    INTEGER                                          :: run_iter
    INTEGER                                          :: run_type_id
@@ -85,8 +84,11 @@ MODULE paramopt_master
    REAL(KIND=dp)                                    :: E_res
    REAL(KIND=dp)                                    :: rmsd
    REAL(KIND=dp),POINTER                            :: function_matrix(:,:)
+!   REAL(KIND=dp),POINTER                            :: x_matrix(:,:)
    REAL(KIND=dp),POINTER                            :: obj_f
-   REAL(KIND=dp),ALLOCATABLE                        :: x(:)
+   REAL(KIND=dp),POINTER                            :: grad_obj_f(:)
+   REAL(KIND=dp),POINTER                            :: x(:)
+   REAL(KIND=dp),POINTER                            :: x_temp(:)
    REAL(KIND=dp),POINTER                            :: xtrans(:)
    REAL(KIND=dp),POINTER                            :: xtransold(:)
    REAL(KIND=dp),POINTER                            :: xold(:)
@@ -96,9 +98,12 @@ MODULE paramopt_master
                                                        kcalmol=6.27509468713739E+02_dp, &
                                                        ev=27.2116_dp,&
                                                        ev_kcal=23.06035_dp
+   REAL(kind=dp),POINTER                            :: eps(:)
+   REAL(kind=dp)                                    :: eps_factor=0.0001_dp
    TYPE(cp_para_env_type), POINTER                  :: para_env
    TYPE(rng_stream_type),POINTER                    :: rng_stream
    LOGICAL,POINTER                                  :: sampling
+   LOGICAL                                          :: calc_deriv
    REAL(KIND=dp)                                    :: step_size
    REAL(KIND=dp),POINTER                            :: weights(:)
    TYPE(opt_state_type),POINTER                     :: powell_opt
@@ -138,11 +143,10 @@ MODULE paramopt_master
     INTEGER                                  :: time(3)
     LOGICAL                                  :: restart
     REAL(kind=dp),DIMENSION(3,2)             :: seed
-
     !---------------------
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init called"
     !------------------
-    this%num_var = 16
+    this%num_var = 17
     !------------------
     this%num_obj = 2
     !-------------------
@@ -151,6 +155,10 @@ MODULE paramopt_master
     this%num_calc = 31
     !--------------------
     this%num_ref = 30
+    !-------------------
+    this%calc_deriv = .false.
+    this%num_para_set = 1
+    if (this%calc_deriv) this%num_para_set = this%num_var+1
     !--------------------
     this%iw = iw
     !------------------------
@@ -163,9 +171,14 @@ MODULE paramopt_master
     allocate(this%Epot(this%num_ref))
 
     allocate(this%x(this%num_var))
+    allocate(this%eps(this%num_var))
+    allocate(this%x_temp(this%num_var))
+!    allocate(this%x_matrix(this%num_var,this%num_para_set))
+!    this%x => this%x_matrix(:,1)
     allocate(this%xtrans(this%num_var))
     allocate(this%xtransold(this%num_var))
     allocate(this%xold(this%num_var))
+    if (this%calc_deriv) allocate(this%grad_obj_f(this%num_var))
     allocate(this%l_bound(this%num_var))
     allocate(this%u_bound(this%num_var))
     ALLOCATE(this%input_files(this%num_inp))
@@ -176,7 +189,8 @@ MODULE paramopt_master
 
     allocate(this%timings(this%num_inp))
     allocate(this%weights(this%num_obj))
-    allocate(this%i_recv(10))
+    allocate(this%i_recv(this%num_para_set))
+    allocate(this%function_matrix(this%num_inp,this%num_para_set))
     !-------------------
     paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
     CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
@@ -189,9 +203,7 @@ MODULE paramopt_master
     print *,'lower bounds',this%l_bound
     
     !-------------------
-    this%num_para_set = 1
-    this%i_inp = 1
-    this%inp_iter = this%num_inp
+    this%inp_iter = this%num_inp*this%num_para_set
     this%run_iter = 1
     this%i_recv = 0
     this%Epot = 0._dp
@@ -218,10 +230,17 @@ MODULE paramopt_master
     END SELECT
     !-----read x --------
     CALL read4file(this%num_var,this%x,restart)
+    print *,'this is inital x'
+    print *, this%x
     CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
     CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+    !----------------set pointers for bfgs------------------------
+    this%eps = this%eps_factor*abs(this%x)
     !----------------set pointers for sampling------------------------
-    if (associated(this%sampling)) this%sampling = .true.
+    if (associated(this%sampling)) then
+        this%sampling = .true.
+        allocate(this%obj_f)
+    endif
     !----------------set pointers gauss adapt------------------------
     if (associated(this%gauss_opt)) then
     CALL section_vals_val_get(paramopt_section,"C_T", r_val=this%gauss_opt%c_t, error=error)
@@ -299,27 +318,31 @@ MODULE paramopt_master
     TYPE(swarm_message_type), INTENT(IN)     :: report
     TYPE(swarm_message_type), INTENT(INOUT)  :: cmd
     LOGICAL, INTENT(INOUT)                   :: should_stop
-    INTEGER                                  :: i,i_inp,r_iter
+    INTEGER                                  :: i,j,i_inp,r_iter
     INTEGER                                  :: report_worker_id
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
     REAL(KIND=dp)                            :: report_rmsd
+    REAL(KIND=dp)                            :: E_res_temp
     CHARACTER(len=default_string_length)     :: report_status
 
     r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
     CALL swarm_message_get(report, "status",report_status)
-!    print *,"reported status is",report_status,this%inp_iter
+    
     IF (report_status == "ene_calc") THEN
     !---------we got a new message, deal with it :)---------------
-       CALL swarm_message_get(report, "num_inp", i_inp)
-       CALL swarm_message_get(report, "iter", r_iter)
-       CALL swarm_message_get(report, "Epot", this%Epot(i_inp))
+    CALL swarm_message_get(report, "num_inp", i_inp)
+    CALL swarm_message_get(report, "iter", r_iter)
+    j = mod(r_iter,this%num_para_set) + 1
+    i = ceiling(r_iter/real(this%num_para_set))
+ 
+       CALL swarm_message_get(report, "Epot", this%function_matrix(i,j))
        !------------change status---------------------------------
        report_status = "wait_done"
        !------------deal with condition---------------------------
-       this%i_recv(r_iter) = this%i_recv(r_iter) + 1
+       this%i_recv(j) = this%i_recv(j) + 1
        !---------------print------------------------------------
 !         IF(this%iw>0) THEN
 !            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
@@ -327,16 +350,24 @@ MODULE paramopt_master
 !            WRITE (this%iw,'(A,20X,E15.8)')&
 !                   " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
 !         END IF
-
+!       print *,'receved',i,j,this%function_matrix(i,j)-this%function_matrix(i,1),this%function_matrix(i,j)
+!       print *,'wid',report_worker_id
+!       print *,trim(this%input_files(i))
     ELSE IF (report_status == 'rmsd_calc') THEN
     !---------we got a new message, deal with it :)---------------
-       CALL swarm_message_get(report, "num_inp", i_inp)
-       CALL swarm_message_get(report, "iter", r_iter)
+    CALL swarm_message_get(report, "num_inp", i_inp)
+    CALL swarm_message_get(report, "iter", r_iter)
+         ! map this%inp_iter to task and send out
+         ! k = inp_iter, m = num_para_set
+         j = mod(r_iter,this%num_para_set) + 1
+         i = ceiling(real(r_iter)/real(this%num_para_set)) 
+    
        CALL swarm_message_get(report, "rmsd", this%rmsd)
+       this%function_matrix(i,j) = this%rmsd
        !------------change status---------------------------------
        report_status = "wait_done"
        !------------deal with condition---------------------------
-       this%i_recv(r_iter) = this%i_recv(r_iter) + 1
+       this%i_recv(j) = this%i_recv(j) + 1
        !---------------print------------------------------------
 !         IF(this%iw>0) THEN
 !            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
@@ -344,17 +375,35 @@ MODULE paramopt_master
 !            WRITE (this%iw,'(A,20X,E15.8)')&
 !                   " PRMOPT| Reported rmsd ", this%rmsd
 !         END IF
+!      print *,'receved',i,j,this%rmsd
     ENDIF
     
-    IF (this%i_recv(r_iter) .eq. this%num_calc) THEN
-    !--------------we are done with the iteration/condition--------   
-        call calc_obj_f(this, this%x, this%Epot, this%E_res)
-        this%obj_f = this%weights(1)*this%E_res + this%weights(2)*this%rmsd
+    IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
+    !--------------we are done with the iteration/condition--------  
+        call calc_obj_f(this, this%function_matrix(:,1), this%E_res)
+        this%obj_f = this%weights(1)*this%E_res + &
+                     this%weights(2)*this%function_matrix(this%num_inp,1)
+       
+        if (this%calc_deriv) then
+          do j=2,this%num_var+1
+          print *,'func mat',this%function_matrix(:,j)
+          call calc_obj_f(this, this%function_matrix(:,j), E_res_temp)
+          this%grad_obj_f(j-1) = this%weights(1)*E_res_temp + &
+                       this%weights(2)*this%function_matrix(this%num_inp,j)
+          print *,this%grad_obj_f(j-1)
+          this%grad_obj_f(j-1) = ( this%grad_obj_f(j-1) - this%obj_f) / this%eps(j-1)
+          enddo
+        
+        print *,'gradient'
+        print *,this%grad_obj_f
+
+        endif 
+
         IF(this%iw>0) THEN
           print *,'-------Rmsd-------'
-          print *,this%rmsd
-          print *,'-------Epot-------'
-          print *,this%Epot
+          print *,this%function_matrix(this%num_inp,1)
+          !print *,'-------Epot-------'
+          !print *,this%Epot
           print *,'-------obj_f-------'
           print *,this%obj_f
           open(999,file='Epot.out',position='append')
@@ -375,7 +424,7 @@ MODULE paramopt_master
           if (associated(this%gauss_opt)) CALL GaussAdapt(this%num_var, &
               this%xtrans,this%gauss_opt)
           if (associated(this%sampling)) CALL sample(this,this%num_var, &
-              this%x,this%l_bound,this%u_bound)
+              this%xtrans,this%l_bound,this%u_bound)
           !------------------check constrains-------------------------
           do i=1,this%num_var 
               if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
@@ -385,31 +434,48 @@ MODULE paramopt_master
           !if (this%xtrans(13) .lt. this%xtrans(11)) this%xtrans(13) = this%xtrans(11)
           CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
         !---------reset inp_iter--------
-         this%inp_iter = this%num_calc
-         this%i_recv(r_iter) = 0
+         this%inp_iter = this%num_inp*this%num_para_set
+         this%i_recv = 0
          !--------------------new x to file?--------------------
-          CALL para2file(this%num_var,this%x,"para.xml","para.xml.out") 
+          CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
+          !-----------------x for diff-------------------------
+          if (this%calc_deriv) this%eps = this%eps_factor*this%x
+          !this%x_matrix(:,2) = this%x + this%eps
+          !this%x_matrix(:,3) = this%x - this%eps 
     ENDIF
     
     !--------------master have a task to distr---------
     IF (this%inp_iter .gt. 0 .and. report_status == "wait_done" ) THEN
-            !send new task to idle worker
-         if (this%inp_iter .lt. this%num_calc) then
+         ! send new task to idle worker
+         ! map this%inp_iter to task and send out
+         ! k = inp_iter, m = num_para_set
+         j = mod(this%inp_iter,this%num_para_set) + 1
+         i = ceiling(real(this%inp_iter)/real(this%num_para_set))
+
+         if (i .lt. this%num_inp) then
             CALL swarm_message_add(cmd, "command", "energy")
-         else if (this%inp_iter .eq. this%num_calc) then
+         else if (i .eq. this%num_inp) then
             CALL swarm_message_add(cmd, "command", "geo_opt")
          endif
-         CALL swarm_message_add(cmd, "input", this%input_files(this%inp_iter))
-         CALL swarm_message_add(cmd, "coord", this%coord_files(this%inp_iter))
-         CALL swarm_message_add(cmd, "charge", this%charges(this%inp_iter))
-         CALL swarm_message_add(cmd, "num_inp",this%inp_iter)
-         CALL swarm_message_add(cmd, "iter", this%run_iter)
-         CALL swarm_message_add(cmd, "x", this%x)
-!       IF(this%iw>0) THEN
-!          WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-!                 " PRMOPT| cmd send worker ", report_worker_id,  &
-!                 this%inp_iter, this%run_iter
-!       END IF
+         CALL swarm_message_add(cmd, "input", this%input_files(i))
+         CALL swarm_message_add(cmd, "coord", this%coord_files(i))
+         CALL swarm_message_add(cmd, "charge", this%charges(i))
+         CALL swarm_message_add(cmd, "num_inp",i)
+         CALL swarm_message_add(cmd, "iter", this%inp_iter)
+         this%x_temp = this%x
+         if (this%calc_deriv) then
+           if (j .gt. 1) then
+           this%x_temp(j-1) = this%x_temp(j-1) + this%eps(j-1)
+           !print *,j,this%x_temp(j-1),this%x(j-1),this%eps(j-1)
+           endif
+         endif
+         CALL swarm_message_add(cmd, "x", this%x_temp)
+       IF(this%iw>0) THEN
+          WRITE (this%iw,'(A,20X,I8,I8,I8,I8,I8)')&
+                 " PRMOPT| cmd send worker ", report_worker_id,  &
+                 this%inp_iter, i, j,this%num_para_set
+        !  print *,this%x_temp-this%x
+       END IF
          this%inp_iter = this%inp_iter - 1
     ELSE
     !-----else wait cmd----------------
@@ -436,7 +502,7 @@ subroutine read4file(n,x,ex)
     integer,intent(in)       :: n
     integer                  :: i,fileid,k
     real(kind=dp),intent(out) :: x(n)
-    character(200)            :: str,str2,filename
+    character(200)            :: str,str2,str3,filename
     logical,intent(out)      :: ex
 
     inquire(file="para.xml.restart",exist=ex)
@@ -456,34 +522,43 @@ subroutine read4file(n,x,ex)
     select case (i)
     case default
      read(fileid,*) str
-    case (17:18)
+    case (17)
      read(fileid,*) str,x(k),str2
      k=k+1
-    case (20:21)        
+    case (19:20)        
      read(fileid,*) str,x(k),str2
      k=k+1
      
+    case (25)
+     read(fileid,*) str,str3,x(k),str2
+     k=k+1
+
     case (28:30)
      read(fileid,*) str,x(k),str2
      k=k+1
 
-    case (36:37)
+    case (36)
      read(fileid,*) str,x(k),str2
      k=k+1
 
-    case (39:40)
+    case (38:39)
      read(fileid,*) str,x(k),str2
      k=k+1
 
-    case (45:46)
+    case (44:45) 
      read(fileid,*) str,x(k),str2
      k=k+1
 
+    case (50:51) 
+     read(fileid,*) str,str3,x(k),str2
+     k=k+1 
+    
     case (54:56) 
      read(fileid,*) str,x(k),str2
-     k=k+1
-    
+     k=k+1 
+
     end select
+    
     end do
     if (k-1 .ne. n) write(*,*) "something is very wrong"
 
@@ -502,7 +577,7 @@ subroutine para2file(n,x,inputstr,outputstr)
     character(len=*),intent(in) :: inputstr
     character(len=*),intent(in) :: outputstr
     character(200)              :: line
-    character(24)              :: str,str2
+    character(24)              :: str,str2,str3
     
     fileid = 2222
     fileid=fileid2+100 
@@ -517,48 +592,63 @@ subroutine para2file(n,x,inputstr,outputstr)
      read(fileid,'(A)') line
 !     str=adjustl(trim(str))
      write(fileid2,'(A)') line
-    case (17:18)
-     read(fileid,'(A24,F13.7,A)') str,dummy,str2
+    case (17)
+     read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A24,F13.7,A1,A20)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
      k=k+1
-    case (20:21)        
-     read(fileid,'(A24,F13.7,A)') str,dummy,str2
+    case (19:20)        
+     read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))d
      str2=adjustl(trim(str2))
-     write(fileid2,'(A24,F13.7,A20)') str,x(k),str2
+     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
      k=k+1
+    case (25)
+     read(fileid,'(A,A,F13.7,A)') str,str3,dummy,str2
+!     str=adjustl(trim(str))
+     str3=adjustl(trim(str3))
+     str2=adjustl(trim(str2))
+     write(fileid2,'(A,A,F13.7,A)') str,str3,x(k),str2
+        k=k+1
     case (28:30)
      read(fileid,'(A16,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A16,F13.7,A,A16)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
         k=k+1
-    case (36:37)
-     read(fileid,'(A24,F13.7,A)') str,dummy,str2
+    case (36)
+     read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A24,F13.7,A,A20)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
         k=k+1
-    case (39:40)
-     read(fileid,'(A24,F13.7,A)') str,dummy,str2
+    case (38:39) 
+     read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A24,F13.7,A24)') str,x(k),str2
+     write(fileid2,'(A,F13.7,A)') str,x(k),str2
         k=k+1
-    case (45:46)
-     read(fileid,'(A24,F13.7,A)') str,dummy,str2
+    case (44:45) 
+     read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A24,F13.7,A20)') str,x(k),str2
+     write(fileid2,'(A,F13.7,A)') str,x(k),str2
+        k=k+1
+    case (50:51) 
+     read(fileid,'(A,A,F13.7,A)') str,str3,dummy,str2
+!     str=adjustl(trim(str))
+     str3=adjustl(trim(str3))
+     str2=adjustl(trim(str2))
+     write(fileid2,'(A,A,F13.7,A,A)') str,str3,x(k),' ',str2
         k=k+1
     case (54:56) 
      read(fileid,'(A16,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A16,F13.7,A,A16)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
         k=k+1
+
      end select 
     enddo
 
@@ -601,6 +691,7 @@ subroutine sample(this,n,x,l_bound,u_bound)
     generate=.TRUE.
 !    step=1._dp/2._dp
     step = this%step_size
+    tmpx = x
     !=================random uniform sampling======================
 !   do i=1,n; tmpx(i) = next_random_number(this%rng_stream,error=this%error); enddo
 !    call var_back_trans(tmpx,x,l_bound,u_bound)
@@ -612,9 +703,10 @@ subroutine sample(this,n,x,l_bound,u_bound)
 !                call random_number(rnum)
                  rnum = next_random_number(this%rng_stream,error=this%error)
                  irand=int(rnum*n)+1
+                 print *,'change var num',irand
 !
 !                irand = 4 
-                call var_trans(x,tmpx,l_bound,u_bound)
+!                call var_trans(x,tmpx,l_bound,u_bound)
                  rnum = next_random_number(this%rng_stream,error=this%error)
 !                !print *,'after var trans',tmpx(irand)
                 if (rnum .gt. 0.5_dp) then
@@ -631,7 +723,8 @@ subroutine sample(this,n,x,l_bound,u_bound)
                 if (tmpx(irand) .lt. 0._dp) then
                     tmpx(irand) = tmpx(irand) + 2*abs(step)
                 endif
-                call var_back_trans(tmpx,x,l_bound,u_bound)
+              x = tmpx  
+              !  call var_back_trans(tmpx,x,l_bound,u_bound)
 !             !   print *,'test',tmpx(irand)
 !             !   print *,'old var',x(irand), &
 !             !   'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
@@ -703,9 +796,8 @@ subroutine sample(this,n,x,l_bound,u_bound)
 end subroutine
 ! *****************************************************************************
 ! *****************************************************************************
- SUBROUTINE calc_obj_f(this, x, Epot, obj_f)
+ SUBROUTINE calc_obj_f(this, Epot, obj_f)
     TYPE(paramopt_master_type)               :: this
-    REAL(KIND=dp),intent(in)                 :: x(:)
     REAL(KIND=dp),intent(in)                 :: Epot(:)
     REAL(KIND=dp),intent(out)                :: obj_f
     REAL(KIND=dp)                            :: energy
@@ -914,6 +1006,5 @@ end subroutine
       endif
     endif
 END SUBROUTINE
-
 END MODULE paramopt_master
 

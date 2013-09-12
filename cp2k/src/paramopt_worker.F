@@ -80,7 +80,6 @@ MODULE paramopt_worker
    INTEGER                                          :: id
    INTEGER                                          :: pid
    INTEGER                                          :: iw
-   INTEGER                                          :: num_inp
    INTEGER                                          :: num_var
    INTEGER                                          :: group
    TYPE(cp_error_type)                              :: error
@@ -158,7 +157,6 @@ MODULE paramopt_worker
         this%pid = this%para_env%mepos+1
         this%input_path = input_path
         !---------------
-        this%num_inp = 35
         this%num_var = 16
         allocate(this%x(this%num_var))
         this%x = 0._dp
@@ -166,7 +164,7 @@ MODULE paramopt_worker
         this%timings = 0._dp
         this%rmsd = 0._dp
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
-        IF (this%iw>0)  WRITE(*,*) "paramopt_worker_init done."
+        IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init done."
   END SUBROUTINE paramopt_worker_init
 
 
@@ -201,18 +199,18 @@ MODULE paramopt_worker
     CHARACTER(len=default_string_length)     :: command, iname
     CHARACTER(len=default_string_length)     :: output_path, input_file, coord_file
     INTEGER                                  :: clock_max, clock_rate, ierr, &
-                                                ikind, t1, t2, i
+                                                ikind, t1, t2, i,j
     INTEGER                                  :: iter,i_inp,charge
     INTEGER, DIMENSION(0:3)                  :: norb
     LOGICAL                                  :: failure,explicit
     REAL(KIND=dp)                            :: ag, energy
     REAL(KIND=dp), DIMENSION(10, 0:3)        :: hcore, zeta
     REAL(KIND=dp), DIMENSION(3)              :: crep
+    REAL(KIND=dp), DIMENSION(1:3)            :: pol
     REAL(KIND=dp), DIMENSION(:),allocatable  :: pos
     integer                                  :: natoms,test
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(section_vals_type), POINTER         ::  work_section
-
+    TYPE(section_vals_type), POINTER         :: work_section
 
     CALL swarm_message_get(cmd, "command", command)
 
@@ -223,8 +221,18 @@ MODULE paramopt_worker
     CALL swarm_message_get(cmd,"num_inp",i_inp)
     CALL swarm_message_get(cmd,"iter",iter)
     CALL swarm_message_get(cmd,"x",this%x)
-    output_path=TRIM(ADJUSTL(input_file))//".out"
 
+    !debug
+         j = mod(iter,17) + 1
+         i = ceiling(real(iter)/real(17))
+
+
+    write(output_path,*) this%id
+    output_path=trim(adjustl(output_path))//".out"
+    if (this%iw > 0 ) then
+    !print *, this%id,i,j
+    !print *, this%x
+    endif
 !    if (this%iw > 0 ) print *,'before set coordinate file name',trim(coord_file),charge
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
@@ -313,35 +321,40 @@ MODULE paramopt_worker
                                name=iname, scptb_parameter=this%scptb_parameter)
          !----------update parameters-------------------------------------
          CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
+                                  energy=energy, ag=ag, zeta=zeta, crep=crep, pol=pol)
+         !print *,pol
+         !print *,'wid',this%id
          !IF (this%para_env%ionode) print *,'first get hcore',ikind,hcore(1:2,0:1)
-         !IF (this%para_env%ionode) print *,'first get energy',ikind,energy
+         !IF (this%para_env%ionode) print *,'first get zeta',ikind,zeta(1:2,0:1)
+         !IF (this%para_env%ionode) print *,'first get energy',ikind,energy,this%x(1),this%x(8)
          !-----------map x to parameter----------------------------------- 
          IF (iname .EQ. 'H') THEN
-           energy = this%x(1)
-           ag = this%x(2)
-           zeta(1,0) = this%x(3)
-           hcore(1,0) = this%x(4)
+           ag = this%x(1)
+           zeta(1,0) = this%x(2)
+           hcore(1,0) = this%x(3)
+           pol(1)  = this%x(4)
            crep(1) = this%x(5)
            crep(2) = this%x(6)
            crep(3) = this%x(7)
          ELSE IF (iname .EQ. 'O') THEN
-           energy = this%x(8)
-           ag = this%x(9)
-           zeta(1,0) = this%x(10)
-           hcore(1,0) = this%x(11)
-           zeta(1,1) = this%x(12)
-           hcore(1,1) = this%x(13)
-           crep(1) = this%x(14)
-           crep(2) = this%x(15)
-           crep(3) = this%x(16)
+           ag = this%x(8)
+           zeta(1,0) = this%x(9)
+           hcore(1,0) = this%x(10)
+           zeta(1,1) = this%x(11)
+           hcore(1,1) = this%x(12)
+           pol(1) = this%x(13)
+           pol(2) = this%x(14)
+           crep(1) = this%x(15)
+           crep(2) = this%x(16)
+           crep(3) = this%x(17)
          ELSE
             PRINT *,'failure'
          ENDIF
          CALL set_scptb_parameter(this%scptb_parameter,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep)
-         !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore)
+                                  energy=energy, ag=ag, zeta=zeta, crep=crep, pol=pol)
+         !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore,zeta=zeta)
          !IF (this%para_env%ionode) print *,'second get',ikind,hcore(1:2,0:1)
+         !IF (this%para_env%ionode) print *,'second get zeta',ikind,zeta(1:2,0:1)
          !IF (this%para_env%ionode) print *,'second get energy',ikind,energy
        END DO
       !================================================================== 
@@ -350,6 +363,11 @@ MODULE paramopt_worker
     if (command .eq. 'energy') then
       CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
       CALL get_energy(this%f_env_id,energy,ierr)
+      if (this%iw > 0) then
+     ! print * ,'in worker',input_file
+     ! print * ,this%x
+     ! print * ,'energy',energy 
+      endif
       !-------------report--------------------------------
       CALL swarm_message_add(report, "status", "ene_calc") 
       CALL swarm_message_add(report, "num_inp", i_inp) 
