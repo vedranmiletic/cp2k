@@ -1,0 +1,104 @@
+&GLOBAL
+   PROGRAM_NAME SWARM
+   RUN_TYPE NONE
+   PROJECT_NAME PARAMOPT
+   SEED 100 
+   SAVE_MEM .TRUE.
+&END GLOBAL
+&SWARM
+   BEHAVIOR PARAM_OPT
+   &PARAM_OPT
+     	!RUN_TYPE GAUSSIAN
+        !RUN_TYPE POWELL
+	    RUN_TYPE SAMPLING
+        STEP_SIZE 0.1 
+        C_T 0.8
+	    !                            H                                                      O
+     	!-----------width  Zeta  H_core  pol  A     C    D --|-- width Zeta  H_core  Zeta  H_core  pol  pol  A    C   D---------! 
+     	UPPER_BOUNDS   5.    5.   -0.00  20.  10.   30. 30.      5.  5.  -0.00    5.    -0.00   10.  10.  10. 30. 30.
+     	LOWER_BOUNDS  0.005  0.   -50.   0.   0.    0.   0.      0.005   0.  -50.     0.   -50.      0.   0.   0.  0.   0. 
+	WEIGHTS 1.0 10000.0 
+   &END 
+   !REPLAY_COMMUNICATION_LOG comlog.xyz
+   NUMBER_OF_WORKERS 31
+   MAX_ITER 100000000  
+&END SWARM
+
+&MOTION
+  &PRINT  ! IO is expensive, turning everything off
+    &RESTART 
+      BACKUP_COPIES 0
+      ADD_LAST NO
+      &EACH
+        MD -1
+        GEO_OPT 1
+      &END EACH
+    &END RESTART
+    &RESTART_HISTORY OFF
+    &END RESTART_HISTORY
+    &TRAJECTORY 
+      ADD_LAST NUMERIC
+      &EACH
+        GEO_OPT -1
+        MD -1
+      &END EACH
+    &END TRAJECTORY
+  &END PRINT
+
+  &GEO_OPT
+    OPTIMIZER BFGS 
+    MAX_ITER 50
+    &BFGS
+!    TRUST_RADIUS 0.05
+    &END BFGS
+    &PRINT
+      &PROGRAM_RUN_INFO SILENT
+      &END PROGRAM_RUN_INFO
+    &END PRINT
+  &END GEO_OPT
+
+&END MOTION
+&FORCE_EVAL
+  &DFT 
+    CHARGE 0          
+    &QS
+      METHOD SCPTB
+      &SCPTB
+        DISPERSION .TRUE.
+        DISPERSION_PARAMETER_FILE dftd3.dat
+        DO_EWALD .FALSE.
+        DO_SCP .TRUE.
+        PARAMETER_FILE_NAME para.xml 
+        STO_NG 6
+      &END SCPTB
+    &END QS
+    &SCF
+      SCF_GUESS MOPAC  
+!      EPS_SCF 1.0E-04
+      MAX_SCF 30
+      &PRINT
+      &RESTART OFF
+      &END
+      &END PRINT
+      &OT
+        MINIMIZER DIIS   
+	    PRECONDITIONER FULL_ALL
+      &END OT      
+      &OUTER_SCF
+        TYPE SCP
+        EPS_SCF 1.0E-04
+        MAX_SCF 20
+      &END OUTER_SCF 
+    &END SCF
+  &END DFT
+  &SUBSYS
+    &CELL
+      ABC 30.0 30.0 30.0
+      PERIODIC NONE
+    &END CELL
+    &TOPOLOGY
+        COORD_FILE_NAME WATER27structures/H2O.xyz
+        COORD_FILE_FORMAT XYZ
+    &END
+  &END SUBSYS
+&END FORCE_EVAL

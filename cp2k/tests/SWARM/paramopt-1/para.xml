@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<nm12_parameters><!-- DO NOT HAVE ANY NEWLINE ABOVE THIS, IT CONFUSES THE PARSER GOD KNOWS WHY -->
+    <Meta_info>                                         <!-- Some common/general info, only part of which is currently read by the code.     -->
+        <Version>   0.2         </Version>
+        <Author>    RK          </Author>
+        <Ref>       unpublished </Ref>
+        <Comment>   [04/2013] Exponents for all elements, adjusted D3 scaling, repulsive up to Kr, eta_0 for all  </Comment>
+    </Meta_info>
+    <General_parameters>                                 <!-- A general placeholder for additional common options/parameters we might need. -->
+        <D3_s6>     1.000 </D3_s6>                       <!-- Parameter for scaling of Grimme D3 -->
+        <D3_sr6>    0.400 </D3_sr6>                      <!-- Parameter for scaling of Grimme D3 -->
+        <D3_s8>     0.361 </D3_s8>                       <!-- Parameter for scaling of Grimme D3 -->
+    </General_parameters>                         
+    <Element name="H">
+        <Z>                      1    </Z>
+        <Zeff>           1.0000000   </Zeff>
+        <Charge_width>   0.2363000   </Charge_width>
+        <Electron_shell n="1" l="0">
+            <Zeta>           2.2987118         </Zeta>
+            <H_core>        -1.3080562         </H_core>
+            <Occ>            1.0000000         </Occ>
+            <N>                      1         </N>
+        </Electron_shell>
+        <SCP>
+            <ETA l="1">  10.0000000 </ETA>		
+        </SCP>
+        <Repulsive>
+            <A>    3.2331995 </A>
+            <C>    14.484580 </C>
+            <D>    3.6885400 </D>
+        </Repulsive>
+    </Element>
+    <Element name="O">
+        <Z>                      8             </Z>
+        <Zeff>           6.0000000            </Zeff>
+        <Charge_width>   0.2448300            </Charge_width>
+        <Electron_shell n="1" l="0">
+            <Zeta>           3.0689061        </Zeta>
+            <H_core>        -2.6715280        </H_core>
+            <Occ>            2.0000000        </Occ>
+            <N>                      2        </N>
+        </Electron_shell>
+        <Electron_shell n="1" l="1">
+            <Zeta>           3.2316040        </Zeta>
+            <H_core>        -4.7601710        </H_core>
+            <Occ>            4.0000000        </Occ>
+            <N>                      2        </N>
+        </Electron_shell>
+        <SCP>
+            <Eta l="1">  10.000000  </Eta>
+	        <ETA l="2">  10.000000  </ETA>		
+        </SCP>
+        <Repulsive>
+            <A>    2.4928615 </A>
+            <C>    14.459201 </C>
+            <D>    0.0000000 </D>
+        </Repulsive>
+    </Element>
+</nm12_parameters>
