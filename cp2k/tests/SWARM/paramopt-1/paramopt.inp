@@ -9,18 +9,19 @@
    BEHAVIOR PARAM_OPT
    &PARAM_OPT
      	!RUN_TYPE GAUSSIAN
-        !RUN_TYPE POWELL
-	    RUN_TYPE SAMPLING
-        STEP_SIZE 0.1 
-        C_T 0.8
+        RUN_TYPE POWELL
+   	    !RUN_TYPE SAMPLING
+        !RUN_TYPE LBFGS
+	    STEP_SIZE 0.05
+        C_T 5000
 	    !                            H                                                      O
      	!-----------width  Zeta  H_core  pol  A     C    D --|-- width Zeta  H_core  Zeta  H_core  pol  pol  A    C   D---------! 
-     	UPPER_BOUNDS   5.    5.   -0.00  20.  10.   30. 30.      5.  5.  -0.00    5.    -0.00   10.  10.  10. 30. 30.
-     	LOWER_BOUNDS  0.005  0.   -50.   0.   0.    0.   0.      0.005   0.  -50.     0.   -50.      0.   0.   0.  0.   0. 
+     	UPPER_BOUNDS   10.    5.  -0.10  20.  10.   300. 300.     10.     5.  -0.10     5.  -1.00   10.  10.  10. 300. 300.
+     	LOWER_BOUNDS  0.01  0.01   -50.   0.   0.    0.   0.    0.01    0.01   -50.    0.01   -50.   0.   0.   0.  0.   0. 
 	WEIGHTS 1.0 10000.0 
    &END 
    !REPLAY_COMMUNICATION_LOG comlog.xyz
-   NUMBER_OF_WORKERS 31
+   NUMBER_OF_WORKERS 31  
    MAX_ITER 100000000  
 &END SWARM
 
@@ -47,8 +48,10 @@
 
   &GEO_OPT
     OPTIMIZER BFGS 
-    MAX_ITER 50
+    MAX_ITER 20
     &BFGS
+     &RESTART SILENT
+     &END
 !    TRUST_RADIUS 0.05
     &END BFGS
     &PRINT
@@ -67,27 +70,28 @@
         DISPERSION .TRUE.
         DISPERSION_PARAMETER_FILE dftd3.dat
         DO_EWALD .FALSE.
-        DO_SCP .TRUE.
+        DO_SCP .FALSE.
         PARAMETER_FILE_NAME para.xml 
         STO_NG 6
       &END SCPTB
     &END QS
     &SCF
       SCF_GUESS MOPAC  
-!      EPS_SCF 1.0E-04
-      MAX_SCF 30
+      EPS_SCF 1.0E-03
+      MAX_SCF 10
       &PRINT
       &RESTART OFF
       &END
       &END PRINT
       &OT
+        N_DIIS 4
         MINIMIZER DIIS   
 	    PRECONDITIONER FULL_ALL
       &END OT      
       &OUTER_SCF
-        TYPE SCP
-        EPS_SCF 1.0E-04
-        MAX_SCF 20
+!         TYPE SCP
+        EPS_SCF 1.0E-03
+        MAX_SCF 10
       &END OUTER_SCF 
     &END SCF
   &END DFT

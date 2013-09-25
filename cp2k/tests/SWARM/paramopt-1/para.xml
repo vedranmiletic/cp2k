@@ -12,17 +12,17 @@
         <D3_s8>     0.361 </D3_s8>                       <!-- Parameter for scaling of Grimme D3 -->
     </General_parameters>                         
     <Element name="H">
-        <Z>                      1    </Z>
-        <Zeff>           1.0000000   </Zeff>
-        <Charge_width>   0.2363000   </Charge_width>
+        <Z>                      1  </Z>
+        <Zeff>           1.0000000 </Zeff>
+        <Charge_width>   0.2363000 </Charge_width>
         <Electron_shell n="1" l="0">
-            <Zeta>           2.2987118         </Zeta>
-            <H_core>        -1.3080562         </H_core>
-            <Occ>            1.0000000         </Occ>
-            <N>                      1         </N>
+            <Zeta>           2.2987118 </Zeta>
+            <H_core>        -1.3080562 </H_core>
+            <Occ>            1.0000000 </Occ>
+            <N>                      1 </N>
         </Electron_shell>
         <SCP>
-            <ETA l="1">  10.0000000 </ETA>		
+            <ETA l="1">   10.000000 </ETA>
         </SCP>
         <Repulsive>
             <A>    3.2331995 </A>
@@ -31,20 +31,20 @@
         </Repulsive>
     </Element>
     <Element name="O">
-        <Z>                      8             </Z>
-        <Zeff>           6.0000000            </Zeff>
-        <Charge_width>   0.2448300            </Charge_width>
+        <Z>                      8 </Z>
+        <Zeff>           6.0000000 </Zeff>
+        <Charge_width>   0.2448300 </Charge_width>
         <Electron_shell n="1" l="0">
-            <Zeta>           3.0689061        </Zeta>
-            <H_core>        -2.6715280        </H_core>
-            <Occ>            2.0000000        </Occ>
-            <N>                      2        </N>
+            <Zeta>           3.0689061 </Zeta>
+            <H_core>        -2.6715280 </H_core>
+            <Occ>            2.0000000 </Occ>
+            <N>                      2 </N>
         </Electron_shell>
         <Electron_shell n="1" l="1">
-            <Zeta>           3.2316040        </Zeta>
-            <H_core>        -4.7601710        </H_core>
-            <Occ>            4.0000000        </Occ>
-            <N>                      2        </N>
+            <Zeta>           3.2316040 </Zeta>
+            <H_core>        -4.7601710 </H_core>
+            <Occ>            4.0000000 </Occ>
+            <N>                      2 </N>
         </Electron_shell>
         <SCP>
             <Eta l="1">  10.000000  </Eta>
