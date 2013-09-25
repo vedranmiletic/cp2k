@@ -9,6 +9,8 @@
 !> \author Ole
 ! *****************************************************************************
 MODULE paramopt_master
+  USE cp_lbfgs,                        ONLY: setulb
+
   USE swarm_message,                   ONLY: swarm_message_type
 
   USE input_section_types,             ONLY: section_vals_get_subs_vals,&
@@ -17,7 +19,9 @@ MODULE paramopt_master
   USE input_constants,                 ONLY: paramopt_no_run,&
                                              paramopt_sampling_run,&
                                              paramopt_powell_run,&
-                                             paramopt_gaussian_run
+                                             paramopt_gaussian_run, &
+                                             paramopt_lbfgs_run, &
+                                             paramopt_cmaes_run
   USE kinds,                           ONLY: default_string_length,&
                                              dp
   USE message_passing,                 ONLY: mp_bcast
@@ -48,17 +52,66 @@ MODULE paramopt_master
  PUBLIC :: paramopt_master_init, paramopt_master_finalize
  PUBLIC :: paramopt_master_steer
 
+ TYPE lbfgs_opt_type
+     CHARACTER (len=60) :: task
+     CHARACTER (len=60) :: csave
+     LOGICAL :: lsave (4)
+     INTEGER :: m, print_every, master, max_f_per_iter, status, n_iter
+     INTEGER :: ref_count, id_nr, lenwa
+     INTEGER, DIMENSION(:), POINTER :: kind_of_bound, i_work_array, isave
+     REAL(kind=dp),POINTER :: f=>null()
+     REAL(kind=dp) :: wanted_relative_f_delta, wanted_projected_gradient,&
+          last_f, projected_gradient, eold, emin
+     REAL(kind=dp), DIMENSION(:), POINTER :: x,lower_bound,upper_bound,&
+          gradient,dsave,work_array
+ END TYPE lbfgs_opt_type
+ 
  TYPE gauss_opt_type
    INTEGER                                         :: n,nf
-   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: eta,m,x,xmin
-   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: l_bound,u_bound
-   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: Q,C
-   REAL(KIND=dp)                                   :: c_t,f,fmin,r
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: eta,m,xmin
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: x 
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: l_bound,u_bound
+   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: C,Q
+   REAL(KIND=dp)                                   :: c_t,fmin,r
+   REAL(KIND=dp),POINTER                           :: f=>null()
    REAL(KIND=dp)                                   :: wm,wc,wt,beta,p,fe,fc
    CHARACTER(len=default_string_length)            :: task
    TYPE(rng_stream_type),POINTER                   :: rng_normal_stream
  
  END TYPE gauss_opt_type
+
+ TYPE cmaes_opt_type
+   INTEGER                                         :: n
+   INTEGER                                         :: lambda ! pop size
+   INTEGER,ALLOCATABLE                             :: idxsel(:)
+   INTEGER                                         :: mu ! number of parents for recomb
+   INTEGER                                         :: info
+   REAL(KIND=dp)                                   :: mucov,ccov
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xmean,xold,xmin,weights,zmean
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: multmp_vN
+   REAL(KIND=dp),DIMENSION(:,:),POINTER            :: multmp_mN,multmp_mMU,multmp_mN2,mutmp
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: x 
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: f 
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: newsort 
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: l_bound,u_bound
+   REAL(KIND=dp)                                   :: sigma
+   REAL(KIND=dp)                                   :: hsig
+   REAL(KIND=dp)                                   :: stopfitness 
+   REAL(KIND=dp)                                   :: stopeval 
+   REAL(KIND=dp)                                   :: mueff
+   REAL(KIND=dp)                                   :: vecnorm
+   REAL(KIND=dp)                                   :: vecsum
+   !strategy parameter setting
+   REAL(KIND=dp)                                   :: cc,cs,c1,cmu,damps
+   ! initialize dynamic (internal) startegy parameters and constants
+   REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc,ps
+   REAL(KIND=dp)                                   :: eigenval
+   REAL(KIND=dp)                                   :: chiN
+   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: B,D,BD,C,triuC,arx,arz
+   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: tempMat,colVec,rowVec
+   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: weightsMat
+   TYPE(rng_stream_type),POINTER                   :: rng_normal_stream
+ END TYPE cmaes_opt_type
 
  TYPE paramopt_master_type
    PRIVATE
@@ -81,11 +134,11 @@ MODULE paramopt_master
    INTEGER,POINTER                                  :: charges(:)
    REAL(KIND=dp),ALLOCATABLE                        :: Epot(:),timings(:)
    REAL(KIND=dp),POINTER                            :: res(:)
-   REAL(KIND=dp)                                    :: E_res
+   REAL(KIND=dp),POINTER                            :: E_res(:)
    REAL(KIND=dp)                                    :: rmsd
    REAL(KIND=dp),POINTER                            :: function_matrix(:,:)
 !   REAL(KIND=dp),POINTER                            :: x_matrix(:,:)
-   REAL(KIND=dp),POINTER                            :: obj_f
+   REAL(KIND=dp),POINTER                            :: obj_f(:)
    REAL(KIND=dp),POINTER                            :: grad_obj_f(:)
    REAL(KIND=dp),POINTER                            :: x(:)
    REAL(KIND=dp),POINTER                            :: x_temp(:)
@@ -99,7 +152,7 @@ MODULE paramopt_master
                                                        ev=27.2116_dp,&
                                                        ev_kcal=23.06035_dp
    REAL(kind=dp),POINTER                            :: eps(:)
-   REAL(kind=dp)                                    :: eps_factor=0.0001_dp
+   REAL(kind=dp)                                    :: eps_factor=1e-8_dp
    TYPE(cp_para_env_type), POINTER                  :: para_env
    TYPE(rng_stream_type),POINTER                    :: rng_stream
    LOGICAL,POINTER                                  :: sampling
@@ -108,6 +161,8 @@ MODULE paramopt_master
    REAL(KIND=dp),POINTER                            :: weights(:)
    TYPE(opt_state_type),POINTER                     :: powell_opt
    TYPE(gauss_opt_type),POINTER                     :: gauss_opt
+   TYPE(lbfgs_opt_type),POINTER                     :: lbfgs_opt
+   TYPE(cmaes_opt_type),POINTER                     :: cmaes_opt
  END TYPE paramopt_master_type
 
  TYPE :: ener_ref_type
@@ -126,6 +181,8 @@ MODULE paramopt_master
    REAL(KIND=dp)                                    :: ref  
  END TYPE ener_ref_type   
 
+
+
  CONTAINS
 
 ! *****************************************************************************
@@ -140,11 +197,14 @@ MODULE paramopt_master
     TYPE(cp_error_type), INTENT(inout)       :: error
     TYPE(section_vals_type), POINTER         :: paramopt_section
     INTEGER                                  :: i,charge
-    INTEGER                                  :: time(3)
+    INTEGER                                  :: time(3),allocstat
     LOGICAL                                  :: restart
     REAL(kind=dp),DIMENSION(3,2)             :: seed
     !---------------------
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init called"
+    !-------------------
+    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+    CALL section_vals_val_get(paramopt_section,"RUN_TYPE",i_val=this%run_type_id,error=error)
     !------------------
     this%num_var = 17
     !------------------
@@ -157,16 +217,20 @@ MODULE paramopt_master
     this%num_ref = 30
     !-------------------
     this%calc_deriv = .false.
+    if (this%run_type_id .eq. paramopt_lbfgs_run) this%calc_deriv = .true. 
     this%num_para_set = 1
     if (this%calc_deriv) this%num_para_set = this%num_var+1
+    if (this%run_type_id .eq. paramopt_cmaes_run) this%num_para_set = 10
     !--------------------
     this%iw = iw
     !------------------------
     this%para_env => para_env
     this%n_walkers = n_walkers
     !-------------------
-    nullify(this%powell_opt,this%gauss_opt,this%sampling)
+    nullify(this%powell_opt,this%gauss_opt,this%sampling, &
+            this%lbfgs_opt,this%cmaes_opt)
     !-------------------
+    allocate(this%E_res(this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
     allocate(this%Epot(this%num_ref))
 
@@ -178,6 +242,7 @@ MODULE paramopt_master
     allocate(this%xtrans(this%num_var))
     allocate(this%xtransold(this%num_var))
     allocate(this%xold(this%num_var))
+    allocate(this%obj_f(this%num_para_set))
     if (this%calc_deriv) allocate(this%grad_obj_f(this%num_var))
     allocate(this%l_bound(this%num_var))
     allocate(this%u_bound(this%num_var))
@@ -191,8 +256,7 @@ MODULE paramopt_master
     allocate(this%weights(this%num_obj))
     allocate(this%i_recv(this%num_para_set))
     allocate(this%function_matrix(this%num_inp,this%num_para_set))
-    !-------------------
-    paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+
     CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
     CALL section_vals_val_get(paramopt_section,"UPPER_BOUNDS", r_vals=this%u_bound, error=error)
     CALL section_vals_val_get(paramopt_section,"LOWER_BOUNDS", r_vals=this%l_bound, error=error)
@@ -225,6 +289,10 @@ MODULE paramopt_master
             allocate(this%powell_opt)
         CASE (paramopt_gaussian_run)
             allocate(this%gauss_opt)
+        CASE (paramopt_lbfgs_run)
+            allocate(this%lbfgs_opt)
+        CASE (paramopt_cmaes_run)
+            allocate(this%cmaes_opt)
         CASE default
        ! CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
     END SELECT
@@ -236,26 +304,30 @@ MODULE paramopt_master
     CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
     !----------------set pointers for bfgs------------------------
     this%eps = this%eps_factor*abs(this%x)
+        !----check lowest eps....eps should not be zero!
+        do i=1,this%num_var
+        if (this%eps(i) .eq. 0._dp) this%eps(i) = this%eps_factor
+        enddo
     !----------------set pointers for sampling------------------------
     if (associated(this%sampling)) then
         this%sampling = .true.
-        allocate(this%obj_f)
+        allocate(this%obj_f(this%num_para_set))
     endif
     !----------------set pointers gauss adapt------------------------
     if (associated(this%gauss_opt)) then
     CALL section_vals_val_get(paramopt_section,"C_T", r_val=this%gauss_opt%c_t, error=error)
     allocate(this%gauss_opt%eta(this%num_var),this%gauss_opt%m(this%num_var), &
              this%gauss_opt%xmin(this%num_var))
-    allocate(this%gauss_opt%l_bound(this%num_var),this%gauss_opt%u_bound(this%num_var))
     allocate(this%gauss_opt%x(this%num_var),this%gauss_opt%Q(this%num_var,this%num_var), &
              this%gauss_opt%C(this%num_var,this%num_var))
     allocate(this%gauss_opt%rng_normal_stream)
     CALL create_rng_stream(this%gauss_opt%rng_normal_stream,'gaussian',distribution_type=GAUSSIAN,error=this%error)
     this%gauss_opt%task = 'startx'
-    this%gauss_opt%l_bound = this%l_bound
-    this%gauss_opt%u_bound = this%u_bound
+    this%gauss_opt%l_bound => this%l_bound
+    this%gauss_opt%u_bound => this%u_bound
     this%gauss_opt%r = this%step_size
-    this%obj_f => this%gauss_opt%f
+    this%gauss_opt%x = this%x
+    this%gauss_opt%f => this%obj_f(1)
     CALL GaussAdapt(this%num_var,this%xtrans,this%gauss_opt)
     endif
     !----gauss------------
@@ -266,9 +338,133 @@ MODULE paramopt_master
     this%powell_opt%rhoend = 0.000001_dp
     this%powell_opt%iprint = 1
     this%powell_opt%nvar = this%num_var
-    this%obj_f => this%powell_opt%f
+    this%powell_opt%f => this%obj_f(1)
     CALL powell_optimize(this%num_var,this%xtrans,this%powell_opt)
     endif
+    !------bfgs--------------
+    if (associated(this%lbfgs_opt)) then
+    this%lbfgs_opt%lower_bound => this%l_bound
+    this%lbfgs_opt%upper_bound => this%u_bound
+    this%lbfgs_opt%x => this%x
+    this%lbfgs_opt%gradient => this%grad_obj_f
+    this%lbfgs_opt%f => this%obj_f(1)
+    this%lbfgs_opt%m = this%num_var ! m for the limited memory bfgs
+    this%lbfgs_opt%ref_count = 0
+    this%lbfgs_opt%id_nr = 0
+    this%lbfgs_opt%print_every = 200
+    allocate(this%lbfgs_opt%kind_of_bound(this%num_var))
+    allocate(this%lbfgs_opt%i_work_array(3*this%num_var))
+    allocate(this%lbfgs_opt%isave(44))
+    allocate(this%lbfgs_opt%dsave(30))
+    this%lbfgs_opt%dsave(30) = 0.5_dp ! trust radius for lbfgs
+    this%lbfgs_opt%lenwa = 2*this%lbfgs_opt%m*this%num_var + 5*this%num_var &
+                           + 11*this%lbfgs_opt%m*this%lbfgs_opt%m + 8*this%lbfgs_opt%m
+    allocate(this%lbfgs_opt%work_array(this%lbfgs_opt%lenwa))
+    this%lbfgs_opt%kind_of_bound = 2 !upper and lower bound
+    this%lbfgs_opt%wanted_relative_f_delta = 1e-04_dp
+    this%lbfgs_opt%wanted_projected_gradient = 1e-04_dp
+    this%lbfgs_opt%task='START'
+    CALL setulb(this%num_var,this%lbfgs_opt%m, this%x, &
+       this%lbfgs_opt%lower_bound, this%lbfgs_opt%upper_bound, &
+       this%lbfgs_opt%kind_of_bound, this%lbfgs_opt%f, this%lbfgs_opt%gradient, &
+       this%lbfgs_opt%wanted_relative_f_delta, &
+       this%lbfgs_opt%wanted_projected_gradient, &
+       this%lbfgs_opt%work_array, &
+       this%lbfgs_opt%i_work_array, this%lbfgs_opt%task, & 
+       this%lbfgs_opt%print_every, this%lbfgs_opt%csave, &
+       this%lbfgs_opt%lsave, this%lbfgs_opt%isave, & 
+       this%lbfgs_opt%dsave) 
+    endif
+    !------------cma-es------------------------
+    if (associated(this%cmaes_opt)) then
+      IF (.NOT. ALLOCATED(this%cmaes_opt%B)) THEN
+            ALLOCATE(this%cmaes_opt%B(this%num_var,this%num_Var),stat=allocStat)
+            IF(allocStat .NE. 0) STOP 'Error allocating B'
+      END IF
+      this%cmaes_opt%B = 0._dp
+      DO i = 1,this%num_var
+       this%cmaes_opt%B(i,i) = 1._dp
+      END DO  
+      
+      IF (.NOT. ALLOCATED(this%cmaes_opt%D)) THEN
+          ALLOCATE(this%cmaes_opt%D(this%num_var,this%num_var),stat=allocStat)
+          IF(allocStat .NE. 0) STOP 'Error allocating D'
+      END IF
+      this%cmaes_opt%D = 0._dp
+      DO i = 1, this%num_var
+         !D(i,i) = input%insigma(i)/maxval(input%insigma)
+         this%cmaes_opt%D(i,i) = 1._dp 
+      END DO
+
+      IF (.NOT. ALLOCATED(this%cmaes_opt%BD)) THEN 
+          ALLOCATE(this%cmaes_opt%BD(this%num_var,this%num_var),stat=allocStat)
+          IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix BD'
+      END IF
+!      this%cmaes_opt%BD = matmul(this%cmaes_opt%B,this%cmaes_opt%D) 
+      CALL DGEMM('N','N',this%num_var,this%num_var,this%num_var, &
+                  1.0d0,this%cmaes_opt%B,this%num_var,this%cmaes_opt%D, &
+                  this%num_var,0.0d0,this%cmaes_opt%BD,this%num_var) 
+      IF (.NOT. ALLOCATED(this%cmaes_opt%C)) THEN
+          ALLOCATE(this%cmaes_opt%C(this%num_var,this%num_var),stat=allocStat)
+          IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix C'
+      END IF
+      this%cmaes_opt%C = matmul(this%cmaes_opt%BD,transpose(this%cmaes_opt%BD))
+    allocate(this%cmaes_opt%multmp_vN(this%num_var))
+    this%cmaes_opt%lambda = 10
+    this%cmaes_opt%mu = 5
+    ALLOCATE(this%cmaes_opt%triuC(this%num_var,this%num_var),stat=allocStat)
+    ALLOCATE(this%cmaes_opt%arx(this%num_var,this%cmaes_opt%lambda),stat=allocStat)
+    ALLOCATE(this%cmaes_opt%arz(this%num_var,this%cmaes_opt%lambda),stat=allocStat)
+    ALLOCATE(this%cmaes_opt%xmean(this%num_var))
+    ALLOCATE(this%cmaes_opt%zmean(this%num_var))
+    ALLOCATE(this%cmaes_opt%xold(this%num_var))
+    ALLOCATE(this%cmaes_opt%f(this%cmaes_opt%lambda))
+    ALLOCATE(this%cmaes_opt%newsort(this%cmaes_opt%lambda))
+    ALLOCATE(this%cmaes_opt%idxsel(this%cmaes_opt%lambda))
+    ALLOCATE(this%cmaes_opt%tempMat(this%num_var,this%cmaes_opt%mu))
+    ALLOCATE(this%cmaes_opt%multmp_mN(this%num_var,this%num_var))
+    ALLOCATE(this%cmaes_opt%multmp_mN2(this%num_var,this%num_var))
+    ALLOCATE(this%cmaes_opt%multmp_mMU(this%cmaes_opt%mu,this%num_var))
+    ALLOCATE(this%cmaes_opt%mutmp(this%num_var,this%cmaes_opt%mu))
+    ALLOCATE(this%cmaes_opt%weightsMat(this%cmaes_opt%mu,this%cmaes_opt%mu))
+    ALLOCATE(this%cmaes_opt%weights(this%cmaes_opt%mu))
+    ALLOCATE(this%cmaes_opt%ps(this%num_var))
+    ALLOCATE(this%cmaes_opt%pc(this%num_var))
+    ALLOCATE(this%cmaes_opt%colVec(this%num_var,1))
+    ALLOCATE(this%cmaes_opt%rowVec(1,this%num_var))
+    this%cmaes_opt%weights = 1._dp !equal weights
+    this%cmaes_opt%xmean = this%x
+    this%cmaes_opt%n = this%num_var
+    this%num_para_set = this%cmaes_opt%lambda
+    this%cmaes_opt%f => this%obj_f
+    this%cmaes_opt%l_bound => this%l_bound
+    this%cmaes_opt%u_bound => this%u_bound
+    allocate(this%cmaes_opt%rng_normal_stream)
+          !  mueff
+    this%cmaes_opt%vecsum = sum(this%cmaes_opt%weights)
+    this%cmaes_opt%vecnorm = sqrt(sum(this%cmaes_opt%weights**2))
+    this%cmaes_opt%mueff = this%cmaes_opt%vecsum**2 / this%cmaes_opt%vecnorm**2
+      !  Strategy internal parameter setting: Adaptation
+    this%cmaes_opt%cc = 4.0_dp/(REAL(this%num_var)+4.0_dp)
+    this%cmaes_opt%cs = REAL((this%cmaes_opt%mueff+2))/REAL((this%num_var+this%cmaes_opt%mueff+3))
+    this%cmaes_opt%mucov = this%cmaes_opt%mueff
+    this%cmaes_opt%ccov = (1._dp/this%cmaes_opt%mucov) * 2._dp/(REAL(this%num_var)+1.41)**2 + &
+                          (1._dp - 1._dp/this%cmaes_opt%mucov) * min(1.0_dp,(2.0_dp*this%cmaes_opt%mueff-1._dp) &
+                          /((REAL(this%num_var)+2._dp)**2 + this%cmaes_opt%mueff))
+    this%cmaes_opt%damps = 1._dp + 2._dp*max(0._dp, sqrt((this%cmaes_opt%mueff-1.0_dp)/real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
+    this%cmaes_opt%sigma = 0.01_dp
+    this%cmaes_opt%pc = 0._dp
+    this%cmaes_opt%ps = 0._dp
+    this%cmaes_opt%hsig = 1._dp
+    this%cmaes_opt%ps = 0._dp
+    this%cmaes_opt%pc = 0._dp
+    this%cmaes_opt%chiN = sqrt(REAL(this%num_Var))*((1.0_dp-1.0_dp/(4.0_dp*REAL(this%num_var))) &
+                          +1.0_dp/(21.0_dp*REAL(this%num_var*this%num_var)))
+    CALL create_rng_stream(this%cmaes_opt%rng_normal_stream,'normal', &
+                           distribution_type=UNIFORM,seed=seed,error=this%error)
+    CALL gen_pop(this%cmaes_opt) 
+    endif
+!================================================================================
     !---------------------
     OPEN(88,file='WATER27structures/mol_list.txt')
     DO i=1,this%num_ref !-5
@@ -337,7 +533,6 @@ MODULE paramopt_master
     CALL swarm_message_get(report, "iter", r_iter)
     j = mod(r_iter,this%num_para_set) + 1
     i = ceiling(r_iter/real(this%num_para_set))
- 
        CALL swarm_message_get(report, "Epot", this%function_matrix(i,j))
        !------------change status---------------------------------
        report_status = "wait_done"
@@ -379,26 +574,23 @@ MODULE paramopt_master
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
-    !--------------we are done with the iteration/condition--------  
-        call calc_obj_f(this, this%function_matrix(:,1), this%E_res)
-        this%obj_f = this%weights(1)*this%E_res + &
-                     this%weights(2)*this%function_matrix(this%num_inp,1)
-       
-        if (this%calc_deriv) then
-          do j=2,this%num_var+1
-          print *,'func mat',this%function_matrix(:,j)
-          call calc_obj_f(this, this%function_matrix(:,j), E_res_temp)
-          this%grad_obj_f(j-1) = this%weights(1)*E_res_temp + &
-                       this%weights(2)*this%function_matrix(this%num_inp,j)
-          print *,this%grad_obj_f(j-1)
-          this%grad_obj_f(j-1) = ( this%grad_obj_f(j-1) - this%obj_f) / this%eps(j-1)
-          enddo
+    !--------------we are done with the iteration/condition-------- 
+        do j=1,this%num_para_set 
+        call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
+        this%obj_f(j) = this%weights(1)*this%E_res(j) + &
+                     this%weights(2)*this%function_matrix(this%num_inp,j)
+        enddo
         
-        print *,'gradient'
-        print *,this%grad_obj_f
-
-        endif 
-
+        do j=2,this%num_para_set
+          if (this%calc_deriv) then
+            this%grad_obj_f(j-1) = ( this%obj_f(j) - this%obj_f(1)) / this%eps(j-1)
+          endif
+        enddo
+        
+       
+        if (this%calc_deriv) print *,'gradient'
+        if (this%calc_deriv) print *,this%grad_obj_f
+        
         IF(this%iw>0) THEN
           print *,'-------Rmsd-------'
           print *,this%function_matrix(this%num_inp,1)
@@ -410,7 +602,7 @@ MODULE paramopt_master
           write(999,*) this%Epot
           close(999)
           open(998,file='obj_f.out',position='append')
-          write(998,*) this%xtrans,this%obj_f,this%E_res,this%rmsd
+          write(998,*) this%x,this%obj_f,this%E_res,this%rmsd
           close(998)
          
         ENDIF
@@ -425,6 +617,20 @@ MODULE paramopt_master
               this%xtrans,this%gauss_opt)
           if (associated(this%sampling)) CALL sample(this,this%num_var, &
               this%xtrans,this%l_bound,this%u_bound)
+          if (associated(this%lbfgs_opt)) CALL setulb(this%num_var,this%lbfgs_opt%m, this%x, &
+                                         this%lbfgs_opt%lower_bound, this%lbfgs_opt%upper_bound, &
+                                         this%lbfgs_opt%kind_of_bound, this%lbfgs_opt%f, &
+                                         this%lbfgs_opt%gradient, &
+                                         this%lbfgs_opt%wanted_relative_f_delta, &
+                                         this%lbfgs_opt%wanted_projected_gradient, &
+                                         this%lbfgs_opt%work_array, &
+                                         this%lbfgs_opt%i_work_array, this%lbfgs_opt%task, & 
+                                         this%lbfgs_opt%print_every, this%lbfgs_opt%csave, &
+                                         this%lbfgs_opt%lsave, this%lbfgs_opt%isave, & 
+                                         this%lbfgs_opt%dsave) 
+
+         if (associated(this%cmaes_opt)) CALL cmaes(this%x,this%cmaes_opt)
+         if (.not. associated(this%lbfgs_opt) .or. .not. associated(this%cmaes_opt)) then
           !------------------check constrains-------------------------
           do i=1,this%num_var 
               if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
@@ -433,6 +639,10 @@ MODULE paramopt_master
           !condition on outer H_core???
           !if (this%xtrans(13) .lt. this%xtrans(11)) this%xtrans(13) = this%xtrans(11)
           CALL var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+         else
+           !print *,'task',this%lbfgs_opt%task
+           CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
+         endif
         !---------reset inp_iter--------
          this%inp_iter = this%num_inp*this%num_para_set
          this%i_recv = 0
@@ -440,6 +650,10 @@ MODULE paramopt_master
           CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
           !-----------------x for diff-------------------------
           if (this%calc_deriv) this%eps = this%eps_factor*this%x
+             !----check lowest eps....eps should not be zero!
+             do i=1,this%num_var
+                 if (this%eps(i) .eq. 0._dp) this%eps(i) = this%eps_factor
+             enddo
           !this%x_matrix(:,2) = this%x + this%eps
           !this%x_matrix(:,3) = this%x - this%eps 
     ENDIF
@@ -449,7 +663,7 @@ MODULE paramopt_master
          ! send new task to idle worker
          ! map this%inp_iter to task and send out
          ! k = inp_iter, m = num_para_set
-         j = mod(this%inp_iter,this%num_para_set) + 1
+         j = mod(this%inp_iter,this%num_para_set) + 1 !x(j)
          i = ceiling(real(this%inp_iter)/real(this%num_para_set))
 
          if (i .lt. this%num_inp) then
@@ -463,6 +677,9 @@ MODULE paramopt_master
          CALL swarm_message_add(cmd, "num_inp",i)
          CALL swarm_message_add(cmd, "iter", this%inp_iter)
          this%x_temp = this%x
+         if (associated(this%cmaes_opt)) then
+           this%x_temp = this%cmaes_opt%arx(:,j)
+         endif
          if (this%calc_deriv) then
            if (j .gt. 1) then
            this%x_temp(j-1) = this%x_temp(j-1) + this%eps(j-1)
@@ -593,35 +810,38 @@ subroutine para2file(n,x,inputstr,outputstr)
 !     str=adjustl(trim(str))
      write(fileid2,'(A)') line
     case (17)
-     read(fileid,'(A,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
+     read(fileid,*) str,dummy,str2
+     str=adjustl(trim(str))
+!     str2=adjustl(trim(str2))
+     str2="</Charge_width>"
+     write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
      k=k+1
     case (19:20)        
      read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))d
      str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,A)') str,x(k),str2
      k=k+1
     case (25)
-     read(fileid,'(A,A,F13.7,A)') str,str3,dummy,str2
-!     str=adjustl(trim(str))
+     read(fileid,*) str,str3,dummy,str2
+     str=adjustl(trim(str))
      str3=adjustl(trim(str3))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,A,F13.7,A)') str,str3,x(k),str2
+!     str2=adjustl(trim(str2))
+     str2="</ETA>"
+     write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
         k=k+1
     case (28:30)
      read(fileid,'(A16,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,X,A)') str,x(k),str2
         k=k+1
     case (36)
-     read(fileid,'(A,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
+     read(fileid,*) str,dummy,str2
+     str=adjustl(trim(str))
+!     str2=adjustl(trim(str2))
+     str2="</Charge_width>"
+     write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
         k=k+1
     case (38:39) 
      read(fileid,'(A,F13.7,A)') str,dummy,str2
@@ -636,17 +856,18 @@ subroutine para2file(n,x,inputstr,outputstr)
      write(fileid2,'(A,F13.7,A)') str,x(k),str2
         k=k+1
     case (50:51) 
-     read(fileid,'(A,A,F13.7,A)') str,str3,dummy,str2
+     read(fileid,*) str,str3,dummy,str2
 !     str=adjustl(trim(str))
      str3=adjustl(trim(str3))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,A,F13.7,A,A)') str,str3,x(k),' ',str2
+!     str2=adjustl(trim(str2))
+     str2="</ETA>"
+     write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
         k=k+1
     case (54:56) 
      read(fileid,'(A16,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
      str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A,A)') str,x(k),' ',str2
+     write(fileid2,'(A,F13.7,X,A)') str,x(k),str2
         k=k+1
 
      end select 
@@ -705,7 +926,7 @@ subroutine sample(this,n,x,l_bound,u_bound)
                  irand=int(rnum*n)+1
                  print *,'change var num',irand
 !
-!                irand = 4 
+!                irand = 2 
 !                call var_trans(x,tmpx,l_bound,u_bound)
                  rnum = next_random_number(this%rng_stream,error=this%error)
 !                !print *,'after var trans',tmpx(irand)
@@ -895,10 +1116,10 @@ end subroutine
     fe=1._dp + beta*(1._dp-p)
     fc=1._dp-beta*p
     !other than default values for things
-!    wm=1._dp
+   wm=1._dp
+   wt=1._dp
 !	wt=exp(1._dp)*n
 !	wt=10._dp*n**2
-!    wt=1._dp
 
 !-------------------------------------------------------------------------------
     if (task(1:5).eq.'new_x') then
@@ -1006,5 +1227,659 @@ end subroutine
       endif
     endif
 END SUBROUTINE
+ !-----------------------Gaussian Adaption Algorithm-----------------------------
+    subroutine cmaes(x,cmaes_opt)
+
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    real(kind=dp),pointer,intent(inout)                       :: x(:)
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i,info
+!----------------------------set pointers to type struct-----------------------
+    n = cmaes_opt%n
+!---------------sort by fitness (idx/idxsel being indices indicating orig. position-------
+    cmaes_opt%newsort = cmaes_opt%f
+    CALL d_mrgrnk(cmaes_opt%newsort,cmaes_opt%idxsel)    
+    DO i = 1, cmaes_opt%lambda
+        cmaes_opt%f(i) = cmaes_opt%newSort(cmaes_opt%idxsel(i))
+    END DO
+    print *,'fitness',cmaes_opt%f
+!-------------selection and recombination (calc new xmean)---------------------------------
+    cmaes_opt%xold = cmaes_opt%xmean
+    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
+        cmaes_opt%tempMat(:,i) = cmaes_opt%arx(:,cmaes_opt%idxsel(i))
+    END DO
+    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%xmean,1)
+    ! update x to the best individual in population
+    x = cmaes_opt%tempMat(:,1)
+    print *,'this is new mean'
+    print *,'=================================================================='
+    print *,cmaes_opt%xmean
+    ! do same for zmean/arz
+    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
+        cmaes_opt%tempMat(:,i) = cmaes_opt%arz(:,cmaes_opt%idxsel(i))
+    END DO
+    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%zmean,1)
+!----------------update evolution paths ( cumulation) --------------------------------------
+    CALL dgemv('N',n,n,1.0d0,cmaes_opt%B,n,cmaes_opt%zmean,1,0.0d0,cmaes_opt%multmp_vN,1)
+    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
+                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
+                                                                ! in Hansen:2007
+!      IF(sqrt(sum(cmaes_opt%ps**2))/sqrt(1._dp-(1.-cmaes_opt%cs)**(2._dp*real((countIter-lastRestart))))/chiN < &
+!        1.4_MK + 2._MK/real(input%N+1)) THEN
+!        hsig = 1._MK
+!      ELSE
+!        hsig = 0._MK
+!      END IF
+                                                                ! Eq.42
+      cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
+                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
+                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
+      !  ADAPT COVARIANCE MATRIX
+!-------------------------------------------------------------------------
+      DO i = 1,n 
+        cmaes_opt%colVec(i,1) = cmaes_opt%pc(i)
+        cmaes_opt%rowVec(1,i) = cmaes_opt%pc(i)
+      END DO
+      cmaes_opt%weightsMat = 0.
+      DO i = 1, cmaes_opt%mu
+          cmaes_opt%tempMat(:,i) = cmaes_opt%xold(:)
+          cmaes_opt%weightsMat(i,i) = cmaes_opt%weights(i)
+      END DO    
+      CALL dgemm('N','T',n,n,1,1.0d0,cmaes_opt%colVec,n,cmaes_opt%rowVec,n,0.0d0,cmaes_opt%multmp_mN,n) 
+      CALL dgemm('N','T',cmaes_opt%mu,n,cmaes_opt%mu,1.0d0,cmaes_opt%weightsMat, &
+                 cmaes_opt%mu,cmaes_opt%mutmp,n,0.0d0,cmaes_opt%multmp_mMU,cmaes_opt%mu)
+      CALL dgemm('N','N',n,n,cmaes_opt%mu,1.0d0,cmaes_opt%mutmp,n,&
+                 cmaes_opt%multmp_mMU,cmaes_opt%mu,0.0d0,cmaes_opt%multmp_mN2,n)
+      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
+                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
+                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
+                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
+                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
+  !    print *,'this is the new C'
+  !    print *,'======================================================'
+  !    print *,cmaes_opt%C 
+      !  ADAPT SIGMA
+!-------------------------------------------------------------------------	  
+      cmaes_opt%sigma =  cmaes_opt%sigma*exp((sqrt(sum(cmaes_opt%ps**2))/ &
+                         cmaes_opt%chiN-1._dp)*cmaes_opt%cs/cmaes_opt%damps)    ! Eq.41 
+      !  Update B and D from C
+!-------------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+        !  Enforce symmetry
+        !-----------------------------------------------------------------------
+        CALL tool_symmatrix(cmaes_opt%C,cmaes_opt%n,cmaes_opt%triuC)         
+               !-----------------------------------------------------------------------
+        !  Eigen decomposition, D=diagonal matrix of eigenvalues, 
+        !  B=normalized eigenvectors
+        !-----------------------------------------------------------------------
+        CALL tool_eigendecomp(cmaes_opt%triuC,cmaes_opt%n,cmaes_opt%D,cmaes_opt%B,cmaes_opt%info)
+                !if tool_eigendecomp returned Error go to the Restart Loop
+        IF (cmaes_opt%info .NE. 0) THEN
+            STOP
+        END IF 
+
+        
+        !-----------------------------------------------------------------------
+        !  D contains standard deviations now
+        !-----------------------------------------------------------------------
+            cmaes_opt%D = sqrt(cmaes_opt%D)
+
+        CALL DGEMM('N','N',n,n,n,1.0d0,cmaes_opt%B,n,cmaes_opt%D,n,&
+                                                        0.0d0,cmaes_opt%BD,n)       
+!-----------------------------generate new x matrix----------------------------
+    CALL gen_pop(cmaes_opt)
+
+
+! yannick
+END SUBROUTINE
+
+    subroutine gen_pop(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+
+    n = cmaes_opt%n
+    do k=1,cmaes_opt%lambda
+        do i=1,n; cmaes_opt%arz(i,k) = next_random_number(cmaes_opt%rng_normal_stream, error=error); enddo
+    CALL DGEMV('N',N,N,1.0d0,cmaes_opt%BD,N,cmaes_opt%arz(:,k),1,0.0d0,cmaes_opt%multmp_vN,1)
+    cmaes_opt%arx(:,k) = cmaes_opt%xmean + cmaes_opt%sigma * cmaes_opt%multmp_vN
+    ! check if x in boundaries...set to bound limit otherwiese
+            do i=1,n
+                    if (cmaes_opt%arx(i,k) .lt. cmaes_opt%l_bound(i)) cmaes_opt%arx(i,k) = cmaes_opt%l_bound(i)
+                    if (cmaes_opt%arx(i,k) .gt. cmaes_opt%u_bound(i)) cmaes_opt%arx(i,k) = cmaes_opt%u_bound(i)
+            enddo
+    enddo
+    end subroutine
+
+
+	  Subroutine D_mrgrnk (XDONT, IRNGT)
+! __________________________________________________________
+!   MRGRNK = Merge-sort ranking of an array
+!   For performance reasons, the first 2 passes are taken
+!   out of the standard loop, and use dedicated coding.
+! __________________________________________________________
+! __________________________________________________________
+      Real (kind=dp), Dimension (:), Intent (In) :: XDONT
+      Integer, Dimension (:), Intent (Out) :: IRNGT
+! __________________________________________________________
+      Real (kind=dp) :: XVALA, XVALB
+!
+      Integer, Dimension (SIZE(IRNGT)) :: JWRKT
+      Integer :: LMTNA, LMTNC, IRNG1, IRNG2
+      Integer :: NVAL, IIND, IWRKD, IWRK, IWRKF, JINDA, IINDA, IINDB
+!
+      NVAL = Min (SIZE(XDONT), SIZE(IRNGT))
+      Select Case (NVAL)
+      Case (:0)
+         Return
+      Case (1)
+         IRNGT (1) = 1
+         Return
+      Case Default
+         Continue
+      End Select
+!
+!  Fill-in the index array, creating ordered couples
+!
+      Do IIND = 2, NVAL, 2
+         If (XDONT(IIND-1) <= XDONT(IIND)) Then
+            IRNGT (IIND-1) = IIND - 1
+            IRNGT (IIND) = IIND
+         Else
+            IRNGT (IIND-1) = IIND
+            IRNGT (IIND) = IIND - 1
+         End If
+      End Do
+      If (Modulo(NVAL, 2) /= 0) Then
+         IRNGT (NVAL) = NVAL
+      End If
+!
+!  We will now have ordered subsets A - B - A - B - ...
+!  and merge A and B couples into     C   -   C   - ...
+!
+      LMTNA = 2
+      LMTNC = 4
+!
+!  First iteration. The length of the ordered subsets goes from 2 to 4
+!
+      Do
+         If (NVAL <= 2) Exit
+!
+!   Loop on merges of A and B into C
+!
+         Do IWRKD = 0, NVAL - 1, 4
+            If ((IWRKD+4) > NVAL) Then
+               If ((IWRKD+2) >= NVAL) Exit
+!
+!   1 2 3
+!
+               If (XDONT(IRNGT(IWRKD+2)) <= XDONT(IRNGT(IWRKD+3))) Exit
+!
+!   1 3 2
+!
+               If (XDONT(IRNGT(IWRKD+1)) <= XDONT(IRNGT(IWRKD+3))) Then
+                  IRNG2 = IRNGT (IWRKD+2)
+                  IRNGT (IWRKD+2) = IRNGT (IWRKD+3)
+                  IRNGT (IWRKD+3) = IRNG2
+!
+!   3 1 2
+!
+               Else
+                  IRNG1 = IRNGT (IWRKD+1)
+                  IRNGT (IWRKD+1) = IRNGT (IWRKD+3)
+                  IRNGT (IWRKD+3) = IRNGT (IWRKD+2)
+                  IRNGT (IWRKD+2) = IRNG1
+               End If
+               Exit
+            End If
+!
+!   1 2 3 4
+!
+            If (XDONT(IRNGT(IWRKD+2)) <= XDONT(IRNGT(IWRKD+3))) Cycle
+!
+!   1 3 x x
+!
+            If (XDONT(IRNGT(IWRKD+1)) <= XDONT(IRNGT(IWRKD+3))) Then
+               IRNG2 = IRNGT (IWRKD+2)
+               IRNGT (IWRKD+2) = IRNGT (IWRKD+3)
+               If (XDONT(IRNG2) <= XDONT(IRNGT(IWRKD+4))) Then
+!   1 3 2 4
+                  IRNGT (IWRKD+3) = IRNG2
+               Else
+!   1 3 4 2
+                  IRNGT (IWRKD+3) = IRNGT (IWRKD+4)
+                  IRNGT (IWRKD+4) = IRNG2
+               End If
+!
+!   3 x x x
+!
+            Else
+               IRNG1 = IRNGT (IWRKD+1)
+               IRNG2 = IRNGT (IWRKD+2)
+               IRNGT (IWRKD+1) = IRNGT (IWRKD+3)
+               If (XDONT(IRNG1) <= XDONT(IRNGT(IWRKD+4))) Then
+                  IRNGT (IWRKD+2) = IRNG1
+                  If (XDONT(IRNG2) <= XDONT(IRNGT(IWRKD+4))) Then
+!   3 1 2 4
+                     IRNGT (IWRKD+3) = IRNG2
+                  Else
+!   3 1 4 2
+                     IRNGT (IWRKD+3) = IRNGT (IWRKD+4)
+                     IRNGT (IWRKD+4) = IRNG2
+                  End If
+               Else
+!   3 4 1 2
+                  IRNGT (IWRKD+2) = IRNGT (IWRKD+4)
+                  IRNGT (IWRKD+3) = IRNG1
+                  IRNGT (IWRKD+4) = IRNG2
+               End If
+            End If
+         End Do
+!
+!  The Cs become As and Bs
+!
+         LMTNA = 4
+         Exit
+      End Do
+!
+!  Iteration loop. Each time, the length of the ordered subsets
+!  is doubled.
+!
+      Do
+         If (LMTNA >= NVAL) Exit
+         IWRKF = 0
+         LMTNC = 2 * LMTNC
+!
+!   Loop on merges of A and B into C
+!
+         Do
+            IWRK = IWRKF
+            IWRKD = IWRKF + 1
+            JINDA = IWRKF + LMTNA
+            IWRKF = IWRKF + LMTNC
+            If (IWRKF >= NVAL) Then
+               If (JINDA >= NVAL) Exit
+               IWRKF = NVAL
+            End If
+            IINDA = 1
+            IINDB = JINDA + 1
+!
+!   Shortcut for the case when the max of A is smaller
+!   than the min of B. This line may be activated when the
+!   initial set is already close to sorted.
+!
+!          IF (XDONT(IRNGT(JINDA)) <= XDONT(IRNGT(IINDB))) CYCLE
+!
+!  One steps in the C subset, that we build in the final rank array
+!
+!  Make a copy of the rank array for the merge iteration
+!
+            JWRKT (1:LMTNA) = IRNGT (IWRKD:JINDA)
+!
+            XVALA = XDONT (JWRKT(IINDA))
+            XVALB = XDONT (IRNGT(IINDB))
+!
+            Do
+               IWRK = IWRK + 1
+!
+!  We still have unprocessed values in both A and B
+!
+               If (XVALA > XVALB) Then
+                  IRNGT (IWRK) = IRNGT (IINDB)
+                  IINDB = IINDB + 1
+                  If (IINDB > IWRKF) Then
+!  Only A still with unprocessed values
+                     IRNGT (IWRK+1:IWRKF) = JWRKT (IINDA:LMTNA)
+                     Exit
+                  End If
+                  XVALB = XDONT (IRNGT(IINDB))
+               Else
+                  IRNGT (IWRK) = JWRKT (IINDA)
+                  IINDA = IINDA + 1
+                  If (IINDA > LMTNA) Exit! Only B still with unprocessed values
+                  XVALA = XDONT (JWRKT(IINDA))
+               End If
+!
+            End Do
+         End Do
+!
+!  The Cs become As and Bs
+!
+         LMTNA = 2 * LMTNA
+      End Do
+!
+      Return
+!
+	  End Subroutine D_mrgrnk
+	  Subroutine I_mrgrnk (XDONT, IRNGT)
+! __________________________________________________________
+!   MRGRNK = Merge-sort ranking of an array
+!   For performance reasons, the first 2 passes are taken
+!   out of the standard loop, and use dedicated coding.
+! __________________________________________________________
+! __________________________________________________________
+      Integer, Dimension (:), Intent (In)  :: XDONT
+      Integer, Dimension (:), Intent (Out) :: IRNGT
+! __________________________________________________________
+      Integer :: XVALA, XVALB
+!
+      Integer, Dimension (SIZE(IRNGT)) :: JWRKT
+      Integer :: LMTNA, LMTNC, IRNG1, IRNG2
+      Integer :: NVAL, IIND, IWRKD, IWRK, IWRKF, JINDA, IINDA, IINDB
+!
+      NVAL = Min (SIZE(XDONT), SIZE(IRNGT))
+      Select Case (NVAL)
+      Case (:0)
+         Return
+      Case (1)
+         IRNGT (1) = 1
+         Return
+      Case Default
+         Continue
+      End Select
+!
+!  Fill-in the index array, creating ordered couples
+!
+      Do IIND = 2, NVAL, 2
+         If (XDONT(IIND-1) <= XDONT(IIND)) Then
+            IRNGT (IIND-1) = IIND - 1
+            IRNGT (IIND) = IIND
+         Else
+            IRNGT (IIND-1) = IIND
+            IRNGT (IIND) = IIND - 1
+         End If
+      End Do
+      If (Modulo(NVAL, 2) /= 0) Then
+         IRNGT (NVAL) = NVAL
+      End If
+!
+!  We will now have ordered subsets A - B - A - B - ...
+!  and merge A and B couples into     C   -   C   - ...
+!
+      LMTNA = 2
+      LMTNC = 4
+!
+!  First iteration. The length of the ordered subsets goes from 2 to 4
+!
+      Do
+         If (NVAL <= 2) Exit
+!
+!   Loop on merges of A and B into C
+!
+         Do IWRKD = 0, NVAL - 1, 4
+            If ((IWRKD+4) > NVAL) Then
+               If ((IWRKD+2) >= NVAL) Exit
+!
+!   1 2 3
+!
+               If (XDONT(IRNGT(IWRKD+2)) <= XDONT(IRNGT(IWRKD+3))) Exit
+!
+!   1 3 2
+!
+               If (XDONT(IRNGT(IWRKD+1)) <= XDONT(IRNGT(IWRKD+3))) Then
+                  IRNG2 = IRNGT (IWRKD+2)
+                  IRNGT (IWRKD+2) = IRNGT (IWRKD+3)
+                  IRNGT (IWRKD+3) = IRNG2
+!
+!   3 1 2
+!
+               Else
+                  IRNG1 = IRNGT (IWRKD+1)
+                  IRNGT (IWRKD+1) = IRNGT (IWRKD+3)
+                  IRNGT (IWRKD+3) = IRNGT (IWRKD+2)
+                  IRNGT (IWRKD+2) = IRNG1
+               End If
+               Exit
+            End If
+!
+!   1 2 3 4
+!
+            If (XDONT(IRNGT(IWRKD+2)) <= XDONT(IRNGT(IWRKD+3))) Cycle
+!
+!   1 3 x x
+!
+            If (XDONT(IRNGT(IWRKD+1)) <= XDONT(IRNGT(IWRKD+3))) Then
+               IRNG2 = IRNGT (IWRKD+2)
+               IRNGT (IWRKD+2) = IRNGT (IWRKD+3)
+               If (XDONT(IRNG2) <= XDONT(IRNGT(IWRKD+4))) Then
+!   1 3 2 4
+                  IRNGT (IWRKD+3) = IRNG2
+               Else
+!   1 3 4 2
+                  IRNGT (IWRKD+3) = IRNGT (IWRKD+4)
+                  IRNGT (IWRKD+4) = IRNG2
+               End If
+!
+!   3 x x x
+!
+            Else
+               IRNG1 = IRNGT (IWRKD+1)
+               IRNG2 = IRNGT (IWRKD+2)
+               IRNGT (IWRKD+1) = IRNGT (IWRKD+3)
+               If (XDONT(IRNG1) <= XDONT(IRNGT(IWRKD+4))) Then
+                  IRNGT (IWRKD+2) = IRNG1
+                  If (XDONT(IRNG2) <= XDONT(IRNGT(IWRKD+4))) Then
+!   3 1 2 4
+                     IRNGT (IWRKD+3) = IRNG2
+                  Else
+!   3 1 4 2
+                     IRNGT (IWRKD+3) = IRNGT (IWRKD+4)
+                     IRNGT (IWRKD+4) = IRNG2
+                  End If
+               Else
+!   3 4 1 2
+                  IRNGT (IWRKD+2) = IRNGT (IWRKD+4)
+                  IRNGT (IWRKD+3) = IRNG1
+                  IRNGT (IWRKD+4) = IRNG2
+               End If
+            End If
+         End Do
+!
+!  The Cs become As and Bs
+!
+         LMTNA = 4
+         Exit
+      End Do
+!
+!  Iteration loop. Each time, the length of the ordered subsets
+!  is doubled.
+!
+      Do
+         If (LMTNA >= NVAL) Exit
+         IWRKF = 0
+         LMTNC = 2 * LMTNC
+!
+!   Loop on merges of A and B into C
+!
+         Do
+            IWRK = IWRKF
+            IWRKD = IWRKF + 1
+            JINDA = IWRKF + LMTNA
+            IWRKF = IWRKF + LMTNC
+            If (IWRKF >= NVAL) Then
+               If (JINDA >= NVAL) Exit
+               IWRKF = NVAL
+            End If
+            IINDA = 1
+            IINDB = JINDA + 1
+!
+!   Shortcut for the case when the max of A is smaller
+!   than the min of B. This line may be activated when the
+!   initial set is already close to sorted.
+!
+!          IF (XDONT(IRNGT(JINDA)) <= XDONT(IRNGT(IINDB))) CYCLE
+!
+!  One steps in the C subset, that we build in the final rank array
+!
+!  Make a copy of the rank array for the merge iteration
+!
+            JWRKT (1:LMTNA) = IRNGT (IWRKD:JINDA)
+!
+            XVALA = XDONT (JWRKT(IINDA))
+            XVALB = XDONT (IRNGT(IINDB))
+!
+            Do
+               IWRK = IWRK + 1
+!
+!  We still have unprocessed values in both A and B
+!
+               If (XVALA > XVALB) Then
+                  IRNGT (IWRK) = IRNGT (IINDB)
+                  IINDB = IINDB + 1
+                  If (IINDB > IWRKF) Then
+!  Only A still with unprocessed values
+                     IRNGT (IWRK+1:IWRKF) = JWRKT (IINDA:LMTNA)
+                     Exit
+                  End If
+                  XVALB = XDONT (IRNGT(IINDB))
+               Else
+                  IRNGT (IWRK) = JWRKT (IINDA)
+                  IINDA = IINDA + 1
+                  If (IINDA > LMTNA) Exit! Only B still with unprocessed values
+                  XVALA = XDONT (JWRKT(IINDA))
+               End If
+!
+            End Do
+         End Do
+!
+!  The Cs become As and Bs
+!
+         LMTNA = 2 * LMTNA
+      End Do
+!
+      Return
+!
+	  End Subroutine I_mrgrnk
+     
+     SUBROUTINE tool_symmatrix(C,n,triuC)
+      IMPLICIT NONE
+      
+      !-------------------------------------------------------------------------
+      !  Parameters
+      !-------------------------------------------------------------------------
+      INTEGER, INTENT(in)							:: n
+      REAL(dp),DIMENSION(n,n),INTENT(inout)			:: C
+      REAL(dp),DIMENSION(n,n),INTENT(inout)			:: triuC
+
+      !-------------------------------------------------------------------------
+      !  Local Variables
+      !-------------------------------------------------------------------------
+      REAL(dp),DIMENSION(n,n)						:: triuC1,triuC2	
+      LOGICAL,DIMENSION(n,n)						:: mask
+      INTEGER										:: i,k
+      
+      	!-----------------------------------------------------------------------
+        !  Enforce symmetry
+      	!-----------------------------------------------------------------------
+	  	triuC1 = 0.
+	  	triuC2 = 0.
+	  	mask = .FALSE.
+	  	DO k = 1, n			! Create mask for upper triangular matrix
+	  		DO i = 1, n
+	  			IF(k .GE. i) THEN
+	  				mask(i,k) = .TRUE.
+	  			ELSE
+	  				mask(i,k) = .FALSE.
+	  			END IF
+	  		END DO
+	  	END DO
+
+	  	WHERE(mask)
+	  		triuC1 = C			! Get upper triangular matrix of C
+	  	END WHERE				! See Matlab: triu(X)
+	  	
+	  	DO i = 1, n		! set new mask, see triu(X,k), here: k=1
+	  		mask(i,i) = .FALSE.
+	  	END DO
+	  	
+	  	WHERE(mask)
+	  		triuC2 = C			! Get second triangular matrix
+	  	END WHERE
+	  	
+	  	C = triuC1 + transpose(triuC2)	! Enforce symmetry
+        triuC = triuC1
+
+
+      RETURN
+      END SUBROUTINE
+      
+      SUBROUTINE tool_eigendecomp(A,n,eVals,eVecs,info)
+      IMPLICIT NONE
+      
+      !-------------------------------------------------------------------------
+      !  Parameters
+      !-------------------------------------------------------------------------
+      INTEGER, INTENT(in)							:: n
+      REAL(dp),DIMENSION(n,n),INTENT(in)			:: A
+      REAL(dp),DIMENSION(n,n),INTENT(out)			:: eVals
+      REAL(dp),DIMENSION(n,n),OPTIONAL,INTENT(out)	:: eVecs
+      INTEGER                                       :: info
+      !-------------------------------------------------------------------------
+      !  Externals
+      !-------------------------------------------------------------------------
+	  EXTERNAL 									:: dsyev 
+      !-------------------------------------------------------------------------
+      !  Local Variables
+      !-------------------------------------------------------------------------
+      CHARACTER(len=1)							:: job
+      INTEGER									:: lWork
+      REAL(dp),ALLOCATABLE,DIMENSION(:)			:: work
+      INTEGER									:: i
+      REAL(dp),DIMENSION(n)						:: eValWork
+      INTEGER                                           :: allocStat
+     
+      
+      
+      !-------------------------------------------------------------------------
+      !  Specify job (only compute Eigenvalues('N') or also Eigenvectors('V') )
+      !-------------------------------------------------------------------------
+      IF(present(eVecs)) THEN
+      	job = 'V'
+      ELSE
+      	job = 'N'
+      END IF
+      
+      !-------------------------------------------------------------------------
+      !  Make a copy of A (so it isnt changed unintentionally)
+      !-------------------------------------------------------------------------
+      eVecs = A
+      
+      !-------------------------------------------------------------------------
+      !  Set length of work array
+      !-------------------------------------------------------------------------
+      !lWork = 2*n*n+6*n+1
+      lWork = -1
+      ALLOCATE(work(1),stat=allocStat)
+      IF(allocStat .NE. 0) STOP 'Error allocating work(1)'
+      CALL DSYEV(job,'U',n,eVecs,n,eValWork,work,-1,info)
+      i = work(1)
+      DEALLOCATE(work)
+      
+      ALLOCATE(work(i),stat=allocStat)
+      IF(allocStat .NE. 0) STOP 'Error allocating work'
+      !-------------------------------------------------------------------------
+      !  Call LAPACK Routine
+      !-------------------------------------------------------------------------
+      CALL DSYEV(job,'U',n,eVecs,n,eValWork,work,i,info)
+      !-------------------------------------------------------------------------
+      !  Error management
+      !-------------------------------------------------------------------------
+      IF(info .GT. 0) THEN
+        WRITE(*,*) 'EVD failed to converge'
+      END IF
+      IF(info .LT. 0) WRITE(*,*) 'EVD: Illegal value'
+      
+      !-------------------------------------------------------------------------
+      !  Set output variables
+      !-------------------------------------------------------------------------
+      DO i = 1,n
+      	eVals(i,i) = eValWork(i) ! Convert Vector to Matrix
+      END DO
+
+
+      RETURN
+      END SUBROUTINE
 END MODULE paramopt_master
 

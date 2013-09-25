@@ -22,6 +22,7 @@ MODULE powell
     INTEGER            :: unit
     INTEGER            :: maxfun
     REAL(dp)           :: rhobeg, rhoend
+    REAL(dp), POINTER                :: f
     REAL(dp), DIMENSION(:), POINTER  :: w
     REAL(dp), DIMENSION(:), POINTER  :: xopt
     ! local variables
@@ -30,7 +31,7 @@ MODULE powell
     REAL(dp)           :: rhosq, recip, reciq, fbeg, fopt, diffa, xoptsq, &
                           rho, delta, dsq, dnorm, ratio, temp, tempq, beta, &
                           dx, vquad, diff, diffc, diffb, fsave, detrat, hdiag, &
-                          distsq, gisq, gqsq, f, bstep, alpha, dstep
+                          distsq, gisq, gqsq, bstep, alpha, dstep
   END TYPE opt_state_type
 
   PRIVATE
@@ -58,6 +59,7 @@ CONTAINS
        npt=2*n+1
        ALLOCATE(optstate%w((npt+13)*(npt+n)+3*n*(n+3)/2))
        ALLOCATE(optstate%xopt(n))
+       ALLOCATE(optstate%f)
        ! Initialize w
        optstate%w = 0.0_dp
        optstate%state = 1

@@ -17,7 +17,9 @@ MODULE paramopt_input
                                              paramopt_no_run,&
                                              paramopt_sampling_run,&
                                              paramopt_powell_run,&
-                                             paramopt_gaussian_run
+                                             paramopt_gaussian_run, &
+                                             paramopt_lbfgs_run, &
+                                             paramopt_cmaes_run
   USE input_keyword_types,             ONLY: keyword_create,&
                                              keyword_release,&
                                              keyword_type
@@ -63,9 +65,9 @@ MODULE paramopt_input
          description="Type of run that you want to perform ",&
          usage="RUN_TYPE SAMPLING",&
          default_i_val=paramopt_powell_run,&
-         enum_c_vals=s2a("NONE","SAMPLING","POWELL","GAUSSIAN"),&
+         enum_c_vals=s2a("NONE","SAMPLING","POWELL","GAUSSIAN","LBFGS","CMAES"),&
          enum_i_vals=(/paramopt_no_run, paramopt_sampling_run, &
-         paramopt_powell_run, paramopt_gaussian_run/),&
+         paramopt_powell_run, paramopt_gaussian_run, paramopt_lbfgs_run, paramopt_cmaes_run/),&
          supported_feature=.FALSE.,error=error)
     CALL section_add_keyword(paramopt_section,keyword,error=error)
     CALL keyword_release(keyword,error=error)

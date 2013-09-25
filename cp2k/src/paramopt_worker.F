@@ -10,7 +10,20 @@
 ! *****************************************************************************
 MODULE paramopt_worker
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind
+                                             get_atomic_kind, &
+                                             check_atomic_kind_set
+  USE basis_set_types,                 ONLY: gto_basis_set_type,&
+                                             sto_basis_set_type,&
+                                             get_gto_basis_set,&
+                                             create_gto_from_sto_basis,&
+                                             set_sto_basis_set, &
+                                             set_gto_basis_set, &
+                                             allocate_sto_basis_set, &
+                                             allocate_gto_basis_set, &
+                                             deallocate_sto_basis_set, &
+                                             deallocate_gto_basis_set, &
+                                             init_orb_basis_set, &
+                                             write_orb_basis_set
   USE cp_control_types,                ONLY: dft_control_type,&
                                              qs_control_type,&
                                              scptb_control_type
@@ -20,6 +33,7 @@ MODULE paramopt_worker
   USE cp_output_handling,              ONLY: cp_print_key_unit_nr
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_subsys_types,                 ONLY: cp_subsys_type
+  USE external_potential_types,        ONLY: set_potential
   USE f77_interface,                   ONLY: calc_energy_force,&
                                              create_force_env,&
                                              destroy_force_env,&
@@ -55,11 +69,17 @@ MODULE paramopt_worker
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_environment_methods,          ONLY: qs_env_update_s_mstruct, &
+                                             qs_env_rebuild_pw_env
+  USE qs_interactions,                 ONLY: init_interaction_radii, &
+                                             init_interaction_radii_orb_basis
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE scp_environment_types,           ONLY: scp_environment_type
   USE scptb_types,                     ONLY: get_scptb_parameter,&
                                              scptb_parameter_type,&
-                                             set_scptb_parameter
+                                             set_scptb_parameter, &
+                                             write_scptb_parameter
+  USE string_utilities,                ONLY: uppercase                                         
   USE swarm_message,                   ONLY: swarm_message_add,&
                                              swarm_message_get,&
                                              swarm_message_type
@@ -98,7 +118,6 @@ MODULE paramopt_worker
    TYPE(section_vals_type), POINTER                 :: print_section
    TYPE(global_environment_type), POINTER           :: globenv
    TYPE(section_vals_type), POINTER                 :: root_section
-   TYPE(scptb_parameter_type), POINTER              :: scptb_para
    TYPE(section_vals_type), POINTER                 :: dft_section
    TYPE(dft_control_type), POINTER                  :: dft_control
    TYPE(qs_control_type), POINTER                   :: qs_control
@@ -107,6 +126,7 @@ MODULE paramopt_worker
    TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                       :: atomic_kind_set 
    TYPE(scptb_control_type), POINTER                :: scptb_control
+   TYPE(section_vals_type), POINTER                 :: scptb_section
    TYPE(scptb_parameter_type), POINTER              :: scptb_parameter
    INTEGER                                          :: n_atoms = -1
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE           :: pos,pos2
@@ -121,8 +141,6 @@ MODULE paramopt_worker
 
 
  CONTAINS
-
-
 
 
 ! *****************************************************************************
@@ -201,16 +219,41 @@ MODULE paramopt_worker
     INTEGER                                  :: clock_max, clock_rate, ierr, &
                                                 ikind, t1, t2, i,j
     INTEGER                                  :: iter,i_inp,charge
-    INTEGER, DIMENSION(0:3)                  :: norb
     LOGICAL                                  :: failure,explicit
-    REAL(KIND=dp)                            :: ag, energy
-    REAL(KIND=dp), DIMENSION(10, 0:3)        :: hcore, zeta
-    REAL(KIND=dp), DIMENSION(3)              :: crep
-    REAL(KIND=dp), DIMENSION(1:3)            :: pol
+
     REAL(KIND=dp), DIMENSION(:),allocatable  :: pos
     integer                                  :: natoms,test
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(section_vals_type), POINTER         :: work_section
+
+    CHARACTER(len=default_string_length)     :: key, atomname, &
+                                                parameterization, &
+                                                basis_name
+    LOGICAL                                  :: defined
+    INTEGER                                  :: z
+    REAL(KIND=dp)                            :: zeff
+    INTEGER                                  :: natorb, lmaxorb, lmaxscp
+    INTEGER, DIMENSION(0:3)                  :: norb
+    INTEGER, DIMENSION(10, 0:3)              :: nqm
+    REAL(KIND=dp), DIMENSION(10, 0:3)        :: zeta, hcore, occupation
+    REAL(KIND=dp)                            :: energy
+    REAL(KIND=dp), DIMENSION(3)              :: crep
+    REAL(KIND=dp), DIMENSION(1:3)            :: pol
+    REAL(KIND=dp)                            :: ag, rcpair
+    
+    TYPE(sto_basis_set_type), POINTER        :: sto_basis
+    INTEGER                                  :: nshell
+    INTEGER                                  :: is,l,stat
+    INTEGER, DIMENSION(:), POINTER           :: lq, nq
+    REAL(KIND=dp), DIMENSION(:), POINTER     :: zet
+    CHARACTER(LEN=6), DIMENSION(:), POINTER  :: symbol
+
+    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: nzet
+    REAL(KIND = dp)                          :: kind_radius
+    REAL(KIND = dp)                          :: short_kind_radius
+    REAL(KIND = dp)                          :: a,c,d,rmin,rmax,r,eff
+    integer :: norm_type
+
 
     CALL swarm_message_get(cmd, "command", command)
 
@@ -233,20 +276,15 @@ MODULE paramopt_worker
     !print *, this%id,i,j
     !print *, this%x
     endif
-!    if (this%iw > 0 ) print *,'before set coordinate file name',trim(coord_file),charge
+!    this%dft_section => section_vals_get_subs_vals(this%root_section,"FORCE_EVAL%DFT",error=this%error)
+!    this%qs_section  => section_vals_get_subs_vals(this%dft_section, "QS", error = this%error)
+!    this%scptb_section  => section_vals_get_subs_vals(this%qs_section, "SCPTB", error = this%error)
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
                               c_val=coord_file, error = this%error)
-
-
-!    CALL section_vals_val_get(this%root_section, &
-!                              "FORCE_EVAL%SUBSYS%COORD%UNIT", &
-!                              c_val=test, error = this%error)
-!    print *, "asdfasdf",test
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%DFT%CHARGE", &
                               i_val=charge, error = this%error)
-!    if (this%iw > 0 )  print *,'before force env create'
 !    CALL section_vals_val_get(this%root_section, &
 !                              "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
 !                              c_val=coord_file, error = this%error)
@@ -256,7 +294,6 @@ MODULE paramopt_worker
 !    CALL section_vals_val_get(this%root_section, &
 !                              "FORCE_EVAL%SUBSYS%TOPOLOGY%NUMBER_OF_ATOMS", &
 !                              i_val=this%n_atoms,error=this%error)
-!    if (this%iw > 0 ) print *,'after set',coord_file,this%n_atoms
     !-------------------create force env------------------------
 !    CALL create_force_env(this%f_env_id, &
 !                         input_path=TRIM(ADJUSTL(input_file)), &
@@ -271,7 +308,8 @@ MODULE paramopt_worker
     CALL create_force_env(this%f_env_id, &
                             input_path=this%input_path, &
                             input=this%root_section, &
-                            output_path=output_path, &
+                            !output_path=output_path, &
+                            output_unit=this%iw, &
                             mpi_comm=this%group, &
                             ierr=ierr)
     CALL get_natom(this%f_env_id,this%n_atoms,ierr)
@@ -317,13 +355,18 @@ MODULE paramopt_worker
     !==================================================================
        DO ikind=1,this%nkind
          atomic_kind => this%atomic_kind_set(ikind)
-         CALL get_atomic_kind(atomic_kind=atomic_kind, &
-                               name=iname, scptb_parameter=this%scptb_parameter)
+         CALL get_atomic_kind(atomic_kind=atomic_kind,name=iname, &
+                              scptb_parameter=this%scptb_parameter)
+         CALL uppercase(iname)
          !----------update parameters-------------------------------------
-         CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep, pol=pol)
-         !print *,pol
-         !print *,'wid',this%id
+         CALL get_scptb_parameter(this%scptb_parameter,key=key,atomname=atomname, &
+                                  parameterization=parameterization,defined=defined, &
+                                  z=z,zeff=zeff,natorb=natorb,&
+                                  lmaxorb=lmaxorb,lmaxscp=lmaxscp,norb=norb, &
+                                  nqm=nqm,zeta=zeta,hcore=hcore, &
+                                  occupation=occupation,energy=energy, &
+                                  crep=crep,pol=pol,ag=ag,rcpair=rcpair,error=this%error)
+         !print *,'zeta',zeta
          !IF (this%para_env%ionode) print *,'first get hcore',ikind,hcore(1:2,0:1)
          !IF (this%para_env%ionode) print *,'first get zeta',ikind,zeta(1:2,0:1)
          !IF (this%para_env%ionode) print *,'first get energy',ikind,energy,this%x(1),this%x(8)
@@ -348,15 +391,97 @@ MODULE paramopt_worker
            crep(2) = this%x(16)
            crep(3) = this%x(17)
          ELSE
-            PRINT *,'failure'
+            PRINT *,'failure!'
          ENDIF
-         CALL set_scptb_parameter(this%scptb_parameter,hcore=hcore, &
-                                  energy=energy, ag=ag, zeta=zeta, crep=crep, pol=pol)
+
+         CALL get_gto_basis_set(gto_basis_set=atomic_kind%orb_basis_set,norm_type=norm_type,name=basis_name)
+       
+       IF (defined) THEN
+         CALL set_potential(potential=atomic_kind%all_potential,zeff=zeff,&
+              zeff_correction=0.0_dp)
+         ! basis set update
+         NULLIFY(sto_basis)
+         CALL allocate_sto_basis_set (sto_basis,this%error)
+         nshell = SUM(norb)
+         ALLOCATE (nq(nshell),lq(nshell),zet(nshell),STAT=stat)
+         !CPPrecondition(stat==0,cp_failure_level,routineP,this%error,failure)
+         nq=0
+         lq=0
+         zet=0._dp
+         ALLOCATE (symbol(nshell),STAT=stat)
+         !CPPrecondition(stat==0,cp_failure_level,routineP,this%error,failure)
+         symbol=""
+         is=0
+         !Aggregate all the electron shell parameters into arrays
+         DO l=0,lmaxorb
+            DO i=1,norb(l)
+               is = is + 1
+               zet(is) = zeta(i,l)
+               lq(is) = l
+               nq(is) = nqm(i,l)
+               IF(l==0) WRITE(symbol(is),'(I1,A1)') nq(is),"S"
+               IF(l==1) WRITE(symbol(is),'(I1,A1)') nq(is),"P"
+               IF(l==2) WRITE(symbol(is),'(I1,A1)') nq(is),"D"
+               IF(l==3) WRITE(symbol(is),'(I1,A1)') nq(is),"F"
+            END DO
+         END DO
+
+         IF (nshell > 0) THEN
+            CALL set_sto_basis_set(sto_basis,name=atomname,&
+                 nshell=nshell,symbol=symbol,nq=nq,lq=lq,zet=zet)
+            CALL deallocate_gto_basis_set (atomic_kind%orb_basis_set,this%error)
+            CALL create_gto_from_sto_basis(sto_basis,atomic_kind%orb_basis_set,&
+                 this%scptb_control%sto_ng,error=this%error)
+            CALL set_gto_basis_set(gto_basis_set= atomic_kind%orb_basis_set, norm_type=norm_type)
+            CALL init_orb_basis_set(atomic_kind%orb_basis_set,this%error)
+            CALL write_orb_basis_set(atomic_kind%orb_basis_set,output_unit=this%iw, &
+                                     header="new basis after zeta update",error=this%error)
+         END IF
+           a = crep(1)
+           c = crep(2)
+           d = crep(3)
+           rmin = 1._dp
+           rmax = 100._dp
+           DO
+              r = 0.5_dp*(rmax+rmin)
+              eff = (c+d*r**2)*EXP(-(a*r))
+              IF (eff < this%scptb_control%epspair) THEN
+                 rmax = r
+              ELSE
+                 rmin = r
+              END IF
+              IF ((rmax-rmin) < 1.e-2) EXIT
+           END DO
+           rcpair = 0.5_dp*rmax
+           !lmaxscp: make sure it is also consistent with pure SCC-TB
+           IF(lmaxscp < 0) THEN
+              IF(ag > 0.0_dp) THEN
+                 lmaxscp = 0
+              END IF
+           END IF
+         CALL set_scptb_parameter(this%scptb_parameter,key=key,atomname=atomname, &
+                                  parameterization=parameterization,defined=defined, &
+                                  z=z,zeff=zeff,natorb=natorb,&
+                                  lmaxorb=lmaxorb,lmaxscp=lmaxscp,norb=norb, &
+                                  nqm=nqm,zeta=zeta,hcore=hcore, &
+                                  occupation=occupation,energy=energy, &
+                                  crep=crep,pol=pol,ag=ag,rcpair=rcpair,error=this%error)
+         DEALLOCATE (nq,lq,zet,symbol,STAT=stat)
+         CALL deallocate_sto_basis_set (sto_basis,this%error)
+      ENDIF
+         !CALL write_scptb_parameter(this%scptb_parameter,this%subsys_section,this%error)
          !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore,zeta=zeta)
+         !print *,'zeta after',zeta
          !IF (this%para_env%ionode) print *,'second get',ikind,hcore(1:2,0:1)
          !IF (this%para_env%ionode) print *,'second get zeta',ikind,zeta(1:2,0:1)
          !IF (this%para_env%ionode) print *,'second get energy',ikind,energy
        END DO
+          !   *** Check basis and fill in missing parts ***
+       CALL check_atomic_kind_set(this%atomic_kind_set,this%dft_control,this%para_env,&
+         subsys_section=this%subsys_section,error=this%error) 
+       CALL init_interaction_radii(this%dft_control%qs_control,this%atomic_kind_set,this%error)
+       CALL qs_env_rebuild_pw_env(this%qs_env,this%error)
+       !CALL qs_env_update_s_mstruct(this%qs_env,this%error)
       !================================================================== 
     endif
 
@@ -375,12 +500,13 @@ MODULE paramopt_worker
       CALL swarm_message_add(report, "Epot", energy)
 
     else if (command .eq. 'geo_opt') then
-        
+      CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+      ! this call was to update the force env...could be done in a smarter way by
+      ! directly doing that :D
       ALLOCATE(this%pos2(3*this%n_atoms))
       ALLOCATE(this%pos(3*this%n_atoms))
       ALLOCATE(this%g(2,3*this%n_atoms))
       CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-
       CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
       CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
       CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
