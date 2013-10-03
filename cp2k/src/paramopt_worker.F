@@ -104,7 +104,7 @@ MODULE paramopt_worker
    INTEGER                                          :: group
    TYPE(cp_error_type)                              :: error
    TYPE(cp_para_env_type), POINTER                  :: para_env
-   REAL(KIND=dp),ALLOCATABLE                            :: x(:)
+   REAL(KIND=dp),ALLOCATABLE                        :: x(:)
    REAL(kind=dp)                                    :: Epot
    REAL(kind=dp)                                    :: timings
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
@@ -123,6 +123,7 @@ MODULE paramopt_worker
    TYPE(qs_control_type), POINTER                   :: qs_control
    TYPE(section_vals_type), POINTER                 :: qs_section
    TYPE(qs_environment_type), POINTER               :: qs_env
+   
    TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                       :: atomic_kind_set 
    TYPE(scptb_control_type), POINTER                :: scptb_control
@@ -151,6 +152,8 @@ MODULE paramopt_worker
       INTENT(INOUT)                          :: this
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: root_section
+    TYPE(section_vals_type), POINTER         :: swarm_section => Null()
+    TYPE(section_vals_type), POINTER         :: paramopt_section
     CHARACTER(LEN=*), INTENT(IN)             :: input_path
     INTEGER, INTENT(in)                      :: worker_id, iw
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -164,7 +167,9 @@ MODULE paramopt_worker
     INTEGER, &
     DIMENSION(0:para_env%num_pe-1), TARGET :: group_distribution
 
-
+        swarm_section => section_vals_get_subs_vals(root_section, "SWARM", error=error)
+        paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
+        CALL section_vals_val_get(paramopt_section,"NUM_VAR", i_val=this%num_var, error=error) 
         failure = .FALSE.
         this%iw = iw
         this%para_env => para_env
@@ -175,7 +180,6 @@ MODULE paramopt_worker
         this%pid = this%para_env%mepos+1
         this%input_path = input_path
         !---------------
-        this%num_var = 16
         allocate(this%x(this%num_var))
         this%x = 0._dp
         this%Epot = 0._dp
@@ -285,21 +289,10 @@ MODULE paramopt_worker
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%DFT%CHARGE", &
                               i_val=charge, error = this%error)
-!    CALL section_vals_val_get(this%root_section, &
-!                              "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
-!                              c_val=coord_file, error = this%error)
 !    CALL section_vals_val_set(this%root_section, &
 !                              "FORCE_EVAL%SUBSYS%TOPOLOGY%NUMBER_OF_ATOMS", &
 !                              i_val=-1,error=this%error)
-!    CALL section_vals_val_get(this%root_section, &
-!                              "FORCE_EVAL%SUBSYS%TOPOLOGY%NUMBER_OF_ATOMS", &
-!                              i_val=this%n_atoms,error=this%error)
     !-------------------create force env------------------------
-!    CALL create_force_env(this%f_env_id, &
-!                         input_path=TRIM(ADJUSTL(input_file)), &
-!                         output_path=output_path, &
-!                         mpi_comm=this%group, &
-!                         ierr=ierr)
 !    nullify(this%topology_section,atomic_kind,this%subsys_section)
 !    nullify(this%atomic_kind_set)
 !    nullify(this%force_env,this%qs_env,this%dft_section)
@@ -482,7 +475,16 @@ MODULE paramopt_worker
        CALL init_interaction_radii(this%dft_control%qs_control,this%atomic_kind_set,this%error)
        CALL qs_env_rebuild_pw_env(this%qs_env,this%error)
        !CALL qs_env_update_s_mstruct(this%qs_env,this%error)
-      !================================================================== 
+      !==================================================================
+    else if (command .eq. 'benchmark') then
+        CALL swarm_message_get(cmd,"x",this%x)
+        CALL swarm_message_get(cmd,"num_inp",i_inp)
+        CALL swarm_message_get(cmd,"iter",iter)
+        energy =0._dp
+        !sphere function
+        do i=1,this%num_var
+            energy = energy + this%x(i)**2
+        enddo
     endif
 
     if (command .eq. 'energy') then
@@ -498,7 +500,10 @@ MODULE paramopt_worker
       CALL swarm_message_add(report, "num_inp", i_inp) 
       CALL swarm_message_add(report, "iter", iter) 
       CALL swarm_message_add(report, "Epot", energy)
-
+    !!---------------cleanup 
+    CALL f_env_rm_defaults(this%f_env, this%error)
+    CALL destroy_force_env(this%f_env_id, ierr)
+    IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed"
     else if (command .eq. 'geo_opt') then
       CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
       ! this call was to update the force env...could be done in a smarter way by
@@ -524,19 +529,22 @@ MODULE paramopt_worker
  
 !      if (this%iw > 0 ) print *,'rmsd is doooooooone',this%rmsd
       deallocate(this%pos,this%pos2,this%g)
-      
+         !!---------------cleanup 
+    CALL f_env_rm_defaults(this%f_env, this%error)
+    CALL destroy_force_env(this%f_env_id, ierr)
+    IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed" 
           !-------------report--------------------------------
       CALL swarm_message_add(report, "status", "rmsd_calc") 
       CALL swarm_message_add(report, "num_inp", i_inp) 
       CALL swarm_message_add(report, "iter", iter) 
       CALL swarm_message_add(report, "rmsd", this%rmsd)
-    
-     
+    else if (command .eq. 'benchmark') then 
+      CALL swarm_message_add(report, "status", "bench_calc")
+      CALL swarm_message_add(report, "num_inp", i_inp) 
+      CALL swarm_message_add(report, "iter", iter) 
+      CALL swarm_message_add(report, "Epot", energy)  
     endif
-    !!---------------cleanup 
-    CALL f_env_rm_defaults(this%f_env, this%error)
-    CALL destroy_force_env(this%f_env_id, ierr)
-    IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed"
+
    END SUBROUTINE paramopt_worker_execute
 
 

@@ -92,6 +92,8 @@ MODULE paramopt_master
    REAL(KIND=dp),DIMENSION(:,:),POINTER            :: multmp_mN,multmp_mMU,multmp_mN2,mutmp
    REAL(KIND=dp),DIMENSION(:),POINTER              :: x 
    REAL(KIND=dp),DIMENSION(:),POINTER              :: f 
+   REAL(KIND=dp),POINTER                           :: f_old
+   REAL(KIND=dp),DIMENSION(:),POINTER              :: penalty 
    REAL(KIND=dp),DIMENSION(:),POINTER              :: newsort 
    REAL(KIND=dp),DIMENSION(:),POINTER              :: l_bound,u_bound
    REAL(KIND=dp)                                   :: sigma
@@ -102,7 +104,8 @@ MODULE paramopt_master
    REAL(KIND=dp)                                   :: vecnorm
    REAL(KIND=dp)                                   :: vecsum
    !strategy parameter setting
-   REAL(KIND=dp)                                   :: cc,cs,c1,cmu,damps
+   REAL(KIND=dp)                                   :: cc,cp,cs,c1,cmu,damps
+   REAL(KIND=dp)                                   :: p_succ,p_target,p_tresh
    ! initialize dynamic (internal) startegy parameters and constants
    REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc,ps
    REAL(KIND=dp)                                   :: eigenval
@@ -126,6 +129,7 @@ MODULE paramopt_master
    INTEGER                                          :: inp_iter
    INTEGER                                          :: run_iter
    INTEGER                                          :: run_type_id
+   INTEGER                                          :: input_seed
    INTEGER,ALLOCATABLE                              :: i_recv(:)
    TYPE(cp_error_type),POINTER                      :: error
    TYPE(ener_ref_type),POINTER                      :: ener_ref(:)
@@ -135,13 +139,13 @@ MODULE paramopt_master
    REAL(KIND=dp),ALLOCATABLE                        :: Epot(:),timings(:)
    REAL(KIND=dp),POINTER                            :: res(:)
    REAL(KIND=dp),POINTER                            :: E_res(:)
-   REAL(KIND=dp)                                    :: rmsd
+   REAL(KIND=dp),POINTER                            :: rmsd(:)
    REAL(KIND=dp),POINTER                            :: function_matrix(:,:)
-!   REAL(KIND=dp),POINTER                            :: x_matrix(:,:)
    REAL(KIND=dp),POINTER                            :: obj_f(:)
    REAL(KIND=dp),POINTER                            :: grad_obj_f(:)
    REAL(KIND=dp),POINTER                            :: x(:)
    REAL(KIND=dp),POINTER                            :: x_temp(:)
+   REAL(KIND=dp),POINTER                            :: penalty(:)
    REAL(KIND=dp),POINTER                            :: xtrans(:)
    REAL(KIND=dp),POINTER                            :: xtransold(:)
    REAL(KIND=dp),POINTER                            :: xold(:)
@@ -156,7 +160,7 @@ MODULE paramopt_master
    TYPE(cp_para_env_type), POINTER                  :: para_env
    TYPE(rng_stream_type),POINTER                    :: rng_stream
    LOGICAL,POINTER                                  :: sampling
-   LOGICAL                                          :: calc_deriv
+   LOGICAL                                          :: calc_deriv,benchmark
    REAL(KIND=dp)                                    :: step_size
    REAL(KIND=dp),POINTER                            :: weights(:)
    TYPE(opt_state_type),POINTER                     :: powell_opt
@@ -206,11 +210,15 @@ MODULE paramopt_master
     paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
     CALL section_vals_val_get(paramopt_section,"RUN_TYPE",i_val=this%run_type_id,error=error)
     !------------------
-    this%num_var = 17
+    CALL section_vals_val_get(paramopt_section,"NUM_VAR", i_val=this%num_var, error=error)
+    CALL section_vals_val_get(paramopt_section,"SEED", i_val=this%input_seed, error=error)
+    this%benchmark = .false.
+    !this%num_var = 17
     !------------------
     this%num_obj = 2
     !-------------------
     this%num_inp = 31
+    if (this%benchmark) this%num_inp = 1
     !-------------------
     this%num_calc = 31
     !--------------------
@@ -220,7 +228,8 @@ MODULE paramopt_master
     if (this%run_type_id .eq. paramopt_lbfgs_run) this%calc_deriv = .true. 
     this%num_para_set = 1
     if (this%calc_deriv) this%num_para_set = this%num_var+1
-    if (this%run_type_id .eq. paramopt_cmaes_run) this%num_para_set = 10
+    ! =======================================here the para_set is set!!!!!!!
+    if (this%run_type_id .eq. paramopt_cmaes_run) this%num_para_set = 1
     !--------------------
     this%iw = iw
     !------------------------
@@ -231,6 +240,8 @@ MODULE paramopt_master
             this%lbfgs_opt,this%cmaes_opt)
     !-------------------
     allocate(this%E_res(this%num_para_set))
+    allocate(this%rmsd(this%num_para_set))
+    allocate(this%penalty(this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
     allocate(this%Epot(this%num_ref))
 
@@ -271,9 +282,23 @@ MODULE paramopt_master
     this%run_iter = 1
     this%i_recv = 0
     this%Epot = 0._dp
-    call itime(time)
-    seed(:,1) = REAL(time)
-    seed(:,2) = (/ 1._dp, 2._dp, 3._dp /)
+    this%penalty = 0._dp
+    if (this%input_seed .gt. 0) then
+        !deterministic seed
+        seed(:,:) = &
+            RESHAPE( (/this%input_seed*42.0_dp, &
+                       this%input_seed*54.0_dp, &
+                       this%input_seed*63.0_dp, &
+                       this%input_seed*98.0_dp, &
+                       this%input_seed*10.0_dp, &
+                       this%input_seed*2.0_dp/),&
+                     (/ 3, 2 /) )        
+    else
+        !random seed from itime
+        call itime(time)
+        seed(:,1) = REAL(time)
+        seed(:,2) = (/ 1._dp, 2._dp, 3._dp /)
+    endif
     CALL create_rng_stream(this%rng_stream,'normal',distribution_type=UNIFORM,seed=seed,error=this%error)
     !---------------------
     this%res = 0._dp
@@ -298,6 +323,10 @@ MODULE paramopt_master
     END SELECT
     !-----read x --------
     CALL read4file(this%num_var,this%x,restart)
+        !random x
+        do i=1,this%num_var; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo
+        call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+        !end random x
     print *,'this is inital x'
     print *, this%x
     CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
@@ -321,7 +350,7 @@ MODULE paramopt_master
     allocate(this%gauss_opt%x(this%num_var),this%gauss_opt%Q(this%num_var,this%num_var), &
              this%gauss_opt%C(this%num_var,this%num_var))
     allocate(this%gauss_opt%rng_normal_stream)
-    CALL create_rng_stream(this%gauss_opt%rng_normal_stream,'gaussian',distribution_type=GAUSSIAN,error=this%error)
+    CALL create_rng_stream(this%gauss_opt%rng_normal_stream,'gaussian',seed=seed,distribution_type=GAUSSIAN,error=this%error)
     this%gauss_opt%task = 'startx'
     this%gauss_opt%l_bound => this%l_bound
     this%gauss_opt%u_bound => this%u_bound
@@ -410,8 +439,8 @@ MODULE paramopt_master
       END IF
       this%cmaes_opt%C = matmul(this%cmaes_opt%BD,transpose(this%cmaes_opt%BD))
     allocate(this%cmaes_opt%multmp_vN(this%num_var))
-    this%cmaes_opt%lambda = 10
-    this%cmaes_opt%mu = 5
+    this%cmaes_opt%lambda = this%num_para_set
+    this%cmaes_opt%mu = 1
     ALLOCATE(this%cmaes_opt%triuC(this%num_var,this%num_var),stat=allocStat)
     ALLOCATE(this%cmaes_opt%arx(this%num_var,this%cmaes_opt%lambda),stat=allocStat)
     ALLOCATE(this%cmaes_opt%arz(this%num_var,this%cmaes_opt%lambda),stat=allocStat)
@@ -419,6 +448,7 @@ MODULE paramopt_master
     ALLOCATE(this%cmaes_opt%zmean(this%num_var))
     ALLOCATE(this%cmaes_opt%xold(this%num_var))
     ALLOCATE(this%cmaes_opt%f(this%cmaes_opt%lambda))
+    ALLOCATE(this%cmaes_opt%f_old)
     ALLOCATE(this%cmaes_opt%newsort(this%cmaes_opt%lambda))
     ALLOCATE(this%cmaes_opt%idxsel(this%cmaes_opt%lambda))
     ALLOCATE(this%cmaes_opt%tempMat(this%num_var,this%cmaes_opt%mu))
@@ -433,12 +463,15 @@ MODULE paramopt_master
     ALLOCATE(this%cmaes_opt%colVec(this%num_var,1))
     ALLOCATE(this%cmaes_opt%rowVec(1,this%num_var))
     this%cmaes_opt%weights = 1._dp !equal weights
+    ! normalize weights
+    this%cmaes_opt%weights = this%cmaes_opt%weights/sum(this%cmaes_opt%weights)
     this%cmaes_opt%xmean = this%x
     this%cmaes_opt%n = this%num_var
     this%num_para_set = this%cmaes_opt%lambda
     this%cmaes_opt%f => this%obj_f
     this%cmaes_opt%l_bound => this%l_bound
     this%cmaes_opt%u_bound => this%u_bound
+    this%cmaes_opt%penalty => this%penalty
     allocate(this%cmaes_opt%rng_normal_stream)
           !  mueff
     this%cmaes_opt%vecsum = sum(this%cmaes_opt%weights)
@@ -451,20 +484,46 @@ MODULE paramopt_master
     this%cmaes_opt%ccov = (1._dp/this%cmaes_opt%mucov) * 2._dp/(REAL(this%num_var)+1.41)**2 + &
                           (1._dp - 1._dp/this%cmaes_opt%mucov) * min(1.0_dp,(2.0_dp*this%cmaes_opt%mueff-1._dp) &
                           /((REAL(this%num_var)+2._dp)**2 + this%cmaes_opt%mueff))
-    this%cmaes_opt%damps = 1._dp + 2._dp*max(0._dp, sqrt((this%cmaes_opt%mueff-1.0_dp)/real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
-    this%cmaes_opt%sigma = 0.01_dp
+    this%cmaes_opt%damps = 1._dp + 2._dp*max(0._dp, sqrt((this%cmaes_opt%mueff-1.0_dp)/ &
+                           real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
+    !----------------------default for (1+lambda) strategy----------------------------------
+    this%cmaes_opt%damps = 1._dp + real(this%cmaes_opt%n)/(2._dp*this%cmaes_opt%lambda)
+    this%cmaes_opt%p_target = 1_dp/(5._dp + sqrt(real(this%cmaes_opt%lambda))/2._dp)
+    this%cmaes_opt%cp = this%cmaes_opt%p_target*this%cmaes_opt%lambda/ &
+                        (2._dp+this%cmaes_opt%p_target*this%cmaes_opt%lambda)
+    this%cmaes_opt%cc = 2._dp/(this%cmaes_opt%n + 2._dp)
+    this%cmaes_opt%ccov = 2._dp/(real(this%cmaes_opt%n)**2 + 6._dp)
+    this%cmaes_opt%p_tresh = 0.44_dp
+    this%cmaes_opt%p_succ = this%cmaes_opt%p_target
+    !-----------------------------------------------------------
+    this%cmaes_opt%sigma = this%step_size
     this%cmaes_opt%pc = 0._dp
     this%cmaes_opt%ps = 0._dp
     this%cmaes_opt%hsig = 1._dp
     this%cmaes_opt%ps = 0._dp
-    this%cmaes_opt%pc = 0._dp
+    this%cmaes_opt%f_old = 1e16_dp !should be inifinty
     this%cmaes_opt%chiN = sqrt(REAL(this%num_Var))*((1.0_dp-1.0_dp/(4.0_dp*REAL(this%num_var))) &
                           +1.0_dp/(21.0_dp*REAL(this%num_var*this%num_var)))
-    CALL create_rng_stream(this%cmaes_opt%rng_normal_stream,'normal', &
-                           distribution_type=UNIFORM,seed=seed,error=this%error)
-    CALL gen_pop(this%cmaes_opt) 
+    CALL create_rng_stream(this%cmaes_opt%rng_normal_stream,'gaussian', &
+                           distribution_type=GAUSSIAN,seed=seed,error=this%error)
+    CALL gen_pop(this%cmaes_opt)
+    this%x = this%cmaes_opt%arx(:,1)
+    print *,"----------parameters for CMA-ES----------------"
+    print *,"lambda", this%cmaes_opt%lambda
+    print *,"mu",     this%cmaes_opt%mu
+    print *,"weights",this%cmaes_opt%weights
+    print *,"mueff",  this%cmaes_opt%mueff
+    print *,"cc",     this%cmaes_opt%cc
+    print *,"cs",     this%cmaes_opt%cs
+    print *,"cp",     this%cmaes_opt%cp
+    print *,"mucov",  this%cmaes_opt%mucov
+    print *,"ccov",   this%cmaes_opt%ccov
+    print *,"damps",  this%cmaes_opt%damps
+    print *,"chiN",   this%cmaes_opt%chiN
+    print *,"------------------------------------------------"
     endif
 !================================================================================
+    if (.not. this%benchmark) then
     !---------------------
     OPEN(88,file='WATER27structures/mol_list.txt')
     DO i=1,this%num_ref !-5
@@ -501,6 +560,7 @@ MODULE paramopt_master
           this%ener_ref(i)%ref
       enddo
     close(99)
+    endif
     !------------------------
 !    allocate(this%function_matrix(this%num_para_set,this%num_inp))
     !------------------------
@@ -557,8 +617,8 @@ MODULE paramopt_master
          j = mod(r_iter,this%num_para_set) + 1
          i = ceiling(real(r_iter)/real(this%num_para_set)) 
     
-       CALL swarm_message_get(report, "rmsd", this%rmsd)
-       this%function_matrix(i,j) = this%rmsd
+       CALL swarm_message_get(report, "rmsd", this%rmsd(j))
+       this%function_matrix(i,j) = this%rmsd(j)
        !------------change status---------------------------------
        report_status = "wait_done"
        !------------deal with condition---------------------------
@@ -571,38 +631,57 @@ MODULE paramopt_master
 !                   " PRMOPT| Reported rmsd ", this%rmsd
 !         END IF
 !      print *,'receved',i,j,this%rmsd
+    ELSE IF (report_status == "bench_calc") THEN
+      CALL swarm_message_get(report, "num_inp", i_inp)
+      CALL swarm_message_get(report, "iter", r_iter)
+         ! map this%inp_iter to task and send out
+         ! k = inp_iter, m = num_para_set
+         j = mod(r_iter,this%num_para_set) + 1
+         i = ceiling(real(r_iter)/real(this%num_para_set))
+      CALL swarm_message_get(report, "Epot", this%function_matrix(i,j))
+       !------------change status---------------------------------
+       report_status = "wait_done"
+       !------------deal with condition---------------------------
+       this%i_recv(j) = this%i_recv(j) + 1
+
+
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
     !--------------we are done with the iteration/condition-------- 
         do j=1,this%num_para_set 
-        call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
-        this%obj_f(j) = this%weights(1)*this%E_res(j) + &
-                     this%weights(2)*this%function_matrix(this%num_inp,j)
-        enddo
-        
-        do j=2,this%num_para_set
-          if (this%calc_deriv) then
-            this%grad_obj_f(j-1) = ( this%obj_f(j) - this%obj_f(1)) / this%eps(j-1)
+          if (.not. this%benchmark) then
+             call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
+             this%obj_f(j) = this%weights(1)*this%E_res(j) + &
+                          this%weights(2)*this%function_matrix(this%num_inp,j) + &
+                          this%penalty(j)**2
+          else
+             this%obj_f(j) = this%function_matrix(1,j) !+ this%penalty(j)**2
           endif
         enddo
         
+        if (this%calc_deriv) then
+         do j=2,this%num_para_set
+            this%grad_obj_f(j-1) = ( this%obj_f(j) - this%obj_f(1)) / this%eps(j-1)
+         enddo
+        endif 
        
         if (this%calc_deriv) print *,'gradient'
         if (this%calc_deriv) print *,this%grad_obj_f
         
         IF(this%iw>0) THEN
-          print *,'-------Rmsd-------'
-          print *,this%function_matrix(this%num_inp,1)
+          !print *,'-------Rmsd-------'
+          !print *,this%function_matrix(this%num_inp,1)
           !print *,'-------Epot-------'
           !print *,this%Epot
           print *,'-------obj_f-------'
           print *,this%obj_f
-          open(999,file='Epot.out',position='append')
-          write(999,*) this%Epot
-          close(999)
+          !open(999,file='xmean.out',position='append')
+          !write(999,*) this%cmaes_opt%xmean
+          !close(999)
           open(998,file='obj_f.out',position='append')
-          write(998,*) this%x,this%obj_f,this%E_res,this%rmsd
+          !write(998,*) this%x,minval(this%obj_f),this%cmaes_opt%sigma !,this%E_res,this%rmsd
+          write(998,*) this%x,this%obj_f,this%cmaes_opt%sigma,this%penalty**2 !,this%E_res,this%rmsd
           close(998)
          
         ENDIF
@@ -628,9 +707,8 @@ MODULE paramopt_master
                                          this%lbfgs_opt%print_every, this%lbfgs_opt%csave, &
                                          this%lbfgs_opt%lsave, this%lbfgs_opt%isave, & 
                                          this%lbfgs_opt%dsave) 
-
          if (associated(this%cmaes_opt)) CALL cmaes(this%x,this%cmaes_opt)
-         if (.not. associated(this%lbfgs_opt) .or. .not. associated(this%cmaes_opt)) then
+         if (associated(this%sampling) .or. associated(this%gauss_opt) .or. associated(this%powell_opt)) then
           !------------------check constrains-------------------------
           do i=1,this%num_var 
               if (this%xtrans(i) .lt. 0._dp) this%xtrans(i) = 0._dp
@@ -665,27 +743,33 @@ MODULE paramopt_master
          ! k = inp_iter, m = num_para_set
          j = mod(this%inp_iter,this%num_para_set) + 1 !x(j)
          i = ceiling(real(this%inp_iter)/real(this%num_para_set))
-
-         if (i .lt. this%num_inp) then
-            CALL swarm_message_add(cmd, "command", "energy")
-         else if (i .eq. this%num_inp) then
-            CALL swarm_message_add(cmd, "command", "geo_opt")
-         endif
-         CALL swarm_message_add(cmd, "input", this%input_files(i))
-         CALL swarm_message_add(cmd, "coord", this%coord_files(i))
-         CALL swarm_message_add(cmd, "charge", this%charges(i))
-         CALL swarm_message_add(cmd, "num_inp",i)
-         CALL swarm_message_add(cmd, "iter", this%inp_iter)
          this%x_temp = this%x
-         if (associated(this%cmaes_opt)) then
-           this%x_temp = this%cmaes_opt%arx(:,j)
-         endif
-         if (this%calc_deriv) then
-           if (j .gt. 1) then
-           this%x_temp(j-1) = this%x_temp(j-1) + this%eps(j-1)
-           !print *,j,this%x_temp(j-1),this%x(j-1),this%eps(j-1)
-           endif
-         endif
+         if (.not. this%benchmark) then
+            if (i .lt. this%num_inp) then
+               CALL swarm_message_add(cmd, "command", "energy")
+            else if (i .eq. this%num_inp) then
+               CALL swarm_message_add(cmd, "command", "geo_opt")
+            endif
+            CALL swarm_message_add(cmd, "input", this%input_files(i))
+            CALL swarm_message_add(cmd, "coord", this%coord_files(i))
+            CALL swarm_message_add(cmd, "charge", this%charges(i))
+            CALL swarm_message_add(cmd, "num_inp",i)
+            CALL swarm_message_add(cmd, "iter", this%inp_iter)
+            if (associated(this%cmaes_opt)) then
+              this%x_temp = this%cmaes_opt%arx(:,j)
+            endif
+            if (this%calc_deriv) then
+              if (j .gt. 1) then
+              this%x_temp(j-1) = this%x_temp(j-1) + this%eps(j-1)
+              !print *,j,this%x_temp(j-1),this%x(j-1),this%eps(j-1)
+              endif
+            endif
+          else
+            CALL swarm_message_add(cmd, "command", "benchmark")
+            CALL swarm_message_add(cmd, "num_inp",i)
+            CALL swarm_message_add(cmd, "iter", this%inp_iter)
+            this%x_temp = this%cmaes_opt%arx(:,j)
+          endif
          CALL swarm_message_add(cmd, "x", this%x_temp)
        IF(this%iw>0) THEN
           WRITE (this%iw,'(A,20X,I8,I8,I8,I8,I8)')&
@@ -1227,84 +1311,47 @@ end subroutine
       endif
     endif
 END SUBROUTINE
- !-----------------------Gaussian Adaption Algorithm-----------------------------
+ !-----------------------CMA-ES -----------Algorithm-----------------------------
     subroutine cmaes(x,cmaes_opt)
 
     implicit none
     type(cmaes_opt_type),target                               :: cmaes_opt
     real(kind=dp),pointer,intent(inout)                       :: x(:)
+    real(kind=dp)                                             :: lambda_succ
+    real(kind=dp)                                             :: p_succ
     TYPE(cp_error_type),POINTER                               :: error
     INTEGER                                                   :: n,k,i,info
 !----------------------------set pointers to type struct-----------------------
     n = cmaes_opt%n
+    lambda_succ = 0._dp
+    p_succ = 0._dp
 !---------------sort by fitness (idx/idxsel being indices indicating orig. position-------
     cmaes_opt%newsort = cmaes_opt%f
     CALL d_mrgrnk(cmaes_opt%newsort,cmaes_opt%idxsel)    
     DO i = 1, cmaes_opt%lambda
         cmaes_opt%f(i) = cmaes_opt%newSort(cmaes_opt%idxsel(i))
+        if (cmaes_opt%f(i) .lt. cmaes_opt%f_old ) then
+            lambda_succ = lambda_succ + 1_dp
+        endif
     END DO
-    print *,'fitness',cmaes_opt%f
+    p_succ = lambda_succ/real(cmaes_opt%lambda)
+    print *,'fitness',cmaes_opt%f,cmaes_opt%f_old,p_succ
 !-------------selection and recombination (calc new xmean)---------------------------------
-    cmaes_opt%xold = cmaes_opt%xmean
-    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
-        cmaes_opt%tempMat(:,i) = cmaes_opt%arx(:,cmaes_opt%idxsel(i))
-    END DO
-    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%xmean,1)
-    ! update x to the best individual in population
-    x = cmaes_opt%tempMat(:,1)
-    print *,'this is new mean'
-    print *,'=================================================================='
-    print *,cmaes_opt%xmean
-    ! do same for zmean/arz
-    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
-        cmaes_opt%tempMat(:,i) = cmaes_opt%arz(:,cmaes_opt%idxsel(i))
-    END DO
-    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%zmean,1)
+!    CALL new_mean(x,cmaes_opt)
 !----------------update evolution paths ( cumulation) --------------------------------------
-    CALL dgemv('N',n,n,1.0d0,cmaes_opt%B,n,cmaes_opt%zmean,1,0.0d0,cmaes_opt%multmp_vN,1)
-    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
-                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
-                                                                ! in Hansen:2007
-!      IF(sqrt(sum(cmaes_opt%ps**2))/sqrt(1._dp-(1.-cmaes_opt%cs)**(2._dp*real((countIter-lastRestart))))/chiN < &
-!        1.4_MK + 2._MK/real(input%N+1)) THEN
-!        hsig = 1._MK
-!      ELSE
-!        hsig = 0._MK
-!      END IF
-                                                                ! Eq.42
-      cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
-                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
-                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
-      !  ADAPT COVARIANCE MATRIX
-!-------------------------------------------------------------------------
-      DO i = 1,n 
-        cmaes_opt%colVec(i,1) = cmaes_opt%pc(i)
-        cmaes_opt%rowVec(1,i) = cmaes_opt%pc(i)
-      END DO
-      cmaes_opt%weightsMat = 0.
-      DO i = 1, cmaes_opt%mu
-          cmaes_opt%tempMat(:,i) = cmaes_opt%xold(:)
-          cmaes_opt%weightsMat(i,i) = cmaes_opt%weights(i)
-      END DO    
-      CALL dgemm('N','T',n,n,1,1.0d0,cmaes_opt%colVec,n,cmaes_opt%rowVec,n,0.0d0,cmaes_opt%multmp_mN,n) 
-      CALL dgemm('N','T',cmaes_opt%mu,n,cmaes_opt%mu,1.0d0,cmaes_opt%weightsMat, &
-                 cmaes_opt%mu,cmaes_opt%mutmp,n,0.0d0,cmaes_opt%multmp_mMU,cmaes_opt%mu)
-      CALL dgemm('N','N',n,n,cmaes_opt%mu,1.0d0,cmaes_opt%mutmp,n,&
-                 cmaes_opt%multmp_mMU,cmaes_opt%mu,0.0d0,cmaes_opt%multmp_mN2,n)
-      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
-                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
-                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
-                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
-                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
-  !    print *,'this is the new C'
-  !    print *,'======================================================'
-  !    print *,cmaes_opt%C 
-      !  ADAPT SIGMA
-!-------------------------------------------------------------------------	  
-      cmaes_opt%sigma =  cmaes_opt%sigma*exp((sqrt(sum(cmaes_opt%ps**2))/ &
-                         cmaes_opt%chiN-1._dp)*cmaes_opt%cs/cmaes_opt%damps)    ! Eq.41 
-      !  Update B and D from C
-!-------------------------------------------------------------------------
+!    CALL update_path(cmaes_opt)
+!---------------------Adapt covariance matrix-----------------------------
+!    CALL adapt_cov(cmaes_opt)
+!----------------------adapt sigma----------------------------------------	  
+    CALL update_stepsize(p_succ,cmaes_opt)
+!-----------------------elite aproach------------------------------------
+    if (cmaes_opt%f(1) .lt. cmaes_opt%f_old) then
+        cmaes_opt%f_old = cmaes_opt%f(1)
+        CALL new_mean(x,cmaes_opt)
+        !-----update covariance---------
+            call update_path(cmaes_opt)   
+            call adapt_cov(cmaes_opt) 
+!---------Update B and D from C-------------------------------------------
         !-----------------------------------------------------------------------
         !  Enforce symmetry
         !-----------------------------------------------------------------------
@@ -1326,10 +1373,15 @@ END SUBROUTINE
             cmaes_opt%D = sqrt(cmaes_opt%D)
 
         CALL DGEMM('N','N',n,n,n,1.0d0,cmaes_opt%B,n,cmaes_opt%D,n,&
-                                                        0.0d0,cmaes_opt%BD,n)       
+                                                        0.0d0,cmaes_opt%BD,n)  
+        !open(999,file='bd_matrix.out',position='append')
+        !write(999,*) cmaes_opt%BD
+        !close(999)  
+    endif    
 !-----------------------------generate new x matrix----------------------------
+    print *,"generating new population"
     CALL gen_pop(cmaes_opt)
-
+    x = cmaes_opt%arx(:,1)
 
 ! yannick
 END SUBROUTINE
@@ -1339,7 +1391,11 @@ END SUBROUTINE
     type(cmaes_opt_type),target                               :: cmaes_opt
     TYPE(cp_error_type),POINTER                               :: error
     INTEGER                                                   :: n,k,i
-
+    ! input:
+    ! n, lambda, BD, xmean, sigma
+    ! output:
+    ! arx,arz
+    cmaes_opt%penalty = 0._dp
     n = cmaes_opt%n
     do k=1,cmaes_opt%lambda
         do i=1,n; cmaes_opt%arz(i,k) = next_random_number(cmaes_opt%rng_normal_stream, error=error); enddo
@@ -1347,12 +1403,140 @@ END SUBROUTINE
     cmaes_opt%arx(:,k) = cmaes_opt%xmean + cmaes_opt%sigma * cmaes_opt%multmp_vN
     ! check if x in boundaries...set to bound limit otherwiese
             do i=1,n
-                    if (cmaes_opt%arx(i,k) .lt. cmaes_opt%l_bound(i)) cmaes_opt%arx(i,k) = cmaes_opt%l_bound(i)
-                    if (cmaes_opt%arx(i,k) .gt. cmaes_opt%u_bound(i)) cmaes_opt%arx(i,k) = cmaes_opt%u_bound(i)
+                    if (cmaes_opt%arx(i,k) .lt. cmaes_opt%l_bound(i)) then
+                        cmaes_opt%penalty(k) = cmaes_opt%penalty(k) +  &
+                                               abs(cmaes_opt%arx(i,k) - cmaes_opt%l_bound(i))**2
+                        cmaes_opt%arx(i,k) = cmaes_opt%l_bound(i)
+                    endif
+                    if (cmaes_opt%arx(i,k) .gt. cmaes_opt%u_bound(i)) then
+                        cmaes_opt%penalty(k) = cmaes_opt%penalty(k) +  &
+                                               abs(cmaes_opt%arx(i,k) - cmaes_opt%u_bound(i))**2
+                        cmaes_opt%arx(i,k) = cmaes_opt%u_bound(i)
+                    endif
             enddo
+    !        do i=1,n
+    !                if (cmaes_opt%arx(i,k) .lt. 0._dp) cmaes_opt%arx(i,k) = 0._dp
+    !                if (cmaes_opt%arx(i,k) .gt. 1._dp) cmaes_opt%arx(i,k) = 1._dp
+    !        enddo
     enddo
+    !print *,'new x'
+    !do k=1,cmaes_opt%lambda
+    !    print *,cmaes_opt%arx(:,k)
+    !enddo
     end subroutine
 
+    subroutine new_mean(x,cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    real(kind=dp),pointer,intent(inout)                       :: x(:)
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+!-------------selection and recombination (calc new xmean)---------------------------------
+    n = cmaes_opt%n
+    cmaes_opt%xold = cmaes_opt%xmean
+    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
+        cmaes_opt%tempMat(:,i) = cmaes_opt%arx(:,cmaes_opt%idxsel(i))
+    END DO
+    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%xmean,1)
+    ! update x to the best individual in population
+    x = cmaes_opt%tempMat(:,1)
+    !print *,'this is new mean'
+    !print *,'=================================================================='
+    !print *,cmaes_opt%xmean
+    !print *,'x matrix'
+    !print *,cmaes_opt%tempMat
+    !print *,'-------------------------------------'
+    ! do same for zmean/arz
+    DO i = 1, cmaes_opt%mu   ! Extract mu best columns of arx and save it to tempMat
+        cmaes_opt%tempMat(:,i) = cmaes_opt%arz(:,cmaes_opt%idxsel(i))
+    END DO
+    CALL dgemv('N',n,cmaes_opt%mu,1.0d0,cmaes_opt%tempMat,n,cmaes_opt%weights,1,0.0d0,cmaes_opt%zmean,1)
+    end subroutine
+
+    subroutine update_path(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    n = cmaes_opt%n
+    CALL dgemv('N',n,n,1.0d0,cmaes_opt%B,n,cmaes_opt%zmean,1,0.0d0,cmaes_opt%multmp_vN,1)
+!    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
+!                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
+                                                                ! in Hansen:2007
+!      IF(sqrt(sum(cmaes_opt%ps**2))/sqrt(1._dp-(1.-cmaes_opt%cs)**(2._dp*real((countIter-lastRestart))))/chiN < &
+!        1.4_MK + 2._MK/real(input%N+1)) THEN
+!        cmaes_opt%hsig = 1._dp
+!      ELSE
+!        hsig = 0._MK
+!      END IF
+       if (cmaes_opt%p_succ .lt. cmaes_opt%p_tresh) then
+           print *,'yannick is succ'
+       cmaes_opt%pc = (1._dp - cmaes_opt%cc)*cmaes_opt%pc + sqrt(cmaes_opt%cc*(2_dp-cmaes_opt%cc))* &
+                        (cmaes_opt%xmean-cmaes_opt%xold) 
+       else
+       cmaes_opt%pc = (1._dp - cmaes_opt%cc)*cmaes_opt%pc
+       endif
+                                   
+!       cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
+!                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
+!                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
+    end subroutine 
+
+    subroutine update_stepsize(p_succ,cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    REAL(kind=dp)                                             :: p_succ
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    n = cmaes_opt%n
+    cmaes_opt%p_succ = (1._dp-cmaes_opt%cp)*cmaes_opt%p_succ + cmaes_opt%cp*p_succ 
+    cmaes_opt%sigma = cmaes_opt%sigma*exp((cmaes_opt%p_succ - cmaes_opt%p_target)/ &
+                         (cmaes_opt%damps*(1._dp-cmaes_opt%p_target)))
+!    cmaes_opt%sigma =  cmaes_opt%sigma*exp((sqrt(sum(cmaes_opt%ps**2))/ &
+!                         cmaes_opt%chiN-1._dp)*cmaes_opt%cs/cmaes_opt%damps)    ! Eq.41 
+
+    end subroutine
+
+    subroutine adapt_cov(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    n = cmaes_opt%n
+      
+      DO i = 1,n 
+        cmaes_opt%colVec(i,1) = cmaes_opt%pc(i)
+        cmaes_opt%rowVec(1,i) = cmaes_opt%pc(i)
+      END DO
+      cmaes_opt%weightsMat = 0.
+      DO i = 1, cmaes_opt%mu
+          cmaes_opt%tempMat(:,i) = cmaes_opt%xold(:)
+          cmaes_opt%weightsMat(i,i) = cmaes_opt%weights(i)
+      END DO   
+      cmaes_opt%mutmp = (cmaes_opt%arx(:,int(cmaes_opt%idxsel(1:cmaes_opt%mu))) - cmaes_opt%tempMat) 
+      CALL dgemm('N','T',n,n,1,1.0d0,cmaes_opt%colVec,n,cmaes_opt%rowVec,n,0.0d0,cmaes_opt%multmp_mN,n) 
+      CALL dgemm('N','T',cmaes_opt%mu,n,cmaes_opt%mu,1.0d0,cmaes_opt%weightsMat, &
+                 cmaes_opt%mu,cmaes_opt%mutmp,n,0.0d0,cmaes_opt%multmp_mMU,cmaes_opt%mu)
+      CALL dgemm('N','N',n,n,cmaes_opt%mu,1.0d0,cmaes_opt%mutmp,n,&
+                 cmaes_opt%multmp_mMU,cmaes_opt%mu,0.0d0,cmaes_opt%multmp_mN2,n)
+!      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
+!                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
+!                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
+!                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
+!                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
+      if (cmaes_opt%p_succ .lt. cmaes_opt%p_tresh) then
+      cmaes_opt%C = (1._dp-cmaes_opt%ccov)*cmaes_opt%C & ! old matrix
+                   + cmaes_opt%ccov*(cmaes_opt%multmp_mN) ! plus rank one update
+      else
+      cmaes_opt%C = (1._dp-cmaes_opt%ccov)*cmaes_opt%C & ! old matrix
+                   + cmaes_opt%ccov*(cmaes_opt%multmp_mN &  ! plus rank one update
+                   + cmaes_opt%ccov*(2._dp-cmaes_opt%ccov)*cmaes_opt%C)
+      endif
+  !    print *,'this is the new C'
+  !    print *,'======================================================'
+  !    print *,cmaes_opt%C     
+    
+    end subroutine
 
 	  Subroutine D_mrgrnk (XDONT, IRNGT)
 ! __________________________________________________________

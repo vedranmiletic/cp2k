@@ -61,6 +61,18 @@ MODULE paramopt_input
          description="blah TODO.",&
          repeats=.FALSE., supported_feature=.TRUE.,error=error)
 
+    CALL keyword_create(keyword, name="NUM_VAR",&
+         description="balba TODO.",&
+         default_i_val= 1,error=error)
+    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error) 
+
+    CALL keyword_create(keyword, name="SEED",&
+         description="balba TODO.",&
+         default_i_val= -1,error=error)
+    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error) 
+     
     CALL keyword_create(keyword, name="RUN_TYPE",&
          description="Type of run that you want to perform ",&
          usage="RUN_TYPE SAMPLING",&
