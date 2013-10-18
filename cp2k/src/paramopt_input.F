@@ -54,13 +54,22 @@ MODULE paramopt_input
 
     TYPE(keyword_type), POINTER              :: keyword
     TYPE(section_type), POINTER              :: paramopt_section
+    TYPE(section_type), POINTER              :: cmaes_section
 
-    NULLIFY(paramopt_section, keyword)
+    NULLIFY(paramopt_section, cmaes_section, keyword)
 
     CALL section_create(paramopt_section,name="PARAM_OPT",&
          description="blah TODO.",&
          repeats=.FALSE., supported_feature=.TRUE.,error=error)
 
+    CALL keyword_create(keyword=keyword,&
+         name="BENCHMARK",&
+         description="blabla", &
+         usage="BENCHMARK {LOGICAL}",&
+         default_l_val=.FALSE., lone_keyword_l_val=.TRUE., error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)  
+       
     CALL keyword_create(keyword, name="NUM_VAR",&
          description="balba TODO.",&
          default_i_val= 1,error=error)
@@ -112,9 +121,21 @@ MODULE paramopt_input
          description="blabla TODO",&
          n_var=-1,type_of_var=real_t,error=error)
     CALL section_add_keyword(paramopt_section,keyword,error=error)
-    CALL keyword_release(keyword,error=error)    
+    CALL keyword_release(keyword,error=error)   
+     
+    CALL section_create(cmaes_section,name="CMAES_OPT",&
+         description="blah TODO.",&
+         repeats=.FALSE., supported_feature=.TRUE.,error=error)
 
+    CALL keyword_create(keyword, name="LAMBDA_MO",&
+         description="balba TODO.",&
+         default_i_val=1,error=error)
+    CALL section_add_keyword(cmaes_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error)
+
+    CALL section_add_subsection(paramopt_section, cmaes_section, error=error)
     CALL section_add_subsection(swarm_section, paramopt_section, error=error)
+    CALL section_release(cmaes_section,error=error)
     CALL section_release(paramopt_section,error=error)
 
   END SUBROUTINE paramopt_declare_input

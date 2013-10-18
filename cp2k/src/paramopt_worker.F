@@ -213,6 +213,7 @@ MODULE paramopt_worker
 ! *****************************************************************************
 ! *****************************************************************************
    SUBROUTINE paramopt_worker_execute(this, cmd, report)
+   USE mathconstants
     TYPE(paramopt_worker_type), &
       INTENT(INOUT)                          :: this
     TYPE(swarm_message_type), INTENT(IN)     :: cmd
@@ -256,7 +257,9 @@ MODULE paramopt_worker
     REAL(KIND = dp)                          :: kind_radius
     REAL(KIND = dp)                          :: short_kind_radius
     REAL(KIND = dp)                          :: a,c,d,rmin,rmax,r,eff
-    integer :: norm_type
+    integer                                  :: norm_type
+    logical,pointer                          :: scf_converged => null()
+    REAL(KIND = dp)                          :: tmp
 
 
     CALL swarm_message_get(cmd, "command", command)
@@ -388,6 +391,8 @@ MODULE paramopt_worker
          ENDIF
 
          CALL get_gto_basis_set(gto_basis_set=atomic_kind%orb_basis_set,norm_type=norm_type,name=basis_name)
+      
+       !re-initialization
        
        IF (defined) THEN
          CALL set_potential(potential=atomic_kind%all_potential,zeff=zeff,&
@@ -426,13 +431,22 @@ MODULE paramopt_worker
             CALL create_gto_from_sto_basis(sto_basis,atomic_kind%orb_basis_set,&
                  this%scptb_control%sto_ng,error=this%error)
             CALL set_gto_basis_set(gto_basis_set= atomic_kind%orb_basis_set, norm_type=norm_type)
+            ! init of the new basis
             CALL init_orb_basis_set(atomic_kind%orb_basis_set,this%error)
             CALL write_orb_basis_set(atomic_kind%orb_basis_set,output_unit=this%iw, &
                                      header="new basis after zeta update",error=this%error)
+
          END IF
+
+         DEALLOCATE (nq,lq,zet,symbol,STAT=stat)
+
+         CALL deallocate_sto_basis_set (sto_basis,this%error)
+         !throw away the STO basis set, since from now on we use the GTO
+          
            a = crep(1)
            c = crep(2)
            d = crep(3)
+
            rmin = 1._dp
            rmax = 100._dp
            DO
@@ -446,12 +460,14 @@ MODULE paramopt_worker
               IF ((rmax-rmin) < 1.e-2) EXIT
            END DO
            rcpair = 0.5_dp*rmax
+
            !lmaxscp: make sure it is also consistent with pure SCC-TB
            IF(lmaxscp < 0) THEN
               IF(ag > 0.0_dp) THEN
                  lmaxscp = 0
               END IF
            END IF
+
          CALL set_scptb_parameter(this%scptb_parameter,key=key,atomname=atomname, &
                                   parameterization=parameterization,defined=defined, &
                                   z=z,zeff=zeff,natorb=natorb,&
@@ -459,8 +475,7 @@ MODULE paramopt_worker
                                   nqm=nqm,zeta=zeta,hcore=hcore, &
                                   occupation=occupation,energy=energy, &
                                   crep=crep,pol=pol,ag=ag,rcpair=rcpair,error=this%error)
-         DEALLOCATE (nq,lq,zet,symbol,STAT=stat)
-         CALL deallocate_sto_basis_set (sto_basis,this%error)
+
       ENDIF
          !CALL write_scptb_parameter(this%scptb_parameter,this%subsys_section,this%error)
          !CALL get_scptb_parameter(this%scptb_parameter,norb=this%norb,hcore=hcore,zeta=zeta)
@@ -482,14 +497,32 @@ MODULE paramopt_worker
         CALL swarm_message_get(cmd,"iter",iter)
         energy =0._dp
         !sphere function
-        do i=1,this%num_var
-            energy = energy + this%x(i)**2
+        !do i=1,this%num_var
+        !    energy = energy + this%x(i)**2
+        !enddo
+        !ellipsoid
+        !do i=1,this%num_var
+        !    energy = energy + (1000._dp**((real(i)-1._dp)/(real(this%num_var)-1._dp))*this%x(i))**2_dp
+        !enddo
+        !----two obj-----------
+        ! scale here???
+        this%x(1) = (this%x(1)+5._dp)/10_dp
+        energy = this%x(1)
+        !tmp = 1._dp + 9._dp*(sum(this%x(2:this%num_var)))/(this%num_var - 1._dp)
+        tmp = 0._dp
+        do  i =2,size(this%x)
+            tmp = tmp + this%x(i)**2 - 10_dp*cos(4_dp*pi*this%x(i))
         enddo
+        tmp =  1._dp + 10._dp*(real(size(this%x)) - 1._dp) + tmp 
+        this%rmsd = tmp*(1._dp - sqrt(this%x(1)/tmp))
     endif
 
     if (command .eq. 'energy') then
+      !print *,'scf converged before loop',scf_converged
       CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
       CALL get_energy(this%f_env_id,energy,ierr)
+      !CALL get_qs_env(this%force_env%qs_env, scf_converged=scf_converged,error=this%error)
+      !print *,'scf converged after loop',scf_converged
       if (this%iw > 0) then
      ! print * ,'in worker',input_file
      ! print * ,this%x
@@ -543,6 +576,7 @@ MODULE paramopt_worker
       CALL swarm_message_add(report, "num_inp", i_inp) 
       CALL swarm_message_add(report, "iter", iter) 
       CALL swarm_message_add(report, "Epot", energy)  
+      CALL swarm_message_add(report, "rmsd", this%rmsd)  
     endif
 
    END SUBROUTINE paramopt_worker_execute
