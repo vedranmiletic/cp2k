@@ -69,7 +69,7 @@ MODULE paramopt_input
          default_l_val=.FALSE., lone_keyword_l_val=.TRUE., error=error)
     CALL section_add_keyword(paramopt_section,keyword,error=error)
     CALL keyword_release(keyword,error=error)  
-       
+   
     CALL keyword_create(keyword, name="NUM_VAR",&
          description="balba TODO.",&
          default_i_val= 1,error=error)
@@ -95,7 +95,7 @@ MODULE paramopt_input
 
     CALL keyword_create(keyword, name="STEP_SIZE",&
          description="balba TODO.",&
-         default_r_val= 0.1_dp,error=error)
+         default_r_val= 0.0_dp,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
 
@@ -104,6 +104,18 @@ MODULE paramopt_input
          default_r_val= 1._dp,error=error)
     CALL section_add_keyword(paramopt_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)   
+
+    CALL keyword_create(keyword, name="INSIGMA",&
+         description="blabla TODO",&
+         n_var=-1,type_of_var=real_t,default_r_val= 0.0_dp,error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+
+    CALL keyword_create(keyword, name="INITIAL_X",&
+         description="blabla TODO",&
+         n_var=-1,type_of_var=real_t,required=.FALSE.,default_r_vals=(/0._dp/),error=error)
+    CALL section_add_keyword(paramopt_section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
 
     CALL keyword_create(keyword, name="UPPER_BOUNDS",&
          description="blabla TODO",&

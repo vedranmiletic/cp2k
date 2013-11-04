@@ -38,12 +38,13 @@ MODULE paramopt_worker
                                              create_force_env,&
                                              destroy_force_env,&
                                              f_env_add_defaults,&
-                                             f_env_rm_defaults,&
+                                             !f_env_rm_defaults,&
                                              f_env_type,&
                                              get_energy,&
                                              get_natom, &
                                              get_pos, &
-                                             calc_energy
+                                             calc_energy, &
+                                             f_env_get_from_id
   USE force_env_methods,               ONLY: ep_create_force_env,&
                                              force_env_calc_energy_force
   USE force_env_types,                 ONLY: force_env_get,&
@@ -63,6 +64,7 @@ MODULE paramopt_worker
   USE kinds,                           ONLY: default_string_length,&
                                              default_path_length,&
                                              dp
+  USE mathconstants,                   ONLY: pi
   USE message_passing,                 ONLY: mp_comm_split,&
                                              mp_sum
   USE mulliken,                        ONLY: compute_multipoles
@@ -204,7 +206,7 @@ MODULE paramopt_worker
      WRITE(*,*) "paramopt_worker_finalize called. worker_id=", this%id, &
       " rank=",this%para_env%mepos 
 !     DEALLOCATE(this%pos)
-     CALL f_env_rm_defaults(this%f_env, this%error)
+     !CALL f_env_rm_defaults(this%f_env, this%error)
      CALL destroy_force_env(this%f_env_id, ierr)
      IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
    END SUBROUTINE paramopt_worker_finalize
@@ -213,7 +215,6 @@ MODULE paramopt_worker
 ! *****************************************************************************
 ! *****************************************************************************
    SUBROUTINE paramopt_worker_execute(this, cmd, report)
-   USE mathconstants
     TYPE(paramopt_worker_type), &
       INTENT(INOUT)                          :: this
     TYPE(swarm_message_type), INTENT(IN)     :: cmd
@@ -279,10 +280,6 @@ MODULE paramopt_worker
 
     write(output_path,*) this%id
     output_path=trim(adjustl(output_path))//".out"
-    if (this%iw > 0 ) then
-    !print *, this%id,i,j
-    !print *, this%x
-    endif
 !    this%dft_section => section_vals_get_subs_vals(this%root_section,"FORCE_EVAL%DFT",error=this%error)
 !    this%qs_section  => section_vals_get_subs_vals(this%dft_section, "QS", error = this%error)
 !    this%scptb_section  => section_vals_get_subs_vals(this%qs_section, "SCPTB", error = this%error)
@@ -301,6 +298,10 @@ MODULE paramopt_worker
 !    nullify(this%force_env,this%qs_env,this%dft_section)
 !    nullify(this%qs_section,this%qs_control)
 !    nullify(this%scptb_control)
+    !-----print x to param-worker file--------------------
+    if (this%iw > 0 ) then
+      write(this%iw,*) 'this is current x',this%x
+    endif
     CALL create_force_env(this%f_env_id, &
                             input_path=this%input_path, &
                             input=this%root_section, &
@@ -321,7 +322,9 @@ MODULE paramopt_worker
 !    nullify(this%qs_env)
 !    nullify(this%scptb_parameter)
 !    nullify(atomic_kind)
-    CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
+    ! f_env_get from id in f77 !!!!!!!!!!!!!!!!!!!!!!
+    CALL f_env_get_from_id(this%f_env_id,this%f_env,this%error)
+    !CALL f_env_add_defaults(this%f_env_id, this%f_env, this%error, failure)
     IF(failure) STOP "paramopt_drive_worker: f_env_add_defaults failed"
       this%force_env => this%f_env%force_env 
       this%qs_env => this%force_env%qs_env
@@ -371,21 +374,21 @@ MODULE paramopt_worker
            ag = this%x(1)
            zeta(1,0) = this%x(2)
            hcore(1,0) = this%x(3)
-           pol(1)  = this%x(4)
-           crep(1) = this%x(5)
-           crep(2) = this%x(6)
-           crep(3) = this%x(7)
+      !      pol(1)  = this%x(4)
+           crep(1) = this%x(4)
+           crep(2) = this%x(5)
+           crep(3) = this%x(6)
          ELSE IF (iname .EQ. 'O') THEN
-           ag = this%x(8)
-           zeta(1,0) = this%x(9)
-           hcore(1,0) = this%x(10)
-           zeta(1,1) = this%x(11)
-           hcore(1,1) = this%x(12)
-           pol(1) = this%x(13)
-           pol(2) = this%x(14)
-           crep(1) = this%x(15)
-           crep(2) = this%x(16)
-           crep(3) = this%x(17)
+           ag = this%x(7)
+           zeta(1,0) = this%x(8)
+           hcore(1,0) = this%x(9)
+           zeta(1,1) = this%x(10)
+           hcore(1,1) = this%x(11)
+       !     pol(1) = this%x(13)
+       !     pol(2) = this%x(14)
+           crep(1) = this%x(12)
+           crep(2) = this%x(13)
+           crep(3) = this%x(14)
          ELSE
             PRINT *,'failure!'
          ENDIF
@@ -428,8 +431,11 @@ MODULE paramopt_worker
             CALL set_sto_basis_set(sto_basis,name=atomname,&
                  nshell=nshell,symbol=symbol,nq=nq,lq=lq,zet=zet)
             CALL deallocate_gto_basis_set (atomic_kind%orb_basis_set,this%error)
+            !-----yannick this needs review!!!!!!! should not be hardcoded 6
             CALL create_gto_from_sto_basis(sto_basis,atomic_kind%orb_basis_set,&
-                 this%scptb_control%sto_ng,error=this%error)
+                 6,error=this%error)
+            !CALL create_gto_from_sto_basis(sto_basis,atomic_kind%orb_basis_set,&
+            !     this%scptb_control%sto_ng,error=this%error)
             CALL set_gto_basis_set(gto_basis_set= atomic_kind%orb_basis_set, norm_type=norm_type)
             ! init of the new basis
             CALL init_orb_basis_set(atomic_kind%orb_basis_set,this%error)
@@ -496,6 +502,7 @@ MODULE paramopt_worker
         CALL swarm_message_get(cmd,"num_inp",i_inp)
         CALL swarm_message_get(cmd,"iter",iter)
         energy =0._dp
+        tmp=0._dp
         !sphere function
         !do i=1,this%num_var
         !    energy = energy + this%x(i)**2
@@ -506,15 +513,37 @@ MODULE paramopt_worker
         !enddo
         !----two obj-----------
         ! scale here???
-        this%x(1) = (this%x(1)+5._dp)/10_dp
-        energy = this%x(1)
-        !tmp = 1._dp + 9._dp*(sum(this%x(2:this%num_var)))/(this%num_var - 1._dp)
-        tmp = 0._dp
-        do  i =2,size(this%x)
-            tmp = tmp + this%x(i)**2 - 10_dp*cos(4_dp*pi*this%x(i))
-        enddo
-        tmp =  1._dp + 10._dp*(real(size(this%x)) - 1._dp) + tmp 
-        this%rmsd = tmp*(1._dp - sqrt(this%x(1)/tmp))
+    !    this%x(1) = (this%x(1))/5_dp
+    !    energy = abs(this%x(1))
+    !    tmp = g1(this%x)
+    !    this%rmsd = tmp*(1._dp - sqrt(abs(this%x(1))/tmp))
+        !IHR1 test function
+    !    energy = abs(this%x(1))
+    !    do i = 2,size(this%x)
+    !        tmp = tmp + h_g(this%x(i)) 
+    !    enddo
+    !    tmp = 1_dp + 9_dp*tmp/(size(this%x)-1._dp)
+    !    this%rmsd = tmp*(1_dp - sqrt(h(this%x(1),size(this%x))/tmp))
+        !Zitzler¿Deb¿Thiele's function N. 1
+    !    tmp = g(this%x)
+    !    energy = this%x(1)
+    !    this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp))
+        !Zitzler¿Deb¿Thiele's function N. 2
+    !    tmp = g(this%x)
+    !    energy = this%x(1)
+    !    this%rmsd = tmp * (1_dp - (this%x(1)/tmp)**2)
+       !Zitzler¿Deb¿Thiele's function N. 3
+    !    tmp = g(this%x)
+    !    energy = this%x(1)
+    !    this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp)-this%x(1)/tmp*sin(10_dp*pi*this%x(1)))
+       !Zitzler¿Deb¿Thiele's function N. 6
+        tmp = g(this%x)**0.25_dp
+        energy = 1_dp - exp(-4_dp*this%x(1))*sin(6_dp*pi*this%x(1))**6 
+        this%rmsd = tmp * (1_dp - (energy/tmp)**2)
+           !Zitzler¿Deb¿Thiele's function N. 4
+    !    energy = this%x(1) !/10._dp+0.5_dp
+    !    tmp = g4(this%x) 
+    !    this%rmsd = tmp * (1_dp - sqrt(energy/tmp))
     endif
 
     if (command .eq. 'energy') then
@@ -534,7 +563,7 @@ MODULE paramopt_worker
       CALL swarm_message_add(report, "iter", iter) 
       CALL swarm_message_add(report, "Epot", energy)
     !!---------------cleanup 
-    CALL f_env_rm_defaults(this%f_env, this%error)
+    !CALL f_env_rm_defaults(this%f_env, this%error)
     CALL destroy_force_env(this%f_env_id, ierr)
     IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed"
     else if (command .eq. 'geo_opt') then
@@ -563,7 +592,7 @@ MODULE paramopt_worker
 !      if (this%iw > 0 ) print *,'rmsd is doooooooone',this%rmsd
       deallocate(this%pos,this%pos2,this%g)
          !!---------------cleanup 
-    CALL f_env_rm_defaults(this%f_env, this%error)
+    !CALL f_env_rm_defaults(this%f_env, this%error)
     CALL destroy_force_env(this%f_env_id, ierr)
     IF(ierr /= 0) STOP "paramopt_worker: destroy_force_env failed" 
           !-------------report--------------------------------
@@ -580,9 +609,45 @@ MODULE paramopt_worker
     endif
 
    END SUBROUTINE paramopt_worker_execute
-
-
-
+REAL FUNCTION g(x)
+!-----------------------------------------------------------------------
+    REAL(dp),DIMENSION(:)                    :: x
+    integer                                  :: n
+    n = size(x)
+    g = 1._dp + 9._dp*(sum(x(2:n))/(real(n)-1_dp))
+END FUNCTION g   
+REAL FUNCTION g4(x)
+!-----------------------------------------------------------------------
+    REAL(dp),DIMENSION(:)                    :: x
+    REAL(dp)                                 :: tmp
+    integer                                  :: n,i
+    tmp = 0._dp
+    n = size(x)
+    do i = 2,n
+    tmp = tmp + (x(i)**2 - 10_dp*cos(4_dp*pi*x(i)))
+    enddo
+    !g4 = 1_dp + 10_dp*(real(n)-1._dp)+sum(x(2:n)**2-10._dp*cos(4_dp*pi*x(2:n))) 
+    g4 = 1_dp + 10_dp*(real(n)-1._dp)+tmp
+END FUNCTION g4   
+REAL FUNCTION g1(x)
+!-----------------------------------------------------------------------
+    REAL(dp),DIMENSION(:)                    :: x
+    integer                                  :: n
+    n = size(x)
+    g1 = 1._dp + 10._dp*(real(n)-1._dp) + sum(x(2:n)**2-10._dp*cos(4._dp*pi*x(2:n)))
+END FUNCTION g1   
+REAL FUNCTION h_g(x)
+!-----------------------------------------------------------------------
+    REAL(dp)                                 :: x
+    h_g = x**2/(abs(x)+0.1_dp)
+END FUNCTION h_g    
+!-----------------------------------------------------------------------
+REAL FUNCTION h(x,n)
+    REAL(dp)                                 :: x
+    INTEGER                                  :: n
+    h = 1._dp/(1_dp + exp(-x/sqrt(real(n))))
+END FUNCTION h
+!-----------------------------------------------------------------------
 SUBROUTINE rmsd(n, coord1, coord2, option, U, x_center, y_center, & 
      error, calc_g, g)
 !-----------------------------------------------------------------------
@@ -1211,7 +1276,7 @@ END FUNCTION pythag
       ! write out something?
       ierr=cp_failure_level
     ENDIF
-    CALL f_env_rm_defaults(f_env,error,ierr)
+    !CALL f_env_rm_defaults(f_env,error,ierr)
   END SUBROUTINE calc_multipole
 END MODULE paramopt_worker
 

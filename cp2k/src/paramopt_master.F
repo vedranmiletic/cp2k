@@ -10,7 +10,8 @@
 ! *****************************************************************************
 MODULE paramopt_master
   USE cp_lbfgs,                        ONLY: setulb
-
+  USE cp_files,                        ONLY: open_file,&
+                                             close_file
   USE swarm_message,                   ONLY: swarm_message_type
 
   USE input_section_types,             ONLY: section_vals_get_subs_vals,&
@@ -24,6 +25,7 @@ MODULE paramopt_master
                                              paramopt_cmaes_run
   USE kinds,                           ONLY: default_string_length,&
                                              dp
+  USE mathconstants,                   ONLY: pi
   USE message_passing,                 ONLY: mp_bcast
   USE parallel_rng_types,              ONLY: rng_stream_type, &
                                              create_rng_stream, &
@@ -52,11 +54,14 @@ MODULE paramopt_master
  PUBLIC :: paramopt_master_type
  PUBLIC :: paramopt_master_init, paramopt_master_finalize
  PUBLIC :: paramopt_master_steer
-  
+
+  TYPE :: individual_type_p
+    TYPE(individual_type),POINTER                  :: p
+ END TYPE 
+
  TYPE :: individual_type
    PRIVATE
    INTEGER                                         :: id
-   INTEGER                                         :: sort_idx
    INTEGER                                         :: lambda ! pop size
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xmean,xold,xmin,weights,zmean
    REAL(KIND=dp),DIMENSION(:),POINTER              :: multmp_vN
@@ -86,16 +91,14 @@ MODULE paramopt_master
    INTEGER                                         :: front
    INTEGER                                         :: d_count
    REAL(kind=dp)                                   :: I_dist
-   INTEGER,DIMENSION(:),ALLOCATABLE                :: s_i
+   REAL(kind=dp)                                   :: kernel_dist
+   REAL(kind=dp)                                   :: hypervol
+   TYPE(individual_type_p),ALLOCATABLE             :: s_i(:)
    INTEGER                                         :: s_i_count
    !--------------------------------------------------------------------------
    REAL(KIND=dp)                                   :: penalty
  END TYPE individual_type  
   
- TYPE :: individual_type_p
-    TYPE(individual_type),POINTER                  :: p
- END TYPE
-
  TYPE lbfgs_opt_type
      CHARACTER (len=60) :: task
      CHARACTER (len=60) :: csave
@@ -132,14 +135,18 @@ MODULE paramopt_master
 !   REAL(KIND=dp),DIMENSION(:),POINTER                   :: newsort
 !   INTEGER,ALLOCATABLE                                  :: idxsel(:) 
    !--bounderies
-   REAL(KIND=dp),DIMENSION(:),POINTER                   :: l_bound,u_bound
+   REAL(KIND=dp),DIMENSION(:),POINTER                   :: l_bound,u_bound,insigma
+   REAL(KIND=dp),DIMENSION(:),POINTER                   :: fmax,fmin
    !--stop criteria--------------
    REAL(KIND=dp)                                        :: stopfitness 
    REAL(KIND=dp)                                        :: stopeval
-   TYPE(individual_type),ALLOCATABLE                    :: a_k_temp(:)
-   TYPE(individual_type),ALLOCATABLE                    :: a_k(:)
-   TYPE(individual_type),ALLOCATABLE                    :: a_k_parents(:)
+   TYPE(individual_type),ALLOCATABLE                    :: population(:)
+   TYPE(individual_type_p),ALLOCATABLE                  :: population_p(:)
+   TYPE(individual_type_p),ALLOCATABLE                  :: a_k(:)
+   TYPE(individual_type_p),ALLOCATABLE                  :: a_k_parents(:)
    TYPE(rng_stream_type),POINTER                        :: rng_normal_stream
+   TYPE(rng_stream_type),POINTER                        :: rng_uniform_stream
+   TYPE(cp_error_type),POINTER                          :: error
  END TYPE cmaes_opt_type
 
  TYPE paramopt_master_type
@@ -170,6 +177,7 @@ MODULE paramopt_master
    REAL(KIND=dp),POINTER                                 :: obj_f(:)
    REAL(KIND=dp),POINTER                                 :: grad_obj_f(:)
    REAL(KIND=dp),POINTER                                 :: x(:)
+   REAL(KIND=dp),POINTER                                 :: init_x(:)
    REAL(KIND=dp),POINTER                                 :: x_temp(:)
    REAL(KIND=dp),POINTER                                 :: penalty
    REAL(KIND=dp),POINTER                                 :: xtrans(:)
@@ -187,6 +195,7 @@ MODULE paramopt_master
    TYPE(rng_stream_type),POINTER                         :: rng_stream
    LOGICAL,POINTER                                       :: sampling
    LOGICAL                                               :: calc_deriv,benchmark
+   LOGICAL                                               :: rand_inp
    LOGICAL                                               :: multi_obj
    REAL(KIND=dp)                                         :: step_size
    REAL(KIND=dp),POINTER                                 :: weights(:)
@@ -217,38 +226,45 @@ MODULE paramopt_master
 ! *****************************************************************************
 ! *****************************************************************************
  SUBROUTINE paramopt_master_init(this, para_env, swarm_section, input_path, n_walkers, iw, error)
-    TYPE(paramopt_master_type)               :: this
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: swarm_section
-    CHARACTER(LEN=*), INTENT(IN)             :: input_path
-    CHARACTER(len=default_string_length)     :: output_path, str
-    INTEGER, INTENT(IN)                      :: n_walkers, iw
-    TYPE(cp_error_type), INTENT(inout)       :: error
-    TYPE(section_vals_type), POINTER         :: paramopt_section => null()
-    TYPE(section_vals_type), POINTER         :: cmaes_section => null()
-    INTEGER                                  :: i,charge
-    INTEGER                                  :: time(3)
-    LOGICAL                                  :: restart
-    REAL(kind=dp),DIMENSION(3,2)             :: seed
+    TYPE(paramopt_master_type)                  :: this
+    TYPE(cp_para_env_type), POINTER             :: para_env
+    TYPE(section_vals_type), POINTER            :: swarm_section
+    CHARACTER(len=*), PARAMETER :: routineN = 'paramopt_master_init', &
+      routineP = moduleN//':'//routineN
+    CHARACTER(LEN=*), INTENT(IN)                :: input_path
+    CHARACTER(len=default_string_length)        :: output_path, str
+    INTEGER, INTENT(IN)                         :: n_walkers, iw
+    TYPE(cp_error_type), INTENT(inout),TARGET   :: error
+    TYPE(section_vals_type), POINTER            :: paramopt_section => null()
+    TYPE(section_vals_type), POINTER            :: cmaes_section => null()
+    INTEGER                                     :: i,charge
+    INTEGER                                     :: time(3)
+    LOGICAL                                     :: restart,explicit_key
+    REAL(kind=dp),DIMENSION(3,2)                :: seed
 
-    type(individual_type),POINTER            :: a_k
-    type(individual_type),POINTER            :: a_k_parents
-    INTEGER                                  :: k
+    type(individual_type),POINTER               :: a_k
+    type(individual_type),POINTER               :: a_k_parents
+    INTEGER                                     :: k
+    REAL(kind=dp)                               :: ini_sigma
+
+    this%error => error
     !---------------------
-    IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init called"
+    !IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init called"
     !====================num para set======================== 
     this%num_para_set = 1
     !-------------------
     paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
     CALL section_vals_val_get(paramopt_section,"RUN_TYPE",i_val=this%run_type_id,error=error)
-    if (this%run_type_id .eq. paramopt_cmaes_run) then
-      cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
-      CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
-    endif
     !------------------
     CALL section_vals_val_get(paramopt_section,"NUM_VAR", i_val=this%num_var, error=error)
     CALL section_vals_val_get(paramopt_section,"SEED", i_val=this%input_seed, error=error)
     CALL section_vals_val_get(paramopt_section,"BENCHMARK", l_val=this%benchmark, error=error)
+   ! CALL section_vals_val_get(paramopt_section,"RAND_INP", l_val=this%rand_inp, error=error)
+
+    if (this%run_type_id .eq. paramopt_cmaes_run) then
+      cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
+      CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
+    endif
     !------------------
     this%num_obj = 2
     this%multi_obj = .true.
@@ -303,11 +319,22 @@ MODULE paramopt_master
     CALL section_vals_val_get(paramopt_section,"LOWER_BOUNDS", r_vals=this%l_bound, error=error)
     CALL section_vals_val_get(paramopt_section,"WEIGHTS", r_vals=this%weights, error=error)
     CALL section_vals_val_get(paramopt_section,"RUN_TYPE",i_val=this%run_type_id,error=error)
-    print *,'num var',this%num_var
-    print *,'run_type',this%run_type_id,'step size',this%step_size
-    print *,'upper bounds',this%u_bound
-    print *,'lower bounds',this%l_bound
     
+
+    CALL section_vals_val_get(paramopt_section,"INITIAL_X" ,explicit=explicit_key,error=error)
+      IF(explicit_key)THEN
+        CALL section_vals_val_get(paramopt_section,"INITIAL_X", r_vals=this%init_x, error=error)
+         if (size(this%init_x) .eq. size(this%x)) then
+           this%x = this%init_x 
+           this%rand_inp = .false.
+         else 
+           call cp_assert( .false. ,cp_failure_level,cp_assertion_failed,&
+                       routineP, "init_x does not match num_var",this%error)
+         endif
+      ELSE
+           this%rand_inp = .true.
+      ENDIF
+
     !-------------------
     this%inp_iter = this%num_inp*this%num_para_set
     this%run_iter = 1
@@ -355,15 +382,26 @@ MODULE paramopt_master
     END SELECT
     !-----read x --------
     !random x
+    if (this%rand_inp) then
         do i=1,this%num_var; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo           
         call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
         !end random x
-    if (.not. this%benchmark) then
-      !CALL read4file(this%num_var,this%x,restart)
-      CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
     endif
-      print *,'this is inital x'
-      print *, this%x
+    if (.not. this%benchmark) then
+      !if (.not. this%rand_inp) CALL read4file(this%num_var,this%x,restart)
+      !CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
+    endif
+    !--------------------------------------------
+    print *,'num var',this%num_var
+    print *,'run_type',this%run_type_id,'step size',this%step_size
+    print *,'upper bounds',this%u_bound
+    print *,'lower bounds',this%l_bound
+    print *,'this is inital x'
+    print *, this%x
+    ! in case sigma is not given use sqrt(var(x))
+    ini_sigma = sqrt(variance(this%x))
+    IF (this%step_size .eq. 0_dp) this%step_size = ini_sigma
+    print *,'this should be sigma',this%step_size
     !----------------set pointers for bfgs------------------------
     this%eps = this%eps_factor*abs(this%x)
         !----check lowest eps....eps should not be zero!
@@ -439,57 +477,57 @@ MODULE paramopt_master
     endif
     !------------cma-es------------------------
     if (associated(this%cmaes_opt)) then
+      allocate(this%cmaes_opt%insigma(this%num_var))
+      !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
+      this%cmaes_opt%insigma = 0.5_dp*(this%u_bound-this%l_bound)
+      this%step_size = maxval(this%cmaes_opt%insigma)/3_dp
+      print *,'this is insigma',this%cmaes_opt%insigma
+      print *,'this is step_size',this%step_size
+      this%cmaes_opt%error => this%error
       this%cmaes_opt%lambda_mo = this%num_para_set
+      allocate(this%cmaes_opt%population(2*this%cmaes_opt%lambda_mo))
+      allocate(this%cmaes_opt%population_p(2*this%cmaes_opt%lambda_mo))
       allocate(this%cmaes_opt%a_k(this%cmaes_opt%lambda_mo))
-      allocate(this%cmaes_opt%a_k_temp(2*this%cmaes_opt%lambda_mo))
       allocate(this%cmaes_opt%a_k_parents(this%cmaes_opt%lambda_mo))
-!      ALLOCATE(this%cmaes_opt%newsort(2*this%cmaes_opt%lambda_mo))
-!      ALLOCATE(this%cmaes_opt%idxsel(2*this%cmaes_opt%lambda_mo))
+      allocate(this%cmaes_opt%fmax(this%num_obj))
+      allocate(this%cmaes_opt%fmin(this%num_obj))
       this%cmaes_opt%n = this%num_var
       this%cmaes_opt%l_bound => this%l_bound
       this%cmaes_opt%u_bound => this%u_bound
       allocate(this%cmaes_opt%rng_normal_stream)
+      allocate(this%cmaes_opt%rng_uniform_stream)
       CALL create_rng_stream(this%cmaes_opt%rng_normal_stream,'gaussian',seed=seed, &
                              distribution_type=GAUSSIAN,error=this%error)
+      CALL create_rng_stream(this%cmaes_opt%rng_uniform_stream,'normal',distribution_type=UNIFORM, &
+                           seed=seed,error=this%error)
       this%cmaes_opt%generation = 1
+      !=============NEEEEEEEDS TO BE CHANGED AND MOVED TO INPUT FILE!!!!!!!==========================
+      this%cmaes_opt%fmax = (/100000_dp,10_dp/)
+      this%cmaes_opt%fmin = (/0_dp,0_dp/)
+     !--------------init population-----------------
      do k=1,this%cmaes_opt%lambda_mo
-      a_k => this%cmaes_opt%a_k(k)
-      CALL a_k_init(a_k,this%num_var,this%cmaes_opt%lambda_mo)
-      ALLOCATE(a_k%f(this%num_obj))
+      this%cmaes_opt%population_p(k)%p => this%cmaes_opt%population(k)
+      this%cmaes_opt%a_k(k)%p => this%cmaes_opt%population(k)
+      a_k => this%cmaes_opt%a_k(k)%p
+      CALL a_k_init(a_k,this%cmaes_opt%lambda_mo,this%num_obj, &
+                    this%step_size,this%cmaes_opt%insigma,this)
+      !--------------------------------------   
       a_k%f = 0._dp
-      a_k%xmean = this%x
-      a_k%arx(:,1) = this%x 
-!      a_k%f => this%obj_f(k)
-      a_k%sigma = this%step_size
       a_k%id = k
       CALL gen_pop(a_k,this%cmaes_opt)
+      print *,'initial x from a_k',a_k%arx
       !----init parents too---------------
-      a_k => this%cmaes_opt%a_k_parents(k)
-      CALL a_k_init(a_k,this%num_var,this%cmaes_opt%lambda_mo)
-      a_k%sigma = this%step_size
-      a_k%xmean = this%x
-      a_k%arx(:,1) = this%x
-      ALLOCATE(a_k%f(this%num_obj))
-      a_k%f = huge(1._dp)
-      a_k%id = k
+      this%cmaes_opt%population_p(k+this%cmaes_opt%lambda_mo)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
+      this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
+      a_k_parents => this%cmaes_opt%a_k_parents(k)%p
+      CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
+                    this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
+      a_k_parents%f = huge(1._dp)
+      a_k_parents%id = k+this%cmaes_opt%lambda_mo
+      !print *,'initial x from a_k_parents',a_k_parents%arx
       !----init tmp too---------------
-      a_k => this%cmaes_opt%a_k_temp(k)
-      CALL a_k_init(a_k,this%num_var,this%cmaes_opt%lambda_mo)
-      a_k%sigma = this%step_size
-      a_k%xmean = this%x
-      a_k%arx(:,1) = this%x
-      ALLOCATE(a_k%f(this%num_obj))
-      a_k%f = huge(1._dp)
-       !----init tmp too---------------
-      a_k => this%cmaes_opt%a_k_temp(k+this%cmaes_opt%lambda_mo)
-      CALL a_k_init(a_k,this%num_var,this%cmaes_opt%lambda_mo)
-      a_k%sigma = this%step_size
-      a_k%xmean = this%x
-      a_k%arx(:,1) = this%x
-      ALLOCATE(a_k%f(this%num_obj))
-      a_k%f = huge(1._dp)
      enddo
-     nullify(a_k) 
+     nullify(a_k,a_k_parents) 
     endif
 !================================================================================
     if (.not. this%benchmark) then
@@ -536,11 +574,26 @@ MODULE paramopt_master
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init done"
  END SUBROUTINE paramopt_master_init
 
- SUBROUTINE a_k_init(a_k,n,lambda_mo)
+ SUBROUTINE a_k_init(a_k,lambda_mo,num_obj,step_size,insigma,this,x)
     IMPLICIT NONE
+    TYPE(paramopt_master_type)               :: this
     type(individual_type),POINTER            :: a_k
-    INTEGER                                  :: i,n,lambda_mo
+    REAL(kind=dp),DIMENSION(:)               :: insigma
+    REAL(kind=dp),DIMENSION(:),OPTIONAL      :: x
+    REAL(kind=dp)                            :: step_size
+    INTEGER                                  :: i,n
+    INTEGER                                  :: lambda_mo
+    INTEGER                                  :: num_obj
     INTEGER                                  :: allocstat
+    n = size(this%x)
+    !random x
+    if (this%rand_inp) then
+    do i=1,n; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo 
+        call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+    endif
+    if (present(x)) then
+        this%x = x
+    endif
       ! initialize a_k
                IF (.NOT. ALLOCATED(a_k%B)) THEN
                      ALLOCATE(a_k%B(n,n),stat=allocStat)
@@ -556,8 +609,8 @@ MODULE paramopt_master
                END IF
                a_k%D = 0._dp
                DO i = 1, n
-                  !D(i,i) = input%insigma(i)/maxval(input%insigma)
-                  a_k%D(i,i) = 1._dp 
+                  a_k%D(i,i) = insigma(i)/maxval(insigma)
+                  !a_k%D(i,i) = 1._dp 
                END DO
                IF (.NOT. ALLOCATED(a_k%BD)) THEN 
                    ALLOCATE(a_k%BD(n,n),stat=allocStat)
@@ -575,15 +628,13 @@ MODULE paramopt_master
              a_k%lambda = 1
              a_k%mu = 1
              ALLOCATE(a_k%s_i(2*lambda_mo))
-             a_k%s_i = 0
              ALLOCATE(a_k%triuC(n,n),stat=allocStat)
              ALLOCATE(a_k%arx(n,a_k%lambda),stat=allocStat)
              ALLOCATE(a_k%arz(n,a_k%lambda),stat=allocStat)
              ALLOCATE(a_k%xmean(n))
              ALLOCATE(a_k%zmean(n))
              ALLOCATE(a_k%xold(n))
-             !ALLOCATE(a_k%f(a_k%lambda))
-             !ALLOCATE(a_k%f_old)
+             ALLOCATE(a_k%f(num_obj))
              ALLOCATE(a_k%tempMat(n,a_k%mu))
              ALLOCATE(a_k%multmp_mN(n,n))
              ALLOCATE(a_k%multmp_mN2(n,n))
@@ -595,8 +646,8 @@ MODULE paramopt_master
              ALLOCATE(a_k%pc(n))
              ALLOCATE(a_k%colVec(n,1))
              ALLOCATE(a_k%rowVec(1,n))
+             do i=1,lambda_mo; a_k%s_i(i)%p=>null(); enddo
              a_k%front = 0
-             a_k%sort_idx = 0
              a_k%penalty = 0._dp
              a_k%weights = 1._dp !equal weights
              ! normalize weights
@@ -619,29 +670,32 @@ MODULE paramopt_master
              a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda))/2._dp)
              a_k%cp = a_k%p_target*a_k%lambda/ &
                   (2._dp+a_k%p_target*a_k%lambda)
-             a_k%cc = 2._dp/(n + 2._dp)
+             a_k%cc = 2._dp/(real(n) + 2._dp)
              a_k%ccov = 2._dp/(real(n)**2 + 6._dp)
              a_k%p_tresh = 0.44_dp
              a_k%p_succ = a_k%p_target
              !-----------------------------------------------------------
-          !   a_k%sigma = 1._dp
+             a_k%arx(:,1) = this%x
+             a_k%xmean = this%x
+             a_k%sigma = step_size
              a_k%pc = 0._dp
              a_k%ps = 0._dp
          !    this%cmaes_opt%a_k%hsig = 1._dp
              a_k%ps = 0._dp
-         !    a_k%f_old = 1e16_dp !should be inifinty
              a_k%chiN = sqrt(REAL(n))*((1.0_dp-1.0_dp/(4.0_dp*REAL(n))) &
                                    +1.0_dp/(21.0_dp*REAL(n*n)))
              a_k%d_count = 0
              a_k%s_i_count = 0
              a_k%I_dist = 0._dp
+             a_k%kernel_dist = 0._dp
+             a_k%hypervol = 0._dp
  END SUBROUTINE
 ! *****************************************************************************
  SUBROUTINE a_k_copy(a_k2,a_k1)
     IMPLICIT NONE
     type(individual_type)            :: a_k1
     type(individual_type)            :: a_k2
-    INTEGER                                  :: i,n
+    INTEGER                          :: i,n
              a_k2%B         = a_k1%B 
              a_k2%D         = a_k1%D
              a_k2%BD        = a_k1%BD
@@ -680,19 +734,19 @@ MODULE paramopt_master
              a_k2%sigma     = a_k1%sigma      
              a_k2%pc        = a_k1%pc
              a_k2%ps        = a_k1%ps
-             !a_k2%f_old     = a_k1%f_old
              a_k2%chiN      = a_k1%chiN
              a_k2%f         = a_k1%f
              !-----------------------------------
              a_k2%d_count    = a_k1%d_count
              a_k2%I_dist     = a_k1%I_dist
+             a_k2%kernel_dist= a_k1%kernel_dist
+             a_k2%hypervol   = a_k1%hypervol
              a_k2%s_i        = a_k1%s_i
              a_k2%s_i_count  = a_k1%s_i_count
              a_k2%id         = a_k1%id
-             a_k2%sort_idx   = a_k1%sort_idx
              a_k2%front      = a_k1%front
              !-------------------------------------
-             a_k2%penalty      = a_k1%penalty
+             a_k2%penalty    = a_k1%penalty
  END SUBROUTINE
 ! *****************************************************************************
 ! *****************************************************************************
@@ -701,6 +755,8 @@ MODULE paramopt_master
     TYPE(swarm_message_type), INTENT(IN)     :: report
     TYPE(swarm_message_type), INTENT(INOUT)  :: cmd
     LOGICAL, INTENT(INOUT)                   :: should_stop
+    CHARACTER(len=*), PARAMETER :: routineN = 'paramopt_master_steer', &
+      routineP = moduleN//':'//routineN
     INTEGER                                  :: i,j,k,i_inp,r_iter
     INTEGER                                  :: report_worker_id
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
@@ -709,7 +765,8 @@ MODULE paramopt_master
     REAL(KIND=dp)                            :: report_rmsd
     REAL(KIND=dp)                            :: E_res_temp
     CHARACTER(len=default_string_length)     :: report_status
-
+    type(individual_type),POINTER            :: a_k
+    type(individual_type),POINTER            :: a_k_parents
     r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
     CALL swarm_message_get(report, "status",report_status)
@@ -772,23 +829,33 @@ MODULE paramopt_master
        !------------deal with condition---------------------------
        this%i_recv(j) = this%i_recv(j) + 1
 
-
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
     !--------------we are done with the iteration/condition-------- 
         do j=1,this%num_para_set 
           if (.not. this%benchmark) then
+             !-------------------for cmaes_opt------------------------------
+             if (associated(this%cmaes_opt)) then
+             a_k => this%cmaes_opt%a_k(j)%p
+             !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
+             call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
+             a_k%f(1) = this%E_res(j) + a_k%penalty
+             a_k%f(2) = this%function_matrix(this%num_inp,j) + a_k%penalty
+             else
+             !-----------------for the rest???--------------------------------
              call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
              this%obj_f(j) = this%weights(1)*this%E_res(j) + &
                           this%weights(2)*this%function_matrix(this%num_inp,j) + &
                           this%penalty
+             endif
           else
              if (associated(this%cmaes_opt)) then
+             a_k => this%cmaes_opt%a_k(j)%p
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
              this%obj_f(j) = this%function_matrix(1,j) !+ this%penalty(j)**2
-             this%cmaes_opt%a_k(j)%f(1) = this%obj_f(j) + this%cmaes_opt%a_k(j)%penalty
-             this%cmaes_opt%a_k(j)%f(2) = this%function_matrix(2,j) + this%cmaes_opt%a_k(j)%penalty
+             a_k%f(1) = this%obj_f(j) + a_k%penalty
+             a_k%f(2) = this%function_matrix(2,j) + a_k%penalty
            !  if (this%cmaes_opt%a_k(j)%f(1) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(1) = 0._dp
            !  if (this%cmaes_opt%a_k(j)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(2) = 0._dp
              endif
@@ -822,8 +889,7 @@ MODULE paramopt_master
         ENDIF
         !--------------------new x to file?--------------------
         if (.not. this%benchmark) then
-        CALL para2file(this%num_var,this%x,"para.xml","para.xml.old.out") 
-        else
+        !CALL para2file(this%num_var,this%x,"para.xml","para.xml.old.out") 
         !   !open(12,position='append')
         !   open(12)
         !   do i = 1,this%cmaes_opt%lambda_mo
@@ -853,11 +919,14 @@ MODULE paramopt_master
                                          this%lbfgs_opt%lsave, this%lbfgs_opt%isave, & 
                                          this%lbfgs_opt%dsave)
          if (associated(this%cmaes_opt)) then
-          !   do i=1,this%cmaes_opt%lambda_mo
-          !      if (this%cmaes_opt%a_k(i)%sigma .lt. 1e-9_dp) STOP
-          !   enddo
+         !    do i=1,this%cmaes_opt%lambda_mo
+         ! !      if (this%cmaes_opt%a_k(i)%sigma .lt. 1e-9_dp) STOP
+         !        if (this%cmaes_opt%a_k(i)%f(1) .lt. 1e-6) this%cmaes_opt%a_k(i)%f(1) = 0._dp
+         !        if (this%cmaes_opt%a_k(i)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(i)%f(2) = 0._dp
+         !        print *,'f to decide',this%cmaes_opt%a_k(i)%p%f,this%cmaes_opt%a_k_parents(i)%p%f
+         !    enddo
              this%cmaes_opt%generation = this%cmaes_opt%generation + 1
-            ! if (this%cmaes_opt%generation .eq. 2000) STOP
+        !     if (this%cmaes_opt%generation .eq. 2000) STOP
              CALL cmaes(this%x,this%cmaes_opt)
          endif
          if (associated(this%sampling) .or. associated(this%gauss_opt) .or. associated(this%powell_opt)) then
@@ -878,19 +947,7 @@ MODULE paramopt_master
          this%i_recv = 0
          !--------------------new x to file?--------------------
           if (.not. this%benchmark) then
-          CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
-          else
-           !open(12,position='append')
-           open(13)
-           do i = 1,2*this%cmaes_opt%lambda_mo
-              write(13,*) this%cmaes_opt%a_k_temp(i)%f, &
-                          this%cmaes_opt%a_k_temp(i)%id, &
-                          this%cmaes_opt%a_k_temp(i)%front, &
-                          this%cmaes_opt%a_k_temp(i)%I_dist, &
-                          this%cmaes_opt%a_k_temp(i)%sigma, &
-                          this%cmaes_opt%a_k_temp(i)%arx(:,1)
-           enddo
-           close(13)
+          !CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
           endif
           !-----------------x for diff-------------------------
           if (this%calc_deriv) this%eps = this%eps_factor*this%x
@@ -909,6 +966,7 @@ MODULE paramopt_master
          ! k = inp_iter, m = num_para_set
          j = mod(this%inp_iter,this%num_para_set) + 1 !x(j)
          i = ceiling(real(this%inp_iter)/real(this%num_para_set))
+         a_k => this%cmaes_opt%a_k(j)%p
          this%x_temp = this%x
          if (.not. this%benchmark) then
             if (i .lt. this%num_inp) then
@@ -922,7 +980,7 @@ MODULE paramopt_master
             CALL swarm_message_add(cmd, "num_inp",i)
             CALL swarm_message_add(cmd, "iter", this%inp_iter)
             if (associated(this%cmaes_opt)) then
-              this%x_temp = this%cmaes_opt%a_k(j)%arx(:,1)
+              this%x_temp = a_k%arx(:,1)
             endif
             if (this%calc_deriv) then
               if (j .gt. 1) then
@@ -934,8 +992,8 @@ MODULE paramopt_master
             CALL swarm_message_add(cmd, "command", "benchmark")
             CALL swarm_message_add(cmd, "num_inp",i)
             CALL swarm_message_add(cmd, "iter", this%inp_iter)
-            !print *,this%cmaes_opt%a_k(j)%arx
-            this%x_temp = this%cmaes_opt%a_k(j)%arx(:,1)
+            !print *,a_k%arx
+            this%x_temp = a_k%arx(:,1)
           endif
          CALL swarm_message_add(cmd, "x", this%x_temp)
        IF(this%iw>0) THEN
@@ -968,35 +1026,34 @@ MODULE paramopt_master
     type(cmaes_opt_type),target                               :: cmaes_opt
     type(individual_type),POINTER                             :: a_k
     type(individual_type),POINTER                             :: a_k_parents
+    CHARACTER(len=*), PARAMETER :: routineN = 'cmaes_run', &
+      routineP = moduleN//':'//routineN
     real(kind=dp),pointer,intent(inout)                       :: x(:)
     real(kind=dp)                                             :: lambda_succ
     real(kind=dp)                                             :: p_succ
     TYPE(cp_error_type),POINTER                               :: error
     INTEGER                                                   :: i,j,k,n
     INTEGER                                                   :: info
+    INTEGER                                                   :: accepted
     LOGICAL                                                   :: boolean
 !----------------------------set pointers to type struct-----------------------
     n = cmaes_opt%n
     lambda_succ = 0._dp
     p_succ = 0._dp
     boolean = .false.
+    accepted = 0 
     call init_selection(cmaes_opt)
-
+!    do k=1,cmaes_opt%lambda_mo
+!        print *,'k',k,'I_dist',cmaes_opt%a_k(k)%p%I_dist,'kernel_dist',cmaes_opt%a_k(k)%p%kernel_dist
+!    enddo
     do k=1,cmaes_opt%lambda_mo
-         a_k => cmaes_opt%a_k(k)
-         a_k_parents => cmaes_opt%a_k_parents(k)
-         !print *,'both f',a_k%front,a_k_parents%front,a_k%I_dist,a_k_parents%I_dist,a_k_parents%sigma
+         a_k => cmaes_opt%a_k(k)%p
+         a_k_parents => cmaes_opt%a_k_parents(k)%p
          call dominates(a_k,a_k_parents,boolean)
          !----yannick watch out...f now is hardcoded to only have 2 obj!!!!
-     !    if ((a_k%f(1) .le. a_k_parents%f(1)) .and. &
-     !               (a_k%f(2) .le. a_k_parents%f(2)) )
-     !        then
-     !        lambda_succ = 1._dp
-     !    else
-     !        lambda_succ = 0._dp
-     !    endif
          if (boolean) then
              p_succ = 1._dp
+             accepted = accepted + 1
          else
              p_succ = 0._dp
          endif
@@ -1009,8 +1066,8 @@ MODULE paramopt_master
      !---------------------Adapt covariance matrix-----------------------------
      !    CALL adapt_cov(cmaes_opt)
      !----------------------adapt sigma----------------------------------------
-         CALL update_stepsize(p_succ,a_k_parents)  
-         CALL update_stepsize(p_succ,a_k)
+          CALL update_stepsize(p_succ,a_k_parents)  
+          CALL update_stepsize(p_succ,a_k)
      !-----------------------elite aproach------------------------------------
              CALL new_mean(a_k)
              !-----update covariance---------
@@ -1038,30 +1095,40 @@ MODULE paramopt_master
              !open(999,file='bd_matrix.out',position='append')
              !write(999,*) cmaes_opt%BD
              !close(999)
+         !print *,'a_k',a_k%front,a_k%I_dist,a_k%sigma
+         !print *,'a_k_parents',a_k_parents%front,a_k_parents%I_dist,a_k_parents%sigma
          nullify(a_k,a_k_parents)
     enddo 
     
     call selection(cmaes_opt)
+!----------------------okay?----------------------
+    do k = 1, 2*cmaes_opt%lambda_mo
+    a_k => cmaes_opt%population(k)
+    call cp_assert( a_k%id .ne. 0 ,cp_failure_level,cp_assertion_failed,&
+                       routineP, cp_to_string(k)//" id is wrong...something is strange ",cmaes_opt%error) 
+    enddo
+!--------output---------------------------------------------------------------
+    call write_x(cmaes_opt)
 !----for 1:lambda_mo generate new population----------------------------------
     !print *,"generating new population"
     DO k = 1, cmaes_opt%lambda_mo
-        a_k => cmaes_opt%a_k(k)
-        a_k_parents => cmaes_opt%a_k_parents(k)
-        cmaes_opt%a_k_temp(k)%id = k
-        call a_k_copy(a_k_parents,cmaes_opt%a_k_temp(k))
-        !cmaes_opt%a_k_parents(k) = cmaes_opt%a_k_temp(k)
-        call a_k_copy(a_k,cmaes_opt%a_k_temp(k))
+        a_k => cmaes_opt%a_k(k)%p
+        a_k_parents => cmaes_opt%a_k_parents(k)%p
+        a_k_parents%id = k+cmaes_opt%lambda_mo
+        call a_k_copy(a_k,a_k_parents)
         !cmaes_opt%a_k(k) = cmaes_opt%a_k_parents(k)
         !print *,'old f',cmaes_opt%a_k_parents(k)%f
-
         CALL gen_pop(a_k,cmaes_opt)
-        a_k_parents%id = a_k%id + cmaes_opt%lambda_mo
+        a_k%id = k
         !----this is just a random x !!!----------
         x = a_k%arx(:,1)
         !print *,'x should not be the same!',a_k_parents%arx(1,1),a_k%arx(1,1)
-    !print *,'selected',cmaes_opt%a_k(k)%f,cmaes_opt%a_k_parents(k)%f,cmaes_opt%a_k(k)%s_i
+    !print *,'selected',cmaes_opt%a_k(k)%f,cmaes_opt%a_k_parents(k)%f,cmaes_opt%a_k(k)%s_iu
     END DO
     nullify(a_k,a_k_parents)
+    print *,'===========================MO-CMAES-SUMMARY============================'
+    print *,'number of accepted offspring',accepted
+
 END SUBROUTINE
 !===========================================================================
 
@@ -1083,29 +1150,36 @@ END SUBROUTINE
     offspring = 0
     tmp_off = 0
     if (.not. allocated(tmp_set)) allocate(tmp_set(2*cmaes_opt%lambda_mo))
-    do i = 1,cmaes_opt%lambda_mo
+    do i = 1,2*cmaes_opt%lambda_mo
     ! reset all election varaibles
-    cmaes_opt%a_k(i)%d_count=0
-    cmaes_opt%a_k(i)%I_dist=0._dp
-    cmaes_opt%a_k(i)%s_i=0
-    cmaes_opt%a_k(i)%s_i_count=0
-    cmaes_opt%a_k(i)%front=0
-    cmaes_opt%a_k_parents(i)%d_count=0
-    cmaes_opt%a_k_parents(i)%I_dist=0._dp
-    cmaes_opt%a_k_parents(i)%s_i=0
-    cmaes_opt%a_k_parents(i)%s_i_count=0
-    cmaes_opt%a_k_parents(i)%front=0
-    tmp_set(i)%p => cmaes_opt%a_k(i)
-    tmp_set(i)%p => cmaes_opt%a_k(i)
-    tmp_set(i+cmaes_opt%lambda_mo)%p => cmaes_opt%a_k_parents(i)
+    cmaes_opt%population(i)%d_count=0
+    cmaes_opt%population(i)%I_dist=0._dp
+    cmaes_opt%population(i)%kernel_dist=0._dp
+    cmaes_opt%population(i)%hypervol=0._dp
+    do j =1,cmaes_opt%lambda_mo;cmaes_opt%population(i)%s_i(j)%p=>null();enddo
+    cmaes_opt%population(i)%s_i_count=0
+    cmaes_opt%population(i)%front=0
+    !----------------------------------------
+    !   if (i .le. cmaes_opt%lambda_mo) then
+    !       tmp_set(i)%p => cmaes_opt%a_k(i)%p
+    !   else
+    !       tmp_set(i)%p => cmaes_opt%a_k_parents(i-cmaes_opt%lambda_mo)%p
+    !   endif
+    tmp_set(i)%p => cmaes_opt%population(i)
+!       print *,'before pareto front',tmp_set(i)%p%id
     enddo
-    !do i = 1,2*cmaes_opt%lambda_mo
-    !    print *,'before',tmp_set(i)%p%f,tmp_set(i)%p%sigma
-    !enddo
-    !print *,'init Q --- fronts and I_dist'
+!    do i = 1,cmaes_opt%lambda_mo
+!       print *,'a_k',cmaes_opt%a_k(i)%p%id,'a_k_parents',cmaes_opt%a_k_parents(i)%p%id
+!    enddo
     !---------find pareto front and add to Q (tmp_set)----------------------------------
     CALL pareto_front(input_set=tmp_set,nondominated_set=new_set)
-    CALL crowding_distance(new_set)
+!    print *,'=========================summary========================='
+!    do i=1,2*cmaes_opt%lambda_mo
+!        print * ,'id',i,'fronts',cmaes_opt%population(i)%front,'s_i_count',cmaes_opt%population(i)%s_i_count
+!        do j = 1,cmaes_opt%population(i)%s_i_count; print *,'s_i',cmaes_opt%population(i)%s_i(j)%p%id; enddo
+!    enddo
+    CALL crowding_distance(new_set,cmaes_opt%fmax,cmaes_opt%fmin)
+    !CALL kernel_distance(new_set,cmaes_opt%error)
           !====ad front to Q
           do i = 1,size(new_set)
              new_set(i)%p%front = 1
@@ -1121,10 +1195,12 @@ END SUBROUTINE
         if (allocated(sel_set)) deallocate(sel_set)
         allocate(sel_set(size(new_set)))
         do i = 1, size(new_set)
-            sel_set(i) = new_set(i)
+            sel_set(i)%p => new_set(i)%p
         enddo
+!        print *,'size',size(tmp_set),size(sel_set)
         CALL new_front(tmp_set,sel_set,new_set)
-        CALL crowding_distance(new_set)
+        CALL crowding_distance(new_set,cmaes_opt%fmax,cmaes_opt%fmin)
+        !CALL kernel_distance(new_set,cmaes_opt%error)
         !print *,'size new set', size(new_set)
         tmp_off = tmp_off + size(new_set)
              do i = 1,size(new_set)
@@ -1138,9 +1214,7 @@ END SUBROUTINE
           !   print *,'offspring',offspring
          !print *,'front',j,'done'
      enddo
-   ! do i=1,cmaes_opt%lambda_mo
-   !     print *,'fronts',cmaes_opt%a_k(i)%front
-   ! enddo
+
     print *,'init_selection done'
     !-------there should be everythin in a_k and a_k_parents
     end subroutine init_selection
@@ -1148,12 +1222,17 @@ END SUBROUTINE
     subroutine selection(cmaes_opt)
     implicit none
     type(cmaes_opt_type),TARGET                               :: cmaes_opt
-    TYPE(individual_type),DIMENSION(:),ALLOCATABLE,TARGET     :: tmp_set 
-    TYPE(individual_type),DIMENSION(:),ALLOCATABLE,TARGET     :: sel_set
+    TYPE(individual_type_p),DIMENSION(:),POINTER              :: tmp_set 
+    TYPE(individual_type_p),DIMENSION(:),POINTER              :: sel_set
+    CHARACTER(len=*), PARAMETER :: routineN = 'paramopt_selection', &
+      routineP = moduleN//':'//routineN
     REAL(kind=dp),DIMENSION(:),ALLOCATABLE                    :: newsort
+    REAL(kind=dp)                                             :: rnum
+    integer                                                   :: irand
+    integer,dimension(:),ALLOCATABLE                          :: tabu_list
     INTEGER,DIMENSION(:),ALLOCATABLE                          :: idxsel 
     integer                                                   :: idx
-    integer                                                   :: i,j,k
+    integer                                                   :: i,j,k,n
     integer                                                   :: fsize
     integer                                                   :: psize
     integer                                                   :: front
@@ -1162,23 +1241,12 @@ END SUBROUTINE
     k=1
     front = 1
     psize = 0
-    do i = 1,cmaes_opt%lambda_mo
-        !---------copy everythin in a_k_temp array-----------------
-        call a_k_copy(cmaes_opt%a_k_temp(i),cmaes_opt%a_k(i))
-        call a_k_copy(cmaes_opt%a_k_temp(i+cmaes_opt%lambda_mo),cmaes_opt%a_k_parents(i))
-     !   print *,'f values for selection',cmaes_opt%a_k_temp(i)%f,cmaes_opt%a_k_temp(i+cmaes_opt%lambda_mo)%f
-    enddo
     allocate(sel_set(cmaes_opt%lambda_mo))
-    do i=1,cmaes_opt%lambda_mo
-        a_k => sel_set(i)
-      CALL a_k_init(a_k,cmaes_opt%n,cmaes_opt%lambda_mo)
-      ALLOCATE(a_k%f(size(cmaes_opt%a_k(1)%f)))
-    enddo
     do while (k .le. cmaes_opt%lambda_mo)
         !-------get front size-------------
         fsize = 0 
         do i=1,2*cmaes_opt%lambda_mo
-          if (front .eq. cmaes_opt%a_k_temp(i)%front) then
+          if (front .eq. cmaes_opt%population(i)%front) then
           fsize = fsize + 1
           endif
         enddo
@@ -1186,64 +1254,116 @@ END SUBROUTINE
         if (fsize+psize .le. cmaes_opt%lambda_mo) then
         ! add all individual from front to Q    
            do i=1,2*cmaes_opt%lambda_mo
-             if (front .eq. cmaes_opt%a_k_temp(i)%front) then
-             call a_k_copy(sel_set(k),cmaes_opt%a_k_temp(i))
-             !sel_set(k) = cmaes_opt%a_k_temp(i)
+             if (front .eq. cmaes_opt%population(i)%front) then
+             sel_set(k)%p => cmaes_opt%population(i)
              k = k + 1
              endif
            enddo
            psize = psize + fsize
         else
+    !----------------------------------------          
           ! check crowding distance and add n best
           allocate(tmp_set(fsize))
-            do i=1,fsize
-              a_k => tmp_set(i)
-              CALL a_k_init(a_k,cmaes_opt%n,cmaes_opt%lambda_mo)
-              !yannick this is hardcoded again
-              ALLOCATE(a_k%f(size(cmaes_opt%a_k(1)%f)))
-            enddo
              !----add to temporary set
              allocate(newsort(fsize))
              allocate(idxsel(fsize))
              j = 1
              do i=1,2*cmaes_opt%lambda_mo
-               if (front .eq. cmaes_opt%a_k_temp(i)%front) then
-               call a_k_copy(tmp_set(j),cmaes_opt%a_k_temp(i))
-               !tmp_set(j) = cmaes_opt%a_k_temp(i)
-               newsort(j) = cmaes_opt%a_k_temp(i)%I_dist
+               if (front .eq. cmaes_opt%population(i)%front) then
+               tmp_set(j)%p => cmaes_opt%population(i)
+               newsort(j) = cmaes_opt%population(i)%I_dist
                j = j + 1
                endif
              enddo
            !----sort according to I_dist-----------
            CALL d_mrgrnk(newsort,idxsel)
            !----add to sel set Q------------
-           !print *,'popsize',psize,'fsize',fsize,'needed',cmaes_opt%lambda_mo-psize
+!                           ! add random points besides borders
+!                           allocate(tabu_list(cmaes_opt%lambda_mo-psize))
+!                           tabu_list = 0
+!                           do j = 1,2 ! add borders
+!                               idx = size(idxsel)+1-j
+!                               tabu_list(j) = idxsel(j)
+!                               sel_set(k)%p => tmp_set(idxsel(j))%p
+!                               k = k + 1
+!                           enddo
+!                        ! add random points
+!                           j = j + 1
+!                           rnum = next_random_number(cmaes_opt%rng_uniform_stream, error=cmaes_opt%error)
+!                           irand=int(rnum*fsize)+1
+!                           do i = 1,cmaes_opt%lambda_mo-psize-2
+!                               do while (any(irand .eq. tabu_list))
+!                               rnum = next_random_number(cmaes_opt%rng_uniform_stream, error=cmaes_opt%error)
+!                               irand=int(rnum*fsize)+1
+!                               enddo
+!                               tabu_list(j) = irand
+!                               j = j + 1
+!                               sel_set(k)%p => tmp_set(irand)%p
+!                               k = k + 1
+!                           enddo
+!                           deallocate(tabu_list,tmp_set)
+           !-------------------------------------------
            do i = 1,cmaes_opt%lambda_mo-psize
                idx = size(idxsel)+1-i
-               !print *,'selected',tmp_set(idxsel(idx))%I_dist
-               call a_k_copy(sel_set(k),tmp_set(idxsel(idx)))
-               !sel_set(k) = tmp_set(idxsel(i))
+               sel_set(k)%p => tmp_set(idxsel(idx))%p
                k = k + 1
            enddo
            psize = psize + i
            deallocate(tmp_set,newsort,idxsel)
+
+    !----------------------------------------          
         endif 
         front = front + 1 
     enddo
-    !print *,'should be the saaaame',cmaes_opt%lambda_mo,k-1,psize-1
-
-    do i=1,cmaes_opt%lambda_mo
-       call a_k_copy(cmaes_opt%a_k_temp(i),sel_set(i))
-       !print *,'selected f',cmaes_opt%a_k_temp(i)%f,cmaes_opt%a_k_temp(i)%s_i
-    enddo
+    !----------------------set new pointers-----------------------
+    k=1
+    n=1
+    population_loop: do i=1,size(cmaes_opt%population_p) !cycle over population
+       sel_set_loop: do j=1,cmaes_opt%lambda_mo 
+         if (associated(cmaes_opt%population_p(i)%p,sel_set(j)%p)) then
+             cmaes_opt%a_k_parents(n)%p => sel_set(j)%p
+             n=n+1
+             cycle population_loop
+         endif
+       enddo sel_set_loop
+       cmaes_opt%a_k(k)%p => cmaes_opt%population_p(i)%p
+       k = k + 1
+    enddo population_loop
+    !----------------------was selection okay?----------------------
+    call cp_assert( k-1 .eq. cmaes_opt%lambda_mo,cp_failure_level,cp_assertion_failed,&
+                       routineP, cp_to_string(k)//" k ne lambda_mo "//&
+                       cp_to_string(cmaes_opt%lambda_mo),cmaes_opt%error)
+    call cp_assert( n-1 .eq. cmaes_opt%lambda_mo,cp_failure_level,cp_assertion_failed,&
+                       routineP, cp_to_string(n)//" n ne lambda_mo "//&
+                       cp_to_string(cmaes_opt%lambda_mo),cmaes_opt%error)
     deallocate(sel_set)
     end subroutine selection
+!===========================================================================
+    subroutine write_x(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),TARGET                               :: cmaes_opt
+    integer                                                   :: i
+    integer                                                   :: unit_number
+           !open(12,position='append')
+           call open_file(file_name="fort.13",unit_number=unit_number, &
+                          file_action='write',file_status='replace')
+           do i = 1,2*cmaes_opt%lambda_mo
+              write(unit_number,*) cmaes_opt%population(i)%f, &
+                          cmaes_opt%population(i)%id, &
+                          cmaes_opt%population(i)%front, &
+                          cmaes_opt%population(i)%I_dist, &
+                          cmaes_opt%population(i)%sigma, &
+                          cmaes_opt%generation, &
+                          cmaes_opt%population(i)%arx(:,1)
+           enddo
+           call close_file(unit_number)
+    end subroutine write_x
 !===========================================================================
     subroutine dominates(a_k,a_k_parents,boolean)
     type(individual_type)                             :: a_k
     type(individual_type)                             :: a_k_parents
     LOGICAL                                           :: boolean
-    IF (a_k%front .le. a_k_parents%front) then
+    IF (a_k%front .lt. a_k_parents%front) then
         boolean = .true. 
     else if (a_k%front .eq. a_k_parents%front) then
             if (a_k%I_dist .lt. a_k_parents%I_dist) then
@@ -1272,7 +1392,8 @@ END SUBROUTINE
     n = cmaes_opt%n
     allocate(tmp(n))
     tmp=0._dp
-    alpha = 1.e-6_dp
+    alpha = 1.e2_dp
+    !alpha = 1.e-6_dp
     !CALL reset_to_next_rng_substream(cmaes_opt%rng_normal_stream, error=error)
     do j=1,a_k%lambda
         do i=1,n; a_k%arz(i,j) = next_random_number(cmaes_opt%rng_normal_stream, error=error); enddo
@@ -1332,7 +1453,8 @@ END SUBROUTINE
 !    END DO
     a_k%tempMat(:,1) = a_k%arz(:,1)
     CALL dgemv('N',n,a_k%mu,1.0d0,a_k%tempMat,n,a_k%weights,1,0.0d0,a_k%zmean,1)
-    end subroutine
+    if (any(a_k%arz(:,1) .ne. a_k%zmean)) stop "shit happends"
+    end subroutine new_mean
 !===========================================================================
     subroutine update_path(a_k)
     implicit none
@@ -1340,7 +1462,7 @@ END SUBROUTINE
     TYPE(cp_error_type),POINTER                               :: error
     INTEGER                                                   :: n,k,i
     n = size(a_k%xmean)
-    CALL dgemv('N',n,n,1.0d0,a_k%B,n,a_k%zmean,1,0.0d0,a_k%multmp_vN,1)
+!    CALL dgemv('N',n,n,1.0d0,a_k%B,n,a_k%zmean,1,0.0d0,a_k%multmp_vN,1)
 !    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
 !                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
                                                                 ! in Hansen:2007
@@ -1352,7 +1474,7 @@ END SUBROUTINE
 !      END IF
        if (a_k%p_succ .lt. a_k%p_tresh) then
        a_k%pc = (1._dp - a_k%cc)*a_k%pc + sqrt(a_k%cc*(2_dp-a_k%cc))* &
-                        (a_k%xmean-a_k%xold) 
+                        (a_k%xmean-a_k%xold)
        else
        a_k%pc = (1._dp - a_k%cc)*a_k%pc
        endif
@@ -1423,17 +1545,12 @@ END SUBROUTINE
          TYPE(individual_type_p),DIMENSION(:)  :: input_set
          TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: nondominated_Set
          TYPE(individual_type),POINTER                    :: a_k,a_k2
-         REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
-         REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: tmp_array
-         INTEGER,DIMENSION(:),ALLOCATABLE            :: idxsel
          INTEGER                                     :: nondominated_size
-         INTEGER                                     :: num_sel,popsize
+         INTEGER                                     :: popsize
          INTEGER                                     :: i,j,k 
-         INTEGER                                     :: j_m,j_p 
          INTEGER                                     :: numrows,numcols
          numrows=size(input_set)
-         !----watch out yannick this is hardcoded!!!!
-         numcols=2 
+         numcols=size(input_set(1)%p%f) 
          
          ! calculate fron with dominated count d_count and sub_set dominated s_i 
          do i =1,numrows 
@@ -1444,12 +1561,11 @@ END SUBROUTINE
                 !----yannick watch out...f now is hardcoded to only have 2 obj!!!!
                 if ((a_k%f(1) .lt. a_k2%f(1)) .and. &
                     (a_k%f(2) .lt. a_k2%f(2)) ) then
-                    a_k%s_i(k) = j
+                    a_k%s_i(k)%p => a_k2
                     a_k%s_i_count = a_k%s_i_count + 1
                     k = k +1
                 else if (a_k%f(1) .gt. a_k2%f(1) .and. &
                          a_k%f(2) .gt. a_k2%f(2) ) then
-
                    a_k%d_count = a_k%d_count + 1
                 endif
             enddo 
@@ -1459,28 +1575,30 @@ END SUBROUTINE
             a_k => input_set(i)%p
             if (a_k%d_count .eq. 0) &
                 nondominated_Size = nondominated_size + 1
+            a_k%front = a_k%d_count + 1
+            if (a_k%s_i_count .gt. numrows) STOP "s_i count not possible"
+            if (a_k%d_count .gt. numrows) STOP "d count not possible"
         enddo
         allocate(nondominated_set(nondominated_size))
-        allocate(idxsel(nondominated_size))
-        allocate(tmp_array(nondominated_size))
-        allocate(newsort(nondominated_size,numcols))
         k=1
         do i =1,numrows
             a_k => input_set(i)%p
             if (a_k%d_count .eq. 0) then 
             nondominated_set(k)%p => a_k             
-            newsort(k,:) = a_k%f
             k = k+1
             endif
+           ! print *,a_k%id,'I am in pareto',a_k%d_count + 1 
+           ! print *,"----------------------------",a_k%s_i_count,a_k%f
+           ! do j=1,a_k%s_i_count; print *,'front set',a_k%s_i(j)%p%id; enddo
         enddo
+        print *,'done with pareto_front'
         END SUBROUTINE pareto_front
 !===========================================================================
-     SUBROUTINE crowding_distance(input_set)
+     SUBROUTINE crowding_distance(input_set,fmax,fmin)
          IMPLICIT NONE
-         TYPE(individual_type_p),DIMENSION(:)  :: input_Set
-!         TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: output_Set
-!         TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: tmp_Set
+         TYPE(individual_type_p),DIMENSION(:)        :: input_Set
          REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
+         REAL(kind=dp),DIMENSION(:),POINTER          :: fmax,fmin
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: maxvals,minvals
          INTEGER,DIMENSION(:),ALLOCATABLE            :: idxsel
          INTEGER                                     :: nondominated_size
@@ -1495,10 +1613,7 @@ END SUBROUTINE
 !         allocate(output_set(sel_target)) 
          allocate(newsort(nondominated_size,numcols))
          allocate(idxsel(nondominated_size))
-         allocate(maxvals(numcols))
-         maxvals(1) = 1._dp
-         maxvals(2) = 300._dp
-     ! crowding-distance-assignment
+         ! crowding-distance-assignment
          do i = 1,nondominated_size
              newsort(i,:) = input_set(i)%p%f(:)
              input_set(i)%p%I_dist = 0._dp
@@ -1506,6 +1621,8 @@ END SUBROUTINE
         
         do k = 1,numcols     ! num objectives 
            CALL d_mrgrnk(newsort(:,numcols),idxsel)
+         !  print *,'this are the best I dist',input_set(idxsel(1))%p%id, &
+         !           input_set(idxsel(nondominated_size))%p%id
            input_set(idxsel(1))%p%I_dist = huge(1._dp) 
            input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
            do i = 2,nondominated_size-1
@@ -1515,7 +1632,7 @@ END SUBROUTINE
                input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
                                 (input_set(j_p)%p%f(numcols)- &
                                  input_set(j_m)%p%f(numcols))/& 
-                                 maxvals(numcols) !---yannick doesnt know what to put here
+                                (fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
                                 !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
            enddo 
         enddo 
@@ -1530,44 +1647,231 @@ END SUBROUTINE
        deallocate(newsort,idxsel) 
        END SUBROUTINE crowding_distance
 !===========================================================================
+     SUBROUTINE kernel_distance(input_set,error)
+         IMPLICIT NONE
+         TYPE(individual_type_p),DIMENSION(:)        :: input_Set
+         CHARACTER(len=*), PARAMETER :: routineN = 'kernel_distance', &
+         routineP = moduleN//':'//routineN
+         REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
+         REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: tmp_array
+         REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: kernel_dens
+         REAL(kind=dp)                               :: h
+         INTEGER,DIMENSION(:),ALLOCATABLE            :: idxsel
+         INTEGER                                     :: nondominated_size
+         INTEGER                                     :: numcols
+         INTEGER                                     :: sel_target
+         INTEGER                                     :: i,j,k,n
+         INTEGER                                     :: j_m,j_p
+         TYPE(cp_error_type),POINTER                 :: error 
+         nondominated_size=size(input_set)
+         !====================precondition===============================================
+         call cp_assert( nondominated_size .ne. 0 ,cp_failure_level,cp_assertion_failed,&
+                       routineP, cp_to_string(nondominated_size)//"front is empty", &
+                       error) 
+         print *,'nondom size',nondominated_size
+         ! this should not be hardcoded
+         numcols=size(input_set(1)%p%f)
+!         if (allocated(output_Set)) deallocate(output_set)
+!         allocate(output_set(sel_target)) 
+         allocate(newsort(nondominated_size,numcols))
+         allocate(idxsel(nondominated_size))
+         allocate(tmp_array(nondominated_size)) 
+         allocate(kernel_dens(nondominated_size))
+         ! crowding-distance-assignment
+         do i = 1,nondominated_size
+             newsort(i,:) = input_set(i)%p%f(:)
+             input_set(i)%p%kernel_dist = 0._dp
+         enddo
+         do k = 1,numcols     ! num objectives 
+            CALL d_mrgrnk(newsort(:,numcols),idxsel)
+            input_set(idxsel(1))%p%kernel_dist = huge(1._dp) 
+            input_set(idxsel(nondominated_size))%p%kernel_dist = huge(1._dp)
+            do n = 1,nondominated_size
+                 tmp_array(n) = newsort(idxsel(nondominated_size-n+1),k)
+            enddo
+                print *,'first',tmp_array
+            call kernel_density(tmp_array,size(tmp_array),tmp_array,size(tmp_array),kernel_dens,h,error)
+                print *,'second',kernel_dens,h 
+            do n = 1,nondominated_size-1
+                input_set(idxsel(nondominated_size-n+1))%p%kernel_dist = input_set(idxsel(nondominated_size-n+1))%p%kernel_dist &
+                 + kernel_dens(n+1)
+            enddo
+         enddo 
+       deallocate(newsort,idxsel,tmp_array,kernel_dens) 
+       END SUBROUTINE kernel_distance
+!===========================================================================
     SUBROUTINE new_front(global_set,input_set,output_set)
        IMPLICIT NONE
-       TYPE(individual_type_p),DIMENSION(:)  :: input_Set
-       TYPE(individual_type_p),DIMENSION(:)  :: global_Set
+       TYPE(individual_type_p),DIMENSION(:)             :: input_Set
+       TYPE(individual_type_p),DIMENSION(:)             :: global_Set
        TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: output_Set
        TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: tmp_Set
        INTEGER                                          :: i,j,k,idx
        INTEGER                                          :: numrows
        TYPE(individual_type),POINTER                    :: a_k,a_k2
-
        allocate(tmp_set(size(global_set)))
        numrows = size(input_set)
-       do i=1,size(global_set)
-           tmp_set(i) = global_set(i)
-       enddo
        if (allocated(output_set)) deallocate(output_set)
-       
+!       do i = 1,numrows
+!            a_k => input_set(i)%p
+!            print *,'all stuff',a_k%id,a_k%s_i_count 
+!            do j=1,a_k%s_i_count; print *,'idx',a_k%s_i(j)%p%id ; enddo
+!       enddo
        k = 1
        do i = 1,numrows
            a_k => input_set(i)%p
- !          print *,a_k%f,a_k%s_i,a_k%s_i_count,a_k%d_count
+           !print *,'new_front',a_k%f,a_k%s_i,a_k%s_i_count,a_k%d_count
            do j = 1,a_k%s_i_count
-               idx = a_k%s_i(j)
-               global_set(idx)%p%d_count = global_set(idx)%p%d_count - 1
-               if (global_set(idx)%p%d_count .eq. 0) then
-                  tmp_set(k)= global_set(idx)
-                  k = k + 1
+               !------ go through subset ------
+               a_k2 => a_k%s_i(j)%p
+               a_k2%d_count = a_k2%d_count - 1
+               if (a_k2%d_count .eq. 0) then
+                   tmp_set(k)%p => a_k2
+                   k = k + 1
                endif
-           enddo
+            !   idx = a_k%s_i(j)
+            !   global_set(idx)%p%d_count = global_set(idx)%p%d_count - 1
+            !   if (global_set(idx)%p%d_count .eq. 0) then
+            !      tmp_set(k)= global_set(idx)
+            !      k = k + 1
+            !   endif
 
+           enddo
        enddo
        allocate(output_set(k-1))
-       do i=1,k-1
-           output_set(i) = tmp_set(i)
+       do i=1,size(output_set)
+           output_set(i)%p => tmp_set(i)%p
        enddo 
 !       print *,size(output_set)
-
+       deallocate(tmp_set)
     END SUBROUTINE
+!========================================================================================================
+      SUBROUTINE kernel_density(X,N,Z,M,F,H,error)             
+               
+!-----------------------------------------------------------------------
+!       Version: 1995
+!       fortran77 
+!                                                                       
+!       Purpose:                                                        
+!                                                                       
+!       Simple  Subroutine for kernel density estimation 
+!       with iterative plug-in bandwidth selection
+!       
+!       This version only uses the gauss kernel and estimates only
+!       the density itself and not its derivatives.
+!                                                                       
+!  INPUT    X(N)   DOUBLE PRECISION   sorted data
+!  INPUT    N      INTEGER            length of  X
+!  INPUT    Z(M)   DOUBLE PRECISION   output grid (sorted)
+!  INPUT    M      INTEGER            length of Z
+!  OUTPUT   F(M)   DOUBLE PRECISION   estimated density
+!  OUTPUT   H      DOUBLE PRECISION   estimated iterative plugin bandwidth
+!                                                                       
+!                                                                       
+!-----------------------------------------------------------------------
+      CHARACTER(len=*), PARAMETER :: routineN = 'kernel_density', &
+         routineP = moduleN//':'//routineN
+      INTEGER                                       :: m,n
+      REAL(kind=dp),DIMENSION(n)                    :: x
+      REAL(kind=dp),DIMENSION(m)                    :: z
+      REAL(kind=dp),DIMENSION(m)                    :: f
+      REAL(kind=dp)                                 :: h
+      REAL(kind=dp)                                 :: xn,xiqr,rt2pi
+      REAL(kind=dp)                                 :: h2,h3,s2,s3,d2,d3,e2,e3,r2
+      REAL(kind=dp)                                 :: rhat2,rhat3,co1,const
+      REAL(kind=dp)                                 :: a,s,t
+      INTEGER                                       :: I,IT,ITER,J,JBEGIN,JEND
+      TYPE(cp_error_type),POINTER                   :: error 
+      !====================precondition===============================================
+      ! array MUST BE SORTED!!!!!!! lowest first!
+      do i = 1,size(x)-1
+      call cp_assert( x(i) .gt. x(i+1) ,cp_failure_level,cp_assertion_failed,&
+                       routineP,"sorting not correct", &
+                       error) 
+      enddo
+      !================================================================================
+      print *,'intial x',x
+      XN=DBLE(N)
+      XIQR=X(NINT(.75*XN))-X(NINT(.25*XN)+1)	
+      RT2PI = DSQRT(2.D0*PI)
+      ITER=5
+!-------  Estimate inflation constant C
+          H2=(.920*XIQR)/(XN**(1.D0/7.D0))
+          H3=(.912*XIQR)/(XN**(1.D0/9.D0))
+          S2 = 0.D0
+          S3 = 0.D0
+          DO 20 I = 1, N-1
+           DO 30 J = I+1, N
+                     D2 = ((X(I) - X(J))/H2)**2
+                     D3 = ((X(I) - X(J))/H3)**2
+                     IF(D2.GT.50.AND.D3.GT.60) GOTO 20
+                     E2 = DEXP(-0.5D0*D2)
+                     E3 = DEXP(-0.5D0*D3)
+                     S2 = S2 + (D2**2 - 6.D0*D2 + 3.D0)*E2
+               S3 = S3 + (D3**3 - 15.D0*D3**2 + 45.D0*D3 - 15.D0)*E3
+30          CONTINUE
+20         CONTINUE
+          RHAT2 = (2.D0*S2)/((XN**2)*(H2**5)*RT2PI)
+          RHAT2 = RHAT2 + 3.D0/(RT2PI*XN*(H2**5))
+          RHAT3 = (-2.D0*S3)/((XN**2)*(H3**7)*RT2PI)
+          RHAT3 = RHAT3 + 15.D0/(RT2PI*XN*(H3**7))
+          CO1 = 1.357D0*(RHAT2/RHAT3)**(1.D0/7.D0)
+!-
+!-------  Compute constant of asymptotic formula
+!-
+       CONST=1.D0/(2.D0*DSQRT(PI))
+       A=1.132795764/RHAT3**(1.D0/7.D0)*XN**(-1.D0/2.D0)
+!-
+!------  Loop over iterations
+!-
+       DO 100 IT=1,ITER
+!-                                                                     
+!-------  Estimate functional
+!
+        S=0.D0                                                    
+        DO 40 I = 1, N-1
+           DO 50 J = I+1, N
+                     D2 = ((X(I) - X(J))/A)**2
+                     IF(D2.GT.50) GOTO 40
+                     E2 = DEXP(-0.5D0*D2)
+                     S = S + (D2**2 - 6.D0*D2 + 3.D0)*E2
+50          CONTINUE
+40       CONTINUE
+        R2 = (2.D0*S)/((XN**2)*(A**5)*RT2PI)
+        R2 = R2 + 3.D0/(RT2PI*XN*(A**5))
+!-                                                                     
+!-------  Estimate bandwidth by asymptotic formula
+!-
+         H=(CONST/(R2*XN))**(.2D0)                                    
+         A=CO1*H**(5./7.)
+100     CONTINUE
+!-
+!------- Estimate density with plugin bandwidth
+!-             
+      JBEGIN=1
+      JEND=1                                             
+      DO 200 I=1,M                                                      
+         S=0.D0    
+         DO 210 J=JBEGIN,JEND
+                T=(Z(I)-X(J))/H
+                IF(T.GT.5.0.AND.JBEGIN.LT.N) THEN
+                   JBEGIN=JBEGIN+1
+                   GOTO 210
+                END IF
+                S=S+DEXP(-T*T/2.)
+210             CONTINUE         
+         DO 220 JEND=J,N
+                T=(Z(I)-X(JEND))/H
+                IF(T.LT.-5.0) GOTO 230
+                S=S+DEXP(-T*T/2.)
+220             CONTINUE
+230         F(I)=S/(XN*H*RT2PI)
+            JEND=JEND-1
+200      CONTINUE   
+
+      print *,'f',f,'h',h                                          
+      RETURN                                                            
+      END SUBROUTINE  kernel_density 
 !========================================================================================================
 	  Subroutine D_mrgrnk (XDONT, IRNGT)
 ! __________________________________________________________
@@ -2123,24 +2427,24 @@ subroutine read4file(n,x,ex)
     select case (i)
     case default
      read(fileid,*) str
-    case (17)
-     read(fileid,*) str,x(k),str2
-     k=k+1
+  !  case (17)
+  !   read(fileid,*) str,x(k),str2
+  !   k=k+1
     case (19:20)        
      read(fileid,*) str,x(k),str2
      k=k+1
      
-    case (25)
-     read(fileid,*) str,str3,x(k),str2
-     k=k+1
+  !  case (25)
+  !   read(fileid,*) str,str3,x(k),str2
+  !   k=k+1
 
     case (28:30)
      read(fileid,*) str,x(k),str2
      k=k+1
 
-    case (36)
-     read(fileid,*) str,x(k),str2
-     k=k+1
+  !  case (36)
+  !   read(fileid,*) str,x(k),str2
+  !   k=k+1
 
     case (38:39)
      read(fileid,*) str,x(k),str2
@@ -2150,9 +2454,9 @@ subroutine read4file(n,x,ex)
      read(fileid,*) str,x(k),str2
      k=k+1
 
-    case (50:51) 
-     read(fileid,*) str,str3,x(k),str2
-     k=k+1 
+  !  case (50:51) 
+  !   read(fileid,*) str,str3,x(k),str2
+  !   k=k+1 
     
     case (54:56) 
      read(fileid,*) str,x(k),str2
@@ -2193,19 +2497,19 @@ subroutine para2file(n,x,inputstr,outputstr)
      read(fileid,'(A)') line
 !     str=adjustl(trim(str))
      write(fileid2,'(A)') line
-    case (17)
-     read(fileid,*) str,dummy,str2
-     str=adjustl(trim(str))
-!     str2=adjustl(trim(str2))
-     str2="</Charge_width>"
-     write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
-     k=k+1
-    case (19:20)        
-     read(fileid,'(A,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))d
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A)') str,x(k),str2
-     k=k+1
+  !  case (17)
+  !   read(fileid,*) str,dummy,str2
+  !   str=adjustl(trim(str))
+! !    str2=adjustl(trim(str2))
+  !   str2="</Charge_width>"
+  !   write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
+  !   k=k+1
+   ! case (19:20)        
+   !  read(fileid,'(A,F13.7,A)') str,dummy,str2
+!  !   str=adjustl(trim(str))d
+   !  str2=adjustl(trim(str2))
+   !  write(fileid2,'(A,F13.7,A)') str,x(k),str2
+   !  k=k+1
     case (25)
      read(fileid,*) str,str3,dummy,str2
      str=adjustl(trim(str))
@@ -2220,13 +2524,13 @@ subroutine para2file(n,x,inputstr,outputstr)
      str2=adjustl(trim(str2))
      write(fileid2,'(A,F13.7,X,A)') str,x(k),str2
         k=k+1
-    case (36)
-     read(fileid,*) str,dummy,str2
-     str=adjustl(trim(str))
-!     str2=adjustl(trim(str2))
-     str2="</Charge_width>"
-     write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
-        k=k+1
+ !   case (36)
+ !    read(fileid,*) str,dummy,str2
+ !    str=adjustl(trim(str))
+!!     str2=adjustl(trim(str2))
+ !    str2="</Charge_width>"
+ !    write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
+ !       k=k+1
     case (38:39) 
      read(fileid,'(A,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
@@ -2239,14 +2543,14 @@ subroutine para2file(n,x,inputstr,outputstr)
      str2=adjustl(trim(str2))
      write(fileid2,'(A,F13.7,A)') str,x(k),str2
         k=k+1
-    case (50:51) 
-     read(fileid,*) str,str3,dummy,str2
-!     str=adjustl(trim(str))
-     str3=adjustl(trim(str3))
-!     str2=adjustl(trim(str2))
-     str2="</ETA>"
-     write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
-        k=k+1
+  !  case (50:51) 
+  !   read(fileid,*) str,str3,dummy,str2
+! !    str=adjustl(trim(str))
+  !   str3=adjustl(trim(str3))
+! !    str2=adjustl(trim(str2))
+  !   str2="</ETA>"
+  !   write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
+  !      k=k+1
     case (54:56) 
      read(fileid,'(A16,F13.7,A)') str,dummy,str2
 !     str=adjustl(trim(str))
@@ -2611,5 +2915,13 @@ end subroutine
       endif
     endif
 END SUBROUTINE
+FUNCTION Variance (Array)
+IMPLICIT NONE
+REAL(kind=dp)::Variance,X
+REAL(kind=dp),INTENT(IN),DIMENSION(:)::Array
+X = SUM(Array)/SIZE(Array)
+Variance = SUM((Array-X)**2)/SIZE(Array)
+END FUNCTION Variance
+
 END MODULE paramopt_master
 
