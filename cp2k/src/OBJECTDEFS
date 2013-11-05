@@ -68,6 +68,9 @@ OBJECTS_GENERIC =\
  cg_optimizer.o\
  cg_test.o\
  cg_utils.o\
+ cma_es.o\
+ cma_es_types.o\
+ cma_es_utils.o\
  c_mpi_calls.o\
  colvar_methods.o\
  colvar_types.o\
