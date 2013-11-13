@@ -870,6 +870,11 @@ CPSourceFileRef,&
 
     ! SCP-TB code
     IF (qs_control%scptb) THEN
+       CALL section_vals_val_get(scptb_section,"OPTIM_VARS" ,explicit=explicit,error=error)
+       IF(explicit) THEN
+            CALL section_vals_val_get(scptb_section,"OPTIM_VARS",&
+            r_vals=qs_control%scptb_control%optim_vars,error=error)
+       ENDIF
        CALL section_vals_val_get(scptb_section,"DISPERSION",&
             l_val=qs_control%scptb_control%dispersion,error=error)
        CALL section_vals_val_get(scptb_section,"PARAMETER_FILE_NAME",&

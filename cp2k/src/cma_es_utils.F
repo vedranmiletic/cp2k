@@ -16,7 +16,7 @@ MODULE cma_es_utils
     private 
     
     CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cma_es_utils'
-    public :: mrgrnk,tool_symmatrix,tool_eigendecomp,a_k_copy
+    public :: mrgrnk,tool_symmatrix,tool_eigendecomp,a_k_copy !,a_k_init
 !	  private :: R_mrgrnk, I_mrgrnk, D_mrgrnk
       interface mrgrnk
          module procedure D_mrgrnk, R_mrgrnk, I_mrgrnk

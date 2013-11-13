@@ -88,5 +88,3 @@ MODULE cma_es_types
 !================================================================================
  PUBLIC :: cmaes_opt_type,individual_type,individual_type_p 
 END MODULE cma_es_types 
-
-

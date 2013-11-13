@@ -146,6 +146,170 @@ MODULE cma_es
      
      END SUBROUTINE
 !===========================================================================
+    subroutine new_mean(a_k)
+    implicit none
+    type(individual_type),POINTER                             :: a_k
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+!-------------selection and recombination (calc new xmean)---------------------------------
+    n = size(a_k%xmean)
+    a_k%xold = a_k%xmean
+!    DO i = 1, a_k%mu   ! Extract mu best columns of arx and save it to tempMat
+!        a_k%tempMat(:,i) = a_k%arx(:,a_k%idxsel(i))
+!    END DO
+    !-------(1+1) selection-------------
+    a_k%tempMat(:,1) = a_k%arx(:,1)
+    CALL dgemv('N',n,a_k%mu,1.0d0,a_k%tempMat,n,a_k%weights,1,0.0d0,a_k%xmean,1)
+    ! update x to the best individual in population
+    !x = a_k%tempMat(:,1)
+    !print *,'this is new mean'
+    !print *,'=================================================================='
+    !print *,cmaes_opt%xmean
+    !print *,'x matrix'
+    !print *,cmaes_opt%tempMat
+    !print *,'-------------------------------------'
+    ! do same for zmean/arz
+!    DO i = 1, a_k%mu   ! Extract mu best columns of arx and save it to tempMat
+!        a_k%tempMat(:,i) = a_k%arz(:,a_k%idxsel(i))
+!    END DO
+    a_k%tempMat(:,1) = a_k%arz(:,1)
+    CALL dgemv('N',n,a_k%mu,1.0d0,a_k%tempMat,n,a_k%weights,1,0.0d0,a_k%zmean,1)
+    if (any(a_k%arz(:,1) .ne. a_k%zmean)) stop "shit happends"
+    end subroutine new_mean
+!===========================================================================
+    subroutine update_path(a_k)
+    implicit none
+    type(individual_type),POINTER                             :: a_k
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    n = size(a_k%xmean)
+!    CALL dgemv('N',n,n,1.0d0,a_k%B,n,a_k%zmean,1,0.0d0,a_k%multmp_vN,1)
+!    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
+!                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
+                                                                ! in Hansen:2007
+!      IF(sqrt(sum(cmaes_opt%ps**2))/sqrt(1._dp-(1.-cmaes_opt%cs)**(2._dp*real((countIter-lastRestart))))/chiN < &
+!        1.4_MK + 2._MK/real(input%N+1)) THEN
+!        cmaes_opt%hsig = 1._dp
+!      ELSE
+!        hsig = 0._MK
+!      END IF
+       if (a_k%p_succ .lt. a_k%p_tresh) then
+       a_k%pc = (1._dp - a_k%cc)*a_k%pc + sqrt(a_k%cc*(2_dp-a_k%cc))* &
+                        (a_k%xmean-a_k%xold)
+       else
+       a_k%pc = (1._dp - a_k%cc)*a_k%pc
+       endif
+                                   
+!       cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
+!                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
+!                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
+    end subroutine 
+!===========================================================================
+    subroutine update_stepsize(p_succ,a_k)
+    implicit none
+    type(individual_type),POINTER                             :: a_k
+    REAL(kind=dp)                                             :: p_succ
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    
+    a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ + a_k%cp*p_succ 
+    a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
+                         (a_k%damps*(1._dp-a_k%p_target)))
+!    cmaes_opt%sigma =  cmaes_opt%sigma*exp((sqrt(sum(cmaes_opt%ps**2))/ &
+!                         cmaes_opt%chiN-1._dp)*cmaes_opt%cs/cmaes_opt%damps)    ! Eq.41 
+
+    end subroutine
+!===========================================================================
+    subroutine adapt_cov(a_k)
+    implicit none
+    type(individual_type),POINTER                             :: a_k
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i
+    n = size(a_k%xmean)
+      DO i = 1,n 
+        a_k%colVec(i,1) = a_k%pc(i)
+        a_k%rowVec(1,i) = a_k%pc(i)
+      END DO
+      a_k%weightsMat = 0.
+      DO i = 1, a_k%mu
+          a_k%tempMat(:,i) = a_k%xold(:)
+          a_k%weightsMat(i,i) = a_k%weights(i)
+      END DO   
+      !a_k%mutmp = (a_k%arx(:,int(a_k%idxsel(1:a_k%mu))) - a_k%tempMat) 
+      a_k%mutmp = (a_k%arx - a_k%tempMat) 
+      CALL dgemm('N','T',n,n,1,1.0d0,a_k%colVec,n,a_k%rowVec,n,0.0d0,a_k%multmp_mN,n) 
+      CALL dgemm('N','T',a_k%mu,n,a_k%mu,1.0d0,a_k%weightsMat, &
+                 a_k%mu,a_k%mutmp,n,0.0d0,a_k%multmp_mMU,a_k%mu)
+      CALL dgemm('N','N',n,n,a_k%mu,1.0d0,a_k%mutmp,n,&
+                 a_k%multmp_mMU,a_k%mu,0.0d0,a_k%multmp_mN2,n)
+!      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
+!                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
+!                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
+!                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
+!                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
+      if (a_k%p_succ .lt. a_k%p_tresh) then
+      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
+                   + a_k%ccov*(a_k%multmp_mN) ! plus rank one update
+      else
+      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
+                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
+                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
+      endif
+    end subroutine
+!===========================================================================
+    SUBROUTINE pareto_front(input_set,nondominated_set)
+         IMPLICIT NONE
+         TYPE(individual_type_p),DIMENSION(:)  :: input_set
+         TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: nondominated_Set
+         TYPE(individual_type),POINTER                    :: a_k,a_k2
+         INTEGER                                     :: nondominated_size
+         INTEGER                                     :: popsize
+         INTEGER                                     :: i,j,k 
+         INTEGER                                     :: numrows,numcols
+         numrows=size(input_set)
+         numcols=size(input_set(1)%p%f) 
+         ! calculate fron with dominated count d_count and sub_set dominated s_i 
+         do i =1,numrows 
+            a_k => input_set(i)%p
+            k = 1
+            do j = 1,numrows
+                a_k2 => input_set(j)%p
+                !----yannick watch out...f now is hardcoded to only have 2 obj!!!!
+                if ((a_k%f(1) .lt. a_k2%f(1)) .and. &
+                    (a_k%f(2) .lt. a_k2%f(2)) ) then
+                    a_k%s_i(k)%p => a_k2
+                    a_k%s_i_count = a_k%s_i_count + 1
+                    k = k +1
+                else if (a_k%f(1) .gt. a_k2%f(1) .and. &
+                         a_k%f(2) .gt. a_k2%f(2) ) then
+                   a_k%d_count = a_k%d_count + 1
+                endif
+            enddo 
+         enddo
+         nondominated_size = 0
+         do i =1,numrows
+            a_k => input_set(i)%p
+            if (a_k%d_count .eq. 0) &
+                nondominated_Size = nondominated_size + 1
+            a_k%front = a_k%d_count + 1
+            if (a_k%s_i_count .gt. numrows) STOP "s_i count not possible"
+            if (a_k%d_count .gt. numrows) STOP "d count not possible"
+        enddo
+        allocate(nondominated_set(nondominated_size))
+        k=1
+        do i =1,numrows
+            a_k => input_set(i)%p
+            if (a_k%d_count .eq. 0) then 
+            nondominated_set(k)%p => a_k             
+            k = k+1
+            endif
+           ! print *,a_k%id,'I am in pareto',a_k%d_count + 1 
+           ! print *,"----------------------------",a_k%s_i_count,a_k%f
+           ! do j=1,a_k%s_i_count; print *,'front set',a_k%s_i(j)%p%id; enddo
+        enddo
+        print *,'done with pareto_front'
+        END SUBROUTINE pareto_front
+!===========================================================================
     subroutine init_selection(cmaes_opt)
     implicit none
     type(cmaes_opt_type),TARGET                          :: cmaes_opt
@@ -418,171 +582,6 @@ MODULE cma_es
     a_k%penalty = alpha*norm2(tmp)**2
     deallocate(tmp)
     end subroutine
-!===========================================================================
-    subroutine new_mean(a_k)
-    implicit none
-    type(individual_type),POINTER                             :: a_k
-    TYPE(cp_error_type),POINTER                               :: error
-    INTEGER                                                   :: n,k,i
-!-------------selection and recombination (calc new xmean)---------------------------------
-    n = size(a_k%xmean)
-    a_k%xold = a_k%xmean
-!    DO i = 1, a_k%mu   ! Extract mu best columns of arx and save it to tempMat
-!        a_k%tempMat(:,i) = a_k%arx(:,a_k%idxsel(i))
-!    END DO
-    !-------(1+1) selection-------------
-    a_k%tempMat(:,1) = a_k%arx(:,1)
-    CALL dgemv('N',n,a_k%mu,1.0d0,a_k%tempMat,n,a_k%weights,1,0.0d0,a_k%xmean,1)
-    ! update x to the best individual in population
-    !x = a_k%tempMat(:,1)
-    !print *,'this is new mean'
-    !print *,'=================================================================='
-    !print *,cmaes_opt%xmean
-    !print *,'x matrix'
-    !print *,cmaes_opt%tempMat
-    !print *,'-------------------------------------'
-    ! do same for zmean/arz
-!    DO i = 1, a_k%mu   ! Extract mu best columns of arx and save it to tempMat
-!        a_k%tempMat(:,i) = a_k%arz(:,a_k%idxsel(i))
-!    END DO
-    a_k%tempMat(:,1) = a_k%arz(:,1)
-    CALL dgemv('N',n,a_k%mu,1.0d0,a_k%tempMat,n,a_k%weights,1,0.0d0,a_k%zmean,1)
-    if (any(a_k%arz(:,1) .ne. a_k%zmean)) stop "shit happends"
-    end subroutine new_mean
-!===========================================================================
-    subroutine update_path(a_k)
-    implicit none
-    type(individual_type),POINTER                             :: a_k
-    TYPE(cp_error_type),POINTER                               :: error
-    INTEGER                                                   :: n,k,i
-    n = size(a_k%xmean)
-!    CALL dgemv('N',n,n,1.0d0,a_k%B,n,a_k%zmean,1,0.0d0,a_k%multmp_vN,1)
-!    cmaes_opt%ps = (1._dp-cmaes_opt%cs)*cmaes_opt%ps + (sqrt(cmaes_opt%cs*(2._dp-cmaes_opt%cs)* &
-!                    cmaes_opt%mueff)) * cmaes_opt%multmp_vN     ! Eq.40 
-                                                                ! in Hansen:2007
-!      IF(sqrt(sum(cmaes_opt%ps**2))/sqrt(1._dp-(1.-cmaes_opt%cs)**(2._dp*real((countIter-lastRestart))))/chiN < &
-!        1.4_MK + 2._MK/real(input%N+1)) THEN
-!        cmaes_opt%hsig = 1._dp
-!      ELSE
-!        hsig = 0._MK
-!      END IF
-       if (a_k%p_succ .lt. a_k%p_tresh) then
-       a_k%pc = (1._dp - a_k%cc)*a_k%pc + sqrt(a_k%cc*(2_dp-a_k%cc))* &
-                        (a_k%xmean-a_k%xold)
-       else
-       a_k%pc = (1._dp - a_k%cc)*a_k%pc
-       endif
-                                   
-!       cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
-!                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
-!                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
-    end subroutine 
-!===========================================================================
-    subroutine update_stepsize(p_succ,a_k)
-    implicit none
-    type(individual_type),POINTER                             :: a_k
-    REAL(kind=dp)                                             :: p_succ
-    TYPE(cp_error_type),POINTER                               :: error
-    INTEGER                                                   :: n,k,i
-    
-    a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ + a_k%cp*p_succ 
-    a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
-                         (a_k%damps*(1._dp-a_k%p_target)))
-!    cmaes_opt%sigma =  cmaes_opt%sigma*exp((sqrt(sum(cmaes_opt%ps**2))/ &
-!                         cmaes_opt%chiN-1._dp)*cmaes_opt%cs/cmaes_opt%damps)    ! Eq.41 
-
-    end subroutine
-!===========================================================================
-    subroutine adapt_cov(a_k)
-    implicit none
-    type(individual_type),POINTER                             :: a_k
-    TYPE(cp_error_type),POINTER                               :: error
-    INTEGER                                                   :: n,k,i
-    n = size(a_k%xmean)
-      DO i = 1,n 
-        a_k%colVec(i,1) = a_k%pc(i)
-        a_k%rowVec(1,i) = a_k%pc(i)
-      END DO
-      a_k%weightsMat = 0.
-      DO i = 1, a_k%mu
-          a_k%tempMat(:,i) = a_k%xold(:)
-          a_k%weightsMat(i,i) = a_k%weights(i)
-      END DO   
-      !a_k%mutmp = (a_k%arx(:,int(a_k%idxsel(1:a_k%mu))) - a_k%tempMat) 
-      a_k%mutmp = (a_k%arx - a_k%tempMat) 
-      CALL dgemm('N','T',n,n,1,1.0d0,a_k%colVec,n,a_k%rowVec,n,0.0d0,a_k%multmp_mN,n) 
-      CALL dgemm('N','T',a_k%mu,n,a_k%mu,1.0d0,a_k%weightsMat, &
-                 a_k%mu,a_k%mutmp,n,0.0d0,a_k%multmp_mMU,a_k%mu)
-      CALL dgemm('N','N',n,n,a_k%mu,1.0d0,a_k%mutmp,n,&
-                 a_k%multmp_mMU,a_k%mu,0.0d0,a_k%multmp_mN2,n)
-!      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
-!                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
-!                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
-!                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
-!                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
-      if (a_k%p_succ .lt. a_k%p_tresh) then
-      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
-                   + a_k%ccov*(a_k%multmp_mN) ! plus rank one update
-      else
-      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
-                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
-                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
-      endif
-    end subroutine
-!===========================================================================
-    SUBROUTINE pareto_front(input_set,nondominated_set)
-         IMPLICIT NONE
-         TYPE(individual_type_p),DIMENSION(:)  :: input_set
-         TYPE(individual_type_p),DIMENSION(:),ALLOCATABLE :: nondominated_Set
-         TYPE(individual_type),POINTER                    :: a_k,a_k2
-         INTEGER                                     :: nondominated_size
-         INTEGER                                     :: popsize
-         INTEGER                                     :: i,j,k 
-         INTEGER                                     :: numrows,numcols
-         numrows=size(input_set)
-         numcols=size(input_set(1)%p%f) 
-         ! calculate fron with dominated count d_count and sub_set dominated s_i 
-         do i =1,numrows 
-            a_k => input_set(i)%p
-            k = 1
-            do j = 1,numrows
-                a_k2 => input_set(j)%p
-                !----yannick watch out...f now is hardcoded to only have 2 obj!!!!
-                if ((a_k%f(1) .lt. a_k2%f(1)) .and. &
-                    (a_k%f(2) .lt. a_k2%f(2)) ) then
-                    a_k%s_i(k)%p => a_k2
-                    a_k%s_i_count = a_k%s_i_count + 1
-                    k = k +1
-                else if (a_k%f(1) .gt. a_k2%f(1) .and. &
-                         a_k%f(2) .gt. a_k2%f(2) ) then
-                   a_k%d_count = a_k%d_count + 1
-                endif
-            enddo 
-         enddo
-         nondominated_size = 0
-         do i =1,numrows
-            a_k => input_set(i)%p
-            if (a_k%d_count .eq. 0) &
-                nondominated_Size = nondominated_size + 1
-            a_k%front = a_k%d_count + 1
-            if (a_k%s_i_count .gt. numrows) STOP "s_i count not possible"
-            if (a_k%d_count .gt. numrows) STOP "d count not possible"
-        enddo
-        allocate(nondominated_set(nondominated_size))
-        k=1
-        do i =1,numrows
-            a_k => input_set(i)%p
-            if (a_k%d_count .eq. 0) then 
-            nondominated_set(k)%p => a_k             
-            k = k+1
-            endif
-           ! print *,a_k%id,'I am in pareto',a_k%d_count + 1 
-           ! print *,"----------------------------",a_k%s_i_count,a_k%f
-           ! do j=1,a_k%s_i_count; print *,'front set',a_k%s_i(j)%p%id; enddo
-        enddo
-        print *,'done with pareto_front'
-        END SUBROUTINE pareto_front
-!===========================================================================
      SUBROUTINE crowding_distance(input_set,fmax,fmin)
          IMPLICIT NONE
          TYPE(individual_type_p),DIMENSION(:)        :: input_Set

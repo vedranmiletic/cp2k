@@ -13,6 +13,7 @@ MODULE paramopt_master
   USE cp_files,                        ONLY: open_file,&
                                              close_file
   USE cma_es,                          ONLY: cmaes,gen_pop
+!  USE cma_es_utils,                    ONLY: a_k_init
   USE cma_es_types,                    ONLY: individual_type, &
                                              individual_type_p, &
                                              cmaes_opt_type
@@ -107,10 +108,10 @@ MODULE paramopt_master
    CHARACTER(len=default_string_length),POINTER          :: input_files(:)
    CHARACTER(len=default_string_length),POINTER          :: coord_files(:)
    INTEGER,POINTER                                       :: charges(:)
-   REAL(KIND=dp),ALLOCATABLE                             :: Epot(:),timings(:)
-   REAL(KIND=dp),POINTER                                 :: res(:)
+   REAL(KIND=dp),ALLOCATABLE                             :: Epot(:,:),timings(:)
    REAL(KIND=dp),POINTER                                 :: E_res(:)
-   REAL(KIND=dp),POINTER                                 :: rmsd(:)
+   REAL(KIND=dp),POINTER                                 :: res(:)
+   REAL(KIND=dp),POINTER                                 :: rmsd(:,:)
    REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
    REAL(KIND=dp),POINTER                                 :: obj_f(:)
    REAL(KIND=dp),POINTER                                 :: grad_obj_f(:)
@@ -207,10 +208,10 @@ MODULE paramopt_master
     this%num_obj = 2
     this%multi_obj = .true.
     !-------------------
-    this%num_inp = 31
+    this%num_inp = 30
     if (this%benchmark) this%num_inp = 2 !is basically the number of objectives
     !-------------------
-    this%num_calc = 31
+    this%num_calc = 30
     !--------------------
     this%num_ref = 30
     !-------------------
@@ -227,9 +228,10 @@ MODULE paramopt_master
             this%lbfgs_opt,this%cmaes_opt)
     !-------------------
     allocate(this%E_res(this%num_para_set))
-    allocate(this%rmsd(this%num_para_set))
+    allocate(this%rmsd(this%num_ref,this%num_para_set))
+    allocate(this%Epot(this%num_ref,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
-    allocate(this%Epot(this%num_ref))
+    allocate(this%res(this%num_ref))
 
     allocate(this%x(this%num_var))
     allocate(this%eps(this%num_var))
@@ -418,7 +420,7 @@ MODULE paramopt_master
       allocate(this%cmaes_opt%insigma(this%num_var))
       !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
       this%cmaes_opt%insigma = 0.5_dp*(this%u_bound-this%l_bound)
-      this%step_size = maxval(this%cmaes_opt%insigma)/3_dp
+      this%step_size = maxval(this%cmaes_opt%insigma)
       print *,'this is insigma',this%cmaes_opt%insigma
       print *,'this is step_size',this%step_size
       this%cmaes_opt%error => this%error
@@ -474,7 +476,7 @@ MODULE paramopt_master
                           file_action='read')
     DO i=1,this%num_ref !-5
           !-----watch out num_inp 30 or 35 !!
-          READ(88,*) str,charge
+          READ(unit_number,*) str,charge
           this%charges(i) = charge
           this%input_files(i)= TRIM(str) // ".inp"
           this%coord_files(i)= "WATER27structures/" // trim(str) // ".xyz"
@@ -484,16 +486,16 @@ MODULE paramopt_master
 !    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
 !    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
 !    this%input_files(this%num_inp-1) = 'dipole.inp'
-    this%input_files(this%num_ref+1) = 'geo_opt.inp' 
-    this%charges(this%num_ref+1) = 0
-    this%coord_files(this%num_ref+1) = "WATER27structures/H2O.xyz" 
+!    this%input_files(this%num_ref+1) = 'geo_opt.inp' 
+!    this%charges(this%num_ref+1) = 0
+!    this%coord_files(this%num_ref+1) = "WATER27structures/H2O.xyz" 
     !---------------------
     call open_file(file_name='WATER27.dat',unit_number=unit_number, &
                           file_action='read')
       ! only the first 30 mol have ref data...so 35 - 5 ;/
       do i=1,this%num_ref !-5
           !---watch out num_inp 30 or 35 !!!!!
-          read(99,*) this%ener_ref(i)%id, &
+          read(unit_number,*) this%ener_ref(i)%id, &
           this%ener_ref(i)%mol, &
           this%ener_ref(i)%mol_ref1, &
           this%ener_ref(i)%mol_ref2, &
@@ -513,7 +515,7 @@ MODULE paramopt_master
     !------------------------
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init done"
  END SUBROUTINE paramopt_master_init
-
+!=============================================================================
  SUBROUTINE a_k_init(a_k,lambda_mo,num_obj,step_size,insigma,this,x)
     IMPLICIT NONE
     TYPE(paramopt_master_type)               :: this
@@ -607,7 +609,8 @@ MODULE paramopt_master
          !                           real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
              !----------------------default for (1+lambda) strategy----------------------------------
              a_k%damps = 1._dp + real(n)/(2._dp*a_k%lambda)
-             a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda))/2._dp)
+             a_k%damps = 1._dp  
+             a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda)/2._dp))
              a_k%cp = a_k%p_target*a_k%lambda/ &
                   (2._dp+a_k%p_target*a_k%lambda)
              a_k%cc = 2._dp/(real(n) + 2._dp)
@@ -630,6 +633,8 @@ MODULE paramopt_master
              a_k%kernel_dist = 0._dp
              a_k%hypervol = 0._dp
  END SUBROUTINE
+
+
 ! *****************************************************************************
  SUBROUTINE paramopt_master_steer(this, report, cmd, should_stop)
     TYPE(paramopt_master_type)               :: this
@@ -651,7 +656,6 @@ MODULE paramopt_master
     r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
     CALL swarm_message_get(report, "status",report_status)
-    
     IF (report_status == "ene_calc") THEN
     !---------we got a new message, deal with it :)---------------
     CALL swarm_message_get(report, "num_inp", i_inp)
@@ -664,15 +668,15 @@ MODULE paramopt_master
        !------------deal with condition---------------------------
        this%i_recv(j) = this%i_recv(j) + 1
        !---------------print------------------------------------
-!         IF(this%iw>0) THEN
-!            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-!                   " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
-!            WRITE (this%iw,'(A,20X,E15.8)')&
-!                   " PRMOPT| Reported potential Energy [Hartree] ", this%Epot(i_inp)
-!         END IF
-!       print *,'receved',i,j,this%function_matrix(i,j)-this%function_matrix(i,1),this%function_matrix(i,j)
-!       print *,'wid',report_worker_id
-!       print *,trim(this%input_files(i))
+   !      IF(this%iw>0) THEN
+   !         WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+   !                " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
+   !         WRITE (this%iw,'(A,20X,E15.8)')&
+   !                " PRMOPT| Reported potential Energy [Hartree] ", this%function_matrix(i,j)
+   !         END IF
+   !    print *,'receved',i,j,this%function_matrix(i,j)-this%function_matrix(i,1),this%function_matrix(i,j)
+   !    print *,'wid',report_worker_id
+   !    print *,trim(this%input_files(i))
     ELSE IF (report_status == 'rmsd_calc') THEN
     !---------we got a new message, deal with it :)---------------
     CALL swarm_message_get(report, "num_inp", i_inp)
@@ -682,20 +686,20 @@ MODULE paramopt_master
          j = mod(r_iter,this%num_para_set) + 1
          i = ceiling(real(r_iter)/real(this%num_para_set)) 
     
-       CALL swarm_message_get(report, "rmsd", this%rmsd(j))
-       this%function_matrix(i,j) = this%rmsd(j)
+       CALL swarm_message_get(report, "rmsd", this%rmsd(i,j))
+       CALL swarm_message_get(report, "Epot", this%Epot(i,j))
+       !this%function_matrix(i,j) = this%rmsd(j)
        !------------change status---------------------------------
        report_status = "wait_done"
        !------------deal with condition---------------------------
        this%i_recv(j) = this%i_recv(j) + 1
        !---------------print------------------------------------
-!         IF(this%iw>0) THEN
-!            WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-!                   " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
-!            WRITE (this%iw,'(A,20X,E15.8)')&
-!                   " PRMOPT| Reported rmsd ", this%rmsd
-!         END IF
-!      print *,'receved',i,j,this%rmsd
+    !     IF(this%iw>0) THEN
+    !        WRITE (this%iw,'(A,20X,I8,I8,I8)')&
+    !               " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
+    !        WRITE (this%iw,'(A,20X,E15.8)')&
+    !               " PRMOPT| Reported rmsd ", this%rmsd(i,j)
+    !     END IF
     ELSE IF (report_status == "bench_calc") THEN
       CALL swarm_message_get(report, "num_inp", i_inp)
       CALL swarm_message_get(report, "iter", r_iter)
@@ -709,7 +713,8 @@ MODULE paramopt_master
        report_status = "wait_done"
        !------------deal with condition---------------------------
        this%i_recv(j) = this%i_recv(j) + 1
-
+    ELSE
+        ! error
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
@@ -720,9 +725,9 @@ MODULE paramopt_master
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
+             call calc_obj_f(this, this%Epot(:,j), this%E_res(j))
              a_k%f(1) = this%E_res(j) + a_k%penalty
-             a_k%f(2) = this%function_matrix(this%num_inp,j) + a_k%penalty
+             a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
              else
              !-----------------for the rest???--------------------------------
              call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
@@ -831,11 +836,12 @@ MODULE paramopt_master
          a_k => this%cmaes_opt%a_k(j)%p
          this%x_temp = this%x
          if (.not. this%benchmark) then
-            if (i .lt. this%num_inp) then
-               CALL swarm_message_add(cmd, "command", "energy")
-            else if (i .eq. this%num_inp) then
-               CALL swarm_message_add(cmd, "command", "geo_opt")
-            endif
+         !   if (i .lt. this%num_inp) then
+         !      CALL swarm_message_add(cmd, "command", "energy")
+         !   else if (i .eq. this%num_inp) then
+         !      CALL swarm_message_add(cmd, "command", "geo_opt")
+         !   endif
+            CALL swarm_message_add(cmd, "command", "geo_opt")
             CALL swarm_message_add(cmd, "input", this%input_files(i))
             CALL swarm_message_add(cmd, "coord", this%coord_files(i))
             CALL swarm_message_add(cmd, "charge", this%charges(i))

@@ -2789,6 +2789,12 @@ CONTAINS
             error=error)
 
        NULLIFY(keyword)
+       CALL keyword_create(keyword, name="OPTIM_VARS",&
+            description="blabla TODO",&
+            n_var=-1,type_of_var=real_t,required=.FALSE.,error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
        CALL keyword_create(keyword,name="PARAMETER_FILE_NAME",&
             description="Specify file that contains the atomic parameters",&
             usage="PARAMETER_FILE_NAME filename",&

@@ -34,7 +34,7 @@ MODULE scptb_parameters
 
   INTEGER, PARAMETER, PRIVATE :: nelem = 106
 
-  PUBLIC :: scptb_default_parameter
+  PUBLIC :: scptb_default_parameter,scptb_set_optim_parameter
 
 CONTAINS
 
@@ -255,6 +255,74 @@ CONTAINS
     END IF
 
   END SUBROUTINE scptb_default_parameter
+! *****************************************************************************
+!> \brief Default parameter sets for SCPTB method
+! *****************************************************************************
+  SUBROUTINE scptb_set_optim_parameter ( param, x, error)
+    TYPE(scptb_parameter_type), &
+      INTENT(INOUT)                          :: param
+    TYPE(cp_error_type), INTENT(inout)       :: error
 
+    CHARACTER(len=*), PARAMETER :: routineN = 'scptb_default_parameter', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: i, l
+    LOGICAL                                  :: failure
+    REAL(KIND=dp),DIMENSION(:),POINTER       :: x
+
+    param%parameterization = "UZH.00.00"
+    SELECT CASE (TRIM(param%key))
+    CASE DEFAULT
+       CPPostcondition(.FALSE.,cp_failure_level,routineP,error,failure)
+    CASE ("XX")
+       param%defined          = .TRUE.
+    CASE ("H")
+       !Hydrogen
+       param%defined               = .TRUE.
+       param%key                   = "H"
+       param%z                     = 1
+       param%zeff                  = 1
+       param%lmaxorb               = 0
+       param%lmaxscp               = 1
+       param%norb(0:3)             = (/1,0,0,0/)
+       param%nqm(1,0)              = 1
+       param%zeta(1,0)             = x(2)
+       param%hcore(1,0)            = x(3)
+       param%occupation(1,0)       = 1
+       param%crep(1:3)             = (/x(4),x(5),x(6)/)
+       param%pol(1:3)              = (/1.0_dp,1.0_dp,1.0_dp/)
+       !param%pol(1:3)              = (/x(4),0.0_dp,0.0_dp/)
+       param%ag                    = x(1)
+       param%energy                = -0.5_dp
+    CASE ("O")
+       !Oxygen
+       param%defined               = .TRUE.
+       param%key                   = "O"
+       param%z                     = 8
+       param%zeff                  = 6
+       param%lmaxorb               = 1
+       param%lmaxscp               = 2
+       param%norb(0:3)             = (/1,1,0,0/)
+       param%nqm(1,0:1)            = (/2,2/)
+       param%zeta(1,0:1)           = (/x(8),x(10)/)
+       param%hcore(1,0:1)          = (/x(9),x(11)/)
+       param%occupation(1,0:1)     = (/2,4/)
+       param%crep(1:3)             = (/x(12),x(13),x(14)/)
+       param%pol(1:3)              = (/1.0_dp,1.0_dp,1.0_dp/)
+       !param%pol(1:3)              = (/x(13),x(14),0._dp/)
+       param%ag                    = x(7)
+       param%energy                = -0.5_dp
+    END SELECT
+
+    IF(param%defined) THEN
+      param%natorb = 0
+      DO l=0,3
+        param%natorb = param%natorb + ((l+1)*(l+2))/2 * param%norb(l)
+      END DO
+      ! check atomic name
+      i = param%z
+      param%atomname = ptable(i)%symbol
+    END IF
+  END SUBROUTINE scptb_set_optim_parameter
 END MODULE scptb_parameters
 

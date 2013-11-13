@@ -28,7 +28,8 @@ MODULE scptb_utils
   USE kinds,                           ONLY: default_string_length,&
                                              dp
   USE message_passing,                 ONLY: mp_bcast
-  USE scptb_parameters,                ONLY: scptb_default_parameter
+  USE scptb_parameters,                ONLY: scptb_default_parameter, &
+                                             scptb_set_optim_parameter
   USE scptb_types,                     ONLY: allocate_scptb_parameter,&
                                              scptb_parameter_type,&
                                              set_scptb_parameter
@@ -121,10 +122,21 @@ CONTAINS
             ": No parameter xml given or element undefined. Using defaults."
         END IF
         !defaults, but undefined for most elements atm
-        CALL scptb_default_parameter(scptb_parameter,error) 
+        CALL scptb_default_parameter(scptb_parameter,error)
+        IF (associated(scptb_control%optim_vars)) THEN
+            !set vdw d3 scaling
+            ! only for ionode
+            IF(para_env%ionode) then      
+            scptb_control%sd3(1) = 1._dp
+            scptb_control%sd3(2) = 0.4_dp
+            scptb_control%sd3(3) = 0.361_dp
+            CALL scptb_parameter_broadcast(scptb_parameter,para_env,error)
+            endif
+            CALL scptb_set_optim_parameter(scptb_parameter,scptb_control%optim_vars,error) 
+        ENDIF
         CALL cp_print_key_finished_output(output_unit,logger,print_section,"KINDS",error=error)
       END IF
-
+      
       !initialization
 
       IF (scptb_parameter%defined) THEN
