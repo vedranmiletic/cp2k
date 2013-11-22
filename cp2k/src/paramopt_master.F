@@ -323,6 +323,7 @@ MODULE paramopt_master
     !-----read x --------
     !random x
     if (this%rand_inp) then
+        print *,'generating random x'
         do i=1,this%num_var; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo           
         call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
         !end random x
@@ -454,14 +455,22 @@ MODULE paramopt_master
       !--------------------------------------   
       a_k%f = 0._dp
       a_k%id = k
+      ! fix sigma for first generation so better distr
+      ini_sigma = a_k%sigma
+      a_k%sigma = 0._dp
       CALL gen_pop(a_k,this%cmaes_opt)
+      a_k%sigma = ini_sigma
       print *,'initial x from a_k',a_k%arx
       !----init parents too---------------
       this%cmaes_opt%population_p(k+this%cmaes_opt%lambda_mo)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       a_k_parents => this%cmaes_opt%a_k_parents(k)%p
+            ! fix sigma for first generation so better distr
+      ini_sigma = a_k_parents%sigma
+      a_k_parents%sigma = 0._dp
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
                     this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
+      a_k_parents%sigma = ini_sigma
       a_k_parents%f = huge(1._dp)
       a_k_parents%id = k+this%cmaes_opt%lambda_mo
       !print *,'initial x from a_k_parents',a_k_parents%arx
