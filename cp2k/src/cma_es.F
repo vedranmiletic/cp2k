@@ -568,6 +568,33 @@ MODULE cma_es
                         a_k%arx(i,j) = cmaes_opt%u_bound(i)
                     endif
             enddo
+            !-----------yannick----Gss and gpp sepcial conditions!-------------
+            ! Gss gibber then gsp
+            if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+                a_k%penalty = a_k%penalty +  a_k%arx(12,j) - a_k%arx(11,j) 
+                a_k%arx(11,j) = a_k%arx(12,j) + 0.1_dp 
+            endif
+            ! Gpp bigger then gp2
+            if (a_k%arx(13,j) .lt. a_k%arx(14,j))  then
+                a_k%penalty = a_k%penalty +  a_k%arx(14,j) - a_k%arx(13,j) 
+                a_k%arx(13,j) = a_k%arx(14,j) + 0.1_dp
+            endif
+            ! Uss bigger then upp
+            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+                a_k%penalty = a_k%penalty +  a_k%arx(16,j) - a_k%arx(17,j) 
+                a_k%arx(16,j) = a_k%arx(17,j) - 0.1_dp
+            endif
+            ! sigma should be bigger than gss
+            if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+                a_k%penalty = a_k%penalty +  a_k%arx(7,j) - a_k%arx(1,j) 
+                a_k%arx(7,j) = a_k%arx(1,j) + 0.1_dp
+            endif
+            ! sigma should be bigger than gss
+            if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
+                a_k%penalty = a_k%penalty +  a_k%arx(23,j) - a_k%arx(11,j) 
+                a_k%arx(23,j) = a_k%arx(11,j) + 0.1_dp
+            endif
+
     !        do i=1,n
     !                if (cmaes_opt%arx(i,k) .lt. 0._dp) cmaes_opt%arx(i,k) = 0._dp
     !                if (cmaes_opt%arx(i,k) .gt. 1._dp) cmaes_opt%arx(i,k) = 1._dp

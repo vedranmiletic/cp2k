@@ -1888,10 +1888,12 @@ CONTAINS
       dft_plus_u_section, dft_section, enforce_occupation_section, &
       geminal_section, potential_section, spin_section
 
+    REAL(KIND=dp),DIMENSION(:),POINTER      :: optim_vars
+
     CALL timeset(routineN,handle)
 
     NULLIFY (elec_conf)
-
+ 
     failure = .FALSE.
     aux_basis_set_name = ""
     ri_aux_basis_set_name = ""
@@ -2322,7 +2324,15 @@ CONTAINS
           END SELECT
           ! Set default parameters
           CALL section_vals_val_get(dft_section,"QS%SE%STO_NG",i_val=ngauss,error=error)
-          CALL se_param_set_default(atomic_kind%se_parameter,z,method_id,error)
+          ! are we doing param optimization? 
+          CALL section_vals_val_get(dft_section,"QS%SE%OPTIM_VARS" ,explicit=explicit,error=error)
+           IF(explicit)THEN
+            CALL section_vals_val_get(dft_section,"QS%SE%OPTIM_VARS", r_vals=optim_vars, error=error)
+            CALL se_param_set_default(atomic_kind%se_parameter,z,method_id,error,optim_vars)
+           ELSE ! set default parameters
+            CALL se_param_set_default(atomic_kind%se_parameter,z,method_id,error)
+           ENDIF
+
           CALL init_se_param(atomic_kind%se_parameter,atomic_kind%orb_basis_set,ngauss,error=error)
           CALL init_potential ( atomic_kind%all_potential, itype="BARE", &
                zeff=atomic_kind%se_parameter%zeff,zeff_correction=zeff_correction,error=error)

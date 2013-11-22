@@ -109,6 +109,7 @@ MODULE paramopt_worker
    TYPE(cp_error_type)                              :: error
    TYPE(cp_para_env_type), POINTER                  :: para_env
    REAL(KIND=dp),ALLOCATABLE                        :: x(:)
+   REAL(KIND=dp),ALLOCATABLE                        :: x_old(:)
    REAL(kind=dp)                                    :: Epot
    REAL(kind=dp)                                    :: timings
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
@@ -171,6 +172,7 @@ MODULE paramopt_worker
     INTEGER, &
     DIMENSION(0:para_env%num_pe-1), TARGET :: group_distribution
 
+
         swarm_section => section_vals_get_subs_vals(root_section, "SWARM", error=error)
         paramopt_section => section_vals_get_subs_vals(swarm_section, "PARAM_OPT", error=error)
         CALL section_vals_val_get(paramopt_section,"NUM_VAR", i_val=this%num_var, error=error) 
@@ -185,12 +187,19 @@ MODULE paramopt_worker
         this%input_path = input_path
         !---------------
         allocate(this%x(this%num_var))
+        allocate(this%x_old(this%num_var))
         this%x = 0._dp
+        this%x_old = 0._dp
         this%Epot = 0._dp
         this%timings = 0._dp
         this%rmsd = 0._dp
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init done."
+
+
+
+
+
   END SUBROUTINE paramopt_worker_init
 ! *****************************************************************************
 ! *****************************************************************************
@@ -209,6 +218,9 @@ MODULE paramopt_worker
      CALL destroy_force_env(this%f_env_id, ierr)
      ! yannick !!! all the pointers and allocatables should be deallocated!
      IF(ierr /= 0) STOP "paramopt_worker_finalize: destroy_force_env failed"
+
+    deallocate(this%x,this%x_old)
+
    END SUBROUTINE paramopt_worker_finalize
 
 
@@ -253,10 +265,11 @@ MODULE paramopt_worker
     CHARACTER(len=default_string_length)     :: output_path, input_file, coord_file
     LOGICAL                                  :: failure
     INTEGER                                  :: ierr
-    INTEGER                                  :: iter,i_inp,charge
+    INTEGER                                  :: iter,i_inp,charge,i
     REAL(KIND=dp),DIMENSION(:),POINTER       :: x
     REAL(KIND=dp)                            :: energy
 
+    this%x_old = this%x
     CALL swarm_message_get(cmd,"input",input_file)
     CALL swarm_message_get(cmd,"coord",coord_file)
     CALL swarm_message_get(cmd,"charge",charge)
@@ -266,6 +279,12 @@ MODULE paramopt_worker
     !CPPrecondition(ASSOCIATED(this%x_ptr),cp_failure_level,routineP,this%error,failure)
     allocate(x(this%num_var))
     x = this%x
+    if (this%iw .gt. 0) then
+        write(this%iw,*) '----------------------yannick--------------------'
+        do i=1,size(x)
+        write(this%iw,*) 'x',i,x(i),this%x_old(i)-x(i)
+        enddo
+    endif
     !debug
     !     j = mod(iter,this%num_para_set) + 1
     !     i = ceiling(real(iter)/real(this%num_para_set))
@@ -276,8 +295,8 @@ MODULE paramopt_worker
 !    this%scptb_section  => section_vals_get_subs_vals(this%qs_section, "SCPTB", error = this%error)
     CALL section_vals_val_set(this%root_section, &
                               "GLOBAL%PRINT_LEVEL", &
-    !                          i_val=silent_print_level, error = this%error)
-                              i_val=low_print_level, error = this%error)
+                              i_val=silent_print_level, error = this%error)
+    !                          i_val=low_print_level, error = this%error)
     !------------------------------------------------------------------------
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%SUBSYS%TOPOLOGY%COORD_FILE_NAME", &
@@ -285,10 +304,12 @@ MODULE paramopt_worker
     CALL section_vals_val_set(this%root_section, &
                               "FORCE_EVAL%DFT%CHARGE", &
                               i_val=charge, error = this%error)
+!    CALL section_vals_val_set(this%root_section, &
+!                              "FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS", &
+!                              r_vals_ptr=x,error=this%error)
     CALL section_vals_val_set(this%root_section, &
-                              "FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS", &
+                              "FORCE_EVAL%DFT%QS%SE%OPTIM_VARS", &
                               r_vals_ptr=x,error=this%error)
-
     !CALL section_vals_val_get(this%root_section,"FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS", r_vals=tmp_ptr, error=this%error)
     !print *,'this should be x from worker',tmp_ptr
     !-------------------create force env------------------------
@@ -327,7 +348,8 @@ MODULE paramopt_worker
       ALLOCATE(this%pos(3*this%n_atoms))
       ALLOCATE(this%g(2,3*this%n_atoms))
       CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.TRUE.,error=this%error)
+      !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
       CALL get_energy(this%f_env_id,energy,ierr)
       CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
       CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
@@ -350,9 +372,9 @@ MODULE paramopt_worker
 
       work_section => section_vals_get_subs_vals(this%subsys_section,"COORD",error=this%error)
       CALL section_vals_remove_values(work_section, this%error)
-      CALL section_vals_val_unset(this%root_section,"FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS",error=this%error) 
+!      CALL section_vals_val_unset(this%root_section,"FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS",error=this%error)
+!      CALL section_vals_val_unset(this%root_section,"FORCE_EVAL%DFT%QS%SE%OPTIM_VARS",error=this%error)  
       ! here x  (ptr)   gets deallocated as well 
-
 
    END SUBROUTINE paramopt_geo_energy
 !----------------------------------------------------------------------------------------------------

@@ -3079,7 +3079,13 @@ CONTAINS
             description="Parameters needed to set up the Semi-empirical methods",&
             n_keywords=8, n_subsections=0, repeats=.FALSE., required=.TRUE.,&
             error=error)
-
+       
+       CALL keyword_create(keyword, name="OPTIM_VARS",&
+            description="blabla TODO",&
+            n_var=-1,type_of_var=real_t,required=.FALSE.,error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)   
+        
        CALL keyword_create(keyword, name="ORTHOGONAL_BASIS",&
             description="Assume orthogonal basis set. This flag is overwritten by "//&
                         "methods with fixed orthogonal/non-orthogonal basis set.",&

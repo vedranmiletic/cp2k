@@ -831,6 +831,12 @@ CPSourceFileRef,&
             qs_control %method_id == do_method_rm1  ) THEN
           qs_control%se_control%orthogonal_basis=.TRUE.
        END IF
+
+       CALL section_vals_val_get(scptb_section,"OPTIM_VARS" ,explicit=explicit,error=error)
+       IF(explicit) THEN
+            CALL section_vals_val_get(scptb_section,"OPTIM_VARS",&
+            r_vals=qs_control%se_control%optim_vars,error=error)
+       ENDIF
     END IF
 
     ! DFTB code

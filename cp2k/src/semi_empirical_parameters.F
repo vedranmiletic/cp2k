@@ -698,21 +698,22 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Default parameter sets for semi empirical models developed at PNNL
 ! *****************************************************************************
-  SUBROUTINE pnnl_default_parameter ( sep, z, error)
+  SUBROUTINE pnnl_default_parameter ( sep, z, error, optim_vars)
     TYPE(semi_empirical_type), POINTER       :: sep
     INTEGER, INTENT(IN)                      :: z
     TYPE(cp_error_type), INTENT(inout)       :: error
+    REAL(KIND=dp),DIMENSION(:),POINTER,OPTIONAL    :: optim_vars
 
     CHARACTER(len=*), PARAMETER :: routineN = 'pnnl_default_parameter', &
       routineP = moduleN//':'//routineN
     REAL(KIND=dp), PARAMETER                 :: Ang = 0.529167_dp, &
                                                 eV = 27.21_dp
-
+    
     sep%typ    = do_method_pnnl
     sep%name   = ptable(z)%name
     sep%eheat  = ptable(z)%heat_of_formation / kcalmol
     sep%z      = z
-
+    
     SELECT CASE (z)
     CASE DEFAULT
        CALL stop_program(routineN,moduleN,__LINE__,&
@@ -744,6 +745,18 @@ CONTAINS
        ! p-orbitals for H. So by default we turn them
        ! on for this element.
        sep%p_orbitals_on_h  = .TRUE.
+       IF (present(optim_vars)) THEN
+       sep%alp              =   optim_vars(4)*Ang/angstrom
+       sep%beta(0)          =   optim_vars(3)*evolt/eV
+       sep%sto_exponents(0) =   optim_vars(5) 
+       sep%sto_exponents(1) =   optim_vars(6)
+       sep%uss              =   optim_vars(2)*evolt/eV
+       sep%gss              =   optim_vars(1)*evolt/eV
+       sep%asp              =   optim_vars(9) 
+       sep%app              =   optim_vars(10)
+       sep%de               =   optim_vars(8)/eV
+       sep%acoul            =   optim_vars(7)/eV
+       ENDIF
     CASE (8)
        !Oxygen
        sep%defined          = .TRUE.
@@ -765,12 +778,29 @@ CONTAINS
        sep%de               =  7.159002319741392_dp       /eV
        sep%nr               =  2
        sep%acoul            =  16.22361790703965_dp       /eV
+       IF (present(optim_vars)) THEN
+       sep%alp              =   optim_vars(20)*Ang/angstrom
+       sep%beta(0)          =   optim_vars(18)*evolt/eV
+       sep%beta(1)          =   optim_vars(19)*evolt/eV
+       sep%sto_exponents(0) =   optim_vars(21) 
+       sep%sto_exponents(1) =   optim_vars(22) 
+       sep%uss              =   optim_vars(16)*evolt/eV
+       sep%upp              =   optim_vars(17)*evolt/eV
+       sep%gss              =   optim_vars(11)*evolt/eV
+       sep%gsp              =   optim_vars(12)*evolt/eV
+       sep%gpp              =   optim_vars(13)*evolt/eV
+       sep%gp2              =   optim_vars(14)*evolt/eV
+       sep%hsp              =   optim_vars(15)*evolt/eV
+       sep%asp              =   optim_vars(25) 
+       sep%app              =   optim_vars(26)
+       sep%de               =   optim_vars(24)/eV
+       sep%acoul            =   optim_vars(23)/eV
+       ENDIF
     END SELECT
     ! Finalize parameters for the element
     CALL valence_electrons(sep, extended_basis_set=.FALSE., error=error)
     CALL calpar(z,sep,error)
     CALL convert_param_to_cp2k(sep,error)
-
   END SUBROUTINE pnnl_default_parameter
 
 ! *****************************************************************************

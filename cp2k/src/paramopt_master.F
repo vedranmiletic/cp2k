@@ -420,7 +420,7 @@ MODULE paramopt_master
       allocate(this%cmaes_opt%insigma(this%num_var))
       !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
       this%cmaes_opt%insigma = 0.5_dp*(this%u_bound-this%l_bound)
-      this%step_size = maxval(this%cmaes_opt%insigma)
+      if (this%step_size .eq. 0._dp) this%step_size = maxval(this%cmaes_opt%insigma)
       print *,'this is insigma',this%cmaes_opt%insigma
       print *,'this is step_size',this%step_size
       this%cmaes_opt%error => this%error
@@ -609,7 +609,7 @@ MODULE paramopt_master
          !                           real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
              !----------------------default for (1+lambda) strategy----------------------------------
              a_k%damps = 1._dp + real(n)/(2._dp*a_k%lambda)
-             a_k%damps = 1._dp  
+             !a_k%damps = 1._dp  
              a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda)/2._dp))
              a_k%cp = a_k%p_target*a_k%lambda/ &
                   (2._dp+a_k%p_target*a_k%lambda)

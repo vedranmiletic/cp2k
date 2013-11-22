@@ -286,12 +286,12 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Initialize parameter for a semi_empirival type
 ! *****************************************************************************
-  SUBROUTINE se_param_set_default(sep,z,method,error)
+  SUBROUTINE se_param_set_default(sep,z,method,error,optim_vars)
 
     TYPE(semi_empirical_type), POINTER       :: sep
     INTEGER, INTENT(IN)                      :: z, method
     TYPE(cp_error_type), INTENT(inout)       :: error
-
+    REAL(KIND=dp),DIMENSION(:),POINTER,OPTIONAL :: optim_vars
     CHARACTER(len=*), PARAMETER :: routineN = 'se_param_set_default', &
       routineP = moduleN//':'//routineN
 
@@ -319,7 +319,7 @@ CONTAINS
        CASE (do_method_mndod)
           CALL mndo_default_parameter(sep,z,do_method_mndod,error)
        CASE (do_method_pnnl)
-          CALL pnnl_default_parameter(sep,z,error)
+          CALL pnnl_default_parameter(sep,z,error,optim_vars)
        CASE (do_method_pchg)
           CALL pcharge_default_parameter(sep,z,error)
        CASE DEFAULT

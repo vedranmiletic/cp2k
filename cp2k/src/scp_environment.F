@@ -106,6 +106,9 @@ CONTAINS
     TYPE(semi_empirical_si_type), POINTER    :: se_store_int_env
     TYPE(semi_empirical_type), POINTER       :: se_kind
 
+    REAL(KIND=dp),DIMENSION(:),POINTER       :: optim_vars
+    LOGICAL                                  :: explicit
+
     CALL timeset(routineN,handle)
 
     failure = .FALSE.
@@ -152,7 +155,15 @@ CONTAINS
        END SELECT
        ! Set default parameters
        CALL section_vals_val_get(dft_section,"QS%SE%STO_NG",i_val=ngauss,error=error)
-       CALL se_param_set_default(atomic_kind%scp_se_parameter,z,do_method_pnnl,error)
+                 ! are we doing param optimization? 
+          CALL section_vals_val_get(dft_section,"QS%SE%OPTIM_VARS" ,explicit=explicit,error=error)
+           IF(explicit)THEN
+            CALL section_vals_val_get(dft_section,"QS%SE%OPTIM_VARS", r_vals=optim_vars, error=error)
+            CALL se_param_set_default(atomic_kind%scp_se_parameter,z,do_method_pnnl,error,optim_vars)
+           ELSE ! set default parameters
+            CALL se_param_set_default(atomic_kind%scp_se_parameter,z,do_method_pnnl,error)
+           ENDIF
+
        CALL init_se_param(atomic_kind%scp_se_parameter,atomic_kind%scp_basis_set,ngauss,error=error)
 !       CALL init_potential ( atomic_kind%all_potential, itype="BARE", &
 !            zeff=se_kind%zeff,zeff_correction=zeff_correction,error=error)
