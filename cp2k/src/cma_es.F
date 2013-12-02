@@ -542,6 +542,10 @@ MODULE cma_es
     INTEGER                                                   :: n,k,i,j
     REAL(kind=dp)                                             :: alpha
     REAL(Kind=dp),ALLOCATABLE,DIMENSION(:)                    :: tmp
+<<<<<<< HEAD
+    REAL(kind=dp)                                             :: tmp2
+=======
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
 
     ! input:
     ! n, lambda, BD, xmean, sigma
@@ -572,29 +576,74 @@ MODULE cma_es
             ! Gss gibber then gsp
             if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+<<<<<<< HEAD
+                tmp2 = a_k%arx(11,j)
+                a_k%arx(11,j) = a_k%arx(12,j) 
+                a_k%arx(12,j) = tmp2
+=======
                 a_k%arx(11,j) = a_k%arx(12,j) + 0.1_dp 
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
             endif
             ! Gpp bigger then gp2
             if (a_k%arx(13,j) .lt. a_k%arx(14,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(13,j) 
+<<<<<<< HEAD
+                tmp2 = a_k%arx(13,j)
+                a_k%arx(13,j) = a_k%arx(14,j) 
+                a_k%arx(14,j) = tmp2
+=======
                 a_k%arx(13,j) = a_k%arx(14,j) + 0.1_dp
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
             endif
             ! Uss bigger then upp
             if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(17,j) 
+<<<<<<< HEAD
+                tmp2 = a_k%arx(16,j)
+                a_k%arx(16,j) = a_k%arx(17,j) 
+                a_k%arx(17,j) = tmp2
+=======
                 a_k%arx(16,j) = a_k%arx(17,j) - 0.1_dp
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
             endif
             ! sigma should be bigger than gss
             if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+<<<<<<< HEAD
+                tmp2 = a_k%arx(7,j)
+                a_k%arx(7,j) = a_k%arx(1,j) 
+                a_k%arx(1,j) = tmp2
+=======
                 a_k%arx(1,j) = a_k%arx(7,j) - 0.1_dp
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
             endif
             ! sigma should be bigger than gss
             if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(23,j) - a_k%arx(11,j) 
+<<<<<<< HEAD
+                tmp2 = a_k%arx(23,j)
+                a_k%arx(23,j) = a_k%arx(11,j) 
+                a_k%arx(11,j) = tmp2
+            endif
+            ! exponents ??
+!            if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(22,j) - a_k%arx(21,j) 
+!                tmp2 = a_k%arx(21,j)
+!                a_k%arx(21,j) = a_k%arx(22,j) 
+!                a_k%arx(22,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+!                tmp2 = a_k%arx(5,j)
+!                a_k%arx(5,j) = a_k%arx(6,j) 
+!                a_k%arx(6,j) = tmp2
+!            endif
+=======
                 a_k%arx(11,j) = a_k%arx(23,j) - 0.1_dp
             endif
 
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
     !        do i=1,n
     !                if (cmaes_opt%arx(i,k) .lt. 0._dp) cmaes_opt%arx(i,k) = 0._dp
     !                if (cmaes_opt%arx(i,k) .gt. 1._dp) cmaes_opt%arx(i,k) = 1._dp
@@ -608,7 +657,12 @@ MODULE cma_es
     !enddo
     a_k%penalty = alpha*norm2(tmp)**2
     deallocate(tmp)
+<<<<<<< HEAD
+    end subroutine gen_pop
+
+=======
     end subroutine
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
      SUBROUTINE crowding_distance(input_set,fmax,fmin)
          IMPLICIT NONE
          TYPE(individual_type_p),DIMENSION(:)        :: input_Set

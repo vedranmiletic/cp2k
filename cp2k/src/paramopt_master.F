@@ -457,7 +457,11 @@ MODULE paramopt_master
       a_k%id = k
       ! fix sigma for first generation so better distr
       ini_sigma = a_k%sigma
+<<<<<<< HEAD
+      if(.not. explicit_key) a_k%sigma = 0._dp
+=======
       a_k%sigma = 0._dp
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
       CALL gen_pop(a_k,this%cmaes_opt)
       a_k%sigma = ini_sigma
       print *,'initial x from a_k',a_k%arx
@@ -467,7 +471,11 @@ MODULE paramopt_master
       a_k_parents => this%cmaes_opt%a_k_parents(k)%p
             ! fix sigma for first generation so better distr
       ini_sigma = a_k_parents%sigma
+<<<<<<< HEAD
+      if(.not.explicit_key) a_k_parents%sigma = 0._dp
+=======
       a_k_parents%sigma = 0._dp
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
                     this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
       a_k_parents%sigma = ini_sigma
@@ -735,8 +743,17 @@ MODULE paramopt_master
              a_k => this%cmaes_opt%a_k(j)%p
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
              call calc_obj_f(this, this%Epot(:,j), this%E_res(j))
+<<<<<<< HEAD
+               if (isnan(this%E_res(j))) then
+               a_k%f(1) = huge(1.0_dp) 
+               else     
+               a_k%f(1) = this%E_res(j) + a_k%penalty
+               endif
+               a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+=======
              a_k%f(1) = this%E_res(j) + a_k%penalty
              a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+>>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
              else
              !-----------------for the rest???--------------------------------
              call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
