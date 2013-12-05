@@ -282,11 +282,7 @@ MODULE paramopt_worker
     if (this%iw .gt. 0) then
         write(this%iw,*) '----------------------yannick--------------------'
         do i=1,size(x)
-<<<<<<< HEAD
-        write(this%iw,*) 'x',i,x(i),x(i)-this%x_old(i)
-=======
         write(this%iw,*) 'x',i,x(i),this%x_old(i)-x(i)
->>>>>>> b69ffdbb3576260fe89e8c1080416e2b5805416d
         enddo
     endif
     !debug

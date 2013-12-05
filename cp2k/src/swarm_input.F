@@ -59,7 +59,7 @@ MODULE swarm_input
          usage="BEHAVIOR <STRING>",&
          required=.TRUE.,&
          default_i_val=swarm_do_glbopt,&
-         enum_c_vals=s2a("GLOBAL_OPT"),&
+         enum_c_vals=s2a("GLOBAL_OPT","PARAM_OPT"),&
          enum_desc=s2a("Runs global geometry optimisation",&
                        "Runs global parameter optimisation"),&
          enum_i_vals=(/swarm_do_glbopt, swarm_do_paramopt/),&
