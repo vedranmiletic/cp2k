@@ -34,7 +34,9 @@ MODULE cma_es_utils
              a_k2%C         = a_k1%C
              a_k2%lambda    = a_k1%lambda
              a_k2%mu        = a_k1%mu
-             a_k2%triuC     = a_k1%triuC          
+             a_k2%triuC     = a_k1%triuC   
+             a_k2%trace     = a_k1%trace       
+             a_k2%det       = a_k1%det       
              a_k2%arx       = a_k1%arx             
              a_k2%arz       = a_k1%arz             
              a_k2%xmean     = a_k1%xmean                
@@ -60,6 +62,7 @@ MODULE cma_es_utils
              a_k2%cp        = a_k1%cp                          
              a_k2%cc        = a_k1%cc                               
              a_k2%ccov      = a_k1%ccov                     
+             a_k2%ccovm     = a_k1%ccovm                     
              a_k2%p_tresh   = a_k1%p_tresh         
              a_k2%p_succ    = a_k1%p_succ           
              !----------------------------------

@@ -38,7 +38,6 @@ MODULE paramopt_worker
                                              create_force_env,&
                                              destroy_force_env,&
                                              f_env_add_defaults,&
-                                             !f_env_rm_defaults,&
                                              f_env_type,&
                                              get_energy,&
                                              get_natom, &
@@ -282,7 +281,7 @@ MODULE paramopt_worker
     if (this%iw .gt. 0) then
         write(this%iw,*) '----------------------yannick--------------------'
         do i=1,size(x)
-        write(this%iw,*) 'x',i,x(i),this%x_old(i)-x(i)
+        write(this%iw,*) 'x',i,x(i),x(i)-this%x_old(i)
         enddo
     endif
     !debug
@@ -356,6 +355,8 @@ MODULE paramopt_worker
                              RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
                              0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
         !-------------report--------------------------------
+        ! rmsd per atom ???
+        this%rmsd = this%rmsd/real(this%n_atoms)
         CALL swarm_message_add(report, "status", "rmsd_calc") 
         CALL swarm_message_add(report, "num_inp", i_inp) 
         CALL swarm_message_add(report, "iter", iter) 

@@ -99,7 +99,6 @@ MODULE paramopt_master
    INTEGER                                               :: num_para_set
    INTEGER                                               :: n_walkers
    INTEGER                                               :: inp_iter
-   INTEGER                                               :: run_iter
    INTEGER                                               :: run_type_id
    INTEGER                                               :: input_seed
    INTEGER,ALLOCATABLE                                   :: i_recv(:)
@@ -108,6 +107,7 @@ MODULE paramopt_master
    CHARACTER(len=default_string_length),POINTER          :: input_files(:)
    CHARACTER(len=default_string_length),POINTER          :: coord_files(:)
    INTEGER,POINTER                                       :: charges(:)
+   INTEGER,ALLOCATABLE                                   :: ref_num_atoms(:)
    REAL(KIND=dp),ALLOCATABLE                             :: Epot(:,:),timings(:)
    REAL(KIND=dp),POINTER                                 :: E_res(:)
    REAL(KIND=dp),POINTER                                 :: res(:)
@@ -118,7 +118,6 @@ MODULE paramopt_master
    REAL(KIND=dp),POINTER                                 :: x(:)
    REAL(KIND=dp),POINTER                                 :: init_x(:)
    REAL(KIND=dp),POINTER                                 :: x_temp(:)
-   REAL(KIND=dp),POINTER                                 :: penalty
    REAL(KIND=dp),POINTER                                 :: xtrans(:)
    REAL(KIND=dp),POINTER                                 :: xtransold(:)
    REAL(KIND=dp),POINTER                                 :: xold(:)
@@ -232,6 +231,7 @@ MODULE paramopt_master
     allocate(this%Epot(this%num_ref,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
     allocate(this%res(this%num_ref))
+    allocate(this%ref_num_atoms(this%num_ref))
 
     allocate(this%x(this%num_var))
     allocate(this%eps(this%num_var))
@@ -277,11 +277,8 @@ MODULE paramopt_master
 
     !-------------------
     this%inp_iter = this%num_inp*this%num_para_set
-    this%run_iter = 1
     this%i_recv = 0
     this%Epot = 0._dp
-    !allocate(this%penalty)
-    !this%penalty = 0._dp
     if (this%input_seed .gt. 0) then
         !deterministic seed
         seed(:,:) = &
@@ -420,7 +417,7 @@ MODULE paramopt_master
     if (associated(this%cmaes_opt)) then
       allocate(this%cmaes_opt%insigma(this%num_var))
       !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
-      this%cmaes_opt%insigma = 0.5_dp*(this%u_bound-this%l_bound)
+      this%cmaes_opt%insigma = 0.2_dp*(this%u_bound-this%l_bound)
       if (this%step_size .eq. 0._dp) this%step_size = maxval(this%cmaes_opt%insigma)
       print *,'this is insigma',this%cmaes_opt%insigma
       print *,'this is step_size',this%step_size
@@ -518,6 +515,7 @@ MODULE paramopt_master
           this%ener_ref(i)%ref
       enddo
     call close_file(unit_number)
+    this%ref_num_atoms = (/3,6,9,12,15,18,18,18,18,21,21,60,60,60,60,4,7,10,13,22,22,2,5,8,11,14,14,17,20,24/)
     endif
     !------------------------
 !    allocate(this%function_matrix(this%num_para_set,this%num_inp))
@@ -560,20 +558,23 @@ MODULE paramopt_master
                END IF
                a_k%D = 0._dp
                DO i = 1, n
-                  a_k%D(i,i) = insigma(i)/maxval(insigma)
+                  a_k%D(i,i) = sqrt(insigma(i)*1_dp/product(insigma)**(1._dp/size(insigma)))
+                  !d * 1/nsqrt(det) so that det ~ 1
+                  ! and sqrt(d) so that BD*BD^t = C
                   !a_k%D(i,i) = 1._dp 
                END DO
                IF (.NOT. ALLOCATED(a_k%BD)) THEN 
                    ALLOCATE(a_k%BD(n,n),stat=allocStat)
                    IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix BD'
                END IF
-               a_k%BD = matmul(a_k%B,a_k%D) 
-         !      CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n) 
+         !      a_k%BD = matmul(a_k%B,a_k%D) 
+               CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n) 
                IF (.NOT. ALLOCATED(a_k%C)) THEN
                    ALLOCATE(a_k%C(n,n),stat=allocStat)
                    IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix C'
                END IF
-               a_k%C = matmul(a_k%BD,transpose(a_k%BD))
+          !     a_k%C = matmul(a_k%BD,transpose(a_k%BD))
+               CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n) 
              allocate(a_k%multmp_vN(n))
              !----------(1+1) CMA-ES--------------------------
              a_k%lambda = 1
@@ -624,6 +625,7 @@ MODULE paramopt_master
                   (2._dp+a_k%p_target*a_k%lambda)
              a_k%cc = 2._dp/(real(n) + 2._dp)
              a_k%ccov = 2._dp/(real(n)**2 + 6._dp)
+             a_k%ccovm = 0.4_dp/(real(n)**1.6_dp + 1._dp)
              a_k%p_tresh = 0.44_dp
              a_k%p_succ = a_k%p_target
              !-----------------------------------------------------------
@@ -641,6 +643,8 @@ MODULE paramopt_master
              a_k%I_dist = 0._dp
              a_k%kernel_dist = 0._dp
              a_k%hypervol = 0._dp
+             a_k%trace = 0._dp
+             a_k%det = 0._dp
  END SUBROUTINE
 
 
@@ -739,14 +743,15 @@ MODULE paramopt_master
                  a_k%f(1) = huge(1.0_dp) 
                else     
                  a_k%f(1) = this%E_res(j) + a_k%penalty
+                 ! E_res is sum of energy error divided by num_atoms per calc
                endif
                a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+               ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
              call calc_obj_f(this, this%function_matrix(:,j), this%E_res(j))
              this%obj_f(j) = this%weights(1)*this%E_res(j) + &
-                          this%weights(2)*this%function_matrix(this%num_inp,j) + &
-                          this%penalty
+                          this%weights(2)*this%function_matrix(this%num_inp,j) 
              endif
           else
              if (associated(this%cmaes_opt)) then
@@ -1216,7 +1221,6 @@ end subroutine
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11 !,h2o_eaip_id=31
     integer                                  :: i 
 
-
         !---------------energy references-------------------------------------------
         h2o_ref      = Epot(h2o_id)
         !h2o_eaip_ref = Epot(h2o_eaip_id)
@@ -1255,8 +1259,9 @@ end subroutine
                           END IF
                     END DO
                     write(*,*) '==============================asdfkjalsdkjfl==================='
-          obj_f = sum(this%res)
+          obj_f = sum(this%res/real(this%ref_num_atoms))
                     write(*,*) obj_f
+
  END SUBROUTINE
 ! *****************************************************************************
 ! *****************************************************************************

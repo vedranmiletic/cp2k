@@ -37,12 +37,14 @@ MODULE cma_es_types
    REAL(KIND=dp)                                   :: vecnorm
    REAL(KIND=dp)                                   :: vecsum
    !strategy parameter setting
-   REAL(KIND=dp)                                   :: cc,cp,cs,ccov,damps
+   REAL(KIND=dp)                                   :: cc,cp,cs,ccov,ccovm,damps
    REAL(KIND=dp)                                   :: p_succ,p_target,p_tresh
    ! initialize dynamic (internal) startegy parameters and constants
    REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc,ps
    REAL(KIND=dp)                                   :: eigenval
    REAL(KIND=dp)                                   :: chiN
+   REAL(KIND=dp)                                   :: trace
+   REAL(KIND=dp)                                   :: det
    REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: B,D,BD,C,triuC,arx,arz
    REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: tempMat,colVec,rowVec
       !for general cma-es---------------------------------------

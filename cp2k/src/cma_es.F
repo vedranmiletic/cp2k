@@ -45,6 +45,7 @@ MODULE cma_es
          real(kind=dp),pointer,intent(inout)                       :: x(:)
          real(kind=dp)                                             :: lambda_succ
          real(kind=dp)                                             :: p_succ
+         real(kind=dp)                                             :: tmp
      !    TYPE(cp_error_type),POINTER                               :: error
          INTEGER                                                   :: i,j,k,n
          INTEGER                                                   :: info
@@ -83,7 +84,7 @@ MODULE cma_es
                CALL update_stepsize(p_succ,a_k_parents)  
                CALL update_stepsize(p_succ,a_k)
           !-----------------------elite aproach------------------------------------
-                  CALL new_mean(a_k)
+                  CALL new_mean(a_k) !only for the offspring this is adpoted
                   !-----update covariance---------
                       call update_path(a_k)   
                       call adapt_cov(a_k) 
@@ -100,12 +101,29 @@ MODULE cma_es
                           !if tool_eigendecomp returned Error go to the Restart Loop
                   IF (cmaes_opt%info .NE. 0) THEN
                       STOP
-                  END IF 
+                  END IF
                   !-----------------------------------------------------------------------
                   !  D contains standard ind_counter now
                   !----------------------ind_counter---------------------------------------
-                      a_k%D = sqrt(a_k%D)
-                  CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n)  
+                  !normalize D such that det = 1 
+                       ! yannick new e.g. not sure....
+                       tmp = 1._dp
+                       do i=1,n
+                       tmp = tmp*a_k%D(i,i)
+                       enddo
+                       a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
+                       !---
+                  a_k%D = sqrt(a_k%D)
+                  CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n)
+                  !---recover C???-----------
+                  CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n) 
+                  !-------get trace and determinant
+                  a_k%trace = 0.0_dp
+                  a_k%det = 1.0_dp
+                  DO i = 1,n    
+                      a_k%trace = a_k%trace+a_k%D(i,i)**2
+                      a_k%det = a_k%det*a_k%D(i,i)**2
+                  END DO    
                   !open(999,file='bd_matrix.out',position='append')
                   !write(999,*) cmaes_opt%BD
                   !close(999)
@@ -124,6 +142,7 @@ MODULE cma_es
          enddo
 !--------output---------------------------------------------------------------
          call write_x(cmaes_opt)
+         !=============yannick I'm not sure if that should happen here....
 !----for 1:lambda_mo generate new population----------------------------------
          !print *,"generating new population"
          DO k = 1, cmaes_opt%lambda_mo
@@ -251,10 +270,16 @@ MODULE cma_es
       a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
                    + a_k%ccov*(a_k%multmp_mN) ! plus rank one update
       else
-      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
-                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
-                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
+!      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
+!                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
+!                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
+      ! yannick needs to be tested 
+      !this should be active covariance control
+      a_k%C = (1._dp-a_k%ccovm)*a_k%C & ! old matrix
+                   - a_k%ccovm*(a_k%multmp_mN) ! plus rank one update
       endif
+
+      
     end subroutine
 !===========================================================================
     SUBROUTINE pareto_front(input_set,nondominated_set)
@@ -570,6 +595,7 @@ MODULE cma_es
                     endif
             enddo
             !-----------yannick----Gss and gpp sepcial conditions!-------------
+            ! constrains on variables go here ---------------------------------
             ! Gss gibber then gsp
             if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
@@ -584,12 +610,19 @@ MODULE cma_es
                 a_k%arx(13,j) = a_k%arx(14,j) 
                 a_k%arx(14,j) = tmp2
             endif
-            ! Uss bigger then upp
+            ! Uss lower then upp
             if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(17,j) 
                 tmp2 = a_k%arx(16,j)
                 a_k%arx(16,j) = a_k%arx(17,j) 
                 a_k%arx(17,j) = tmp2
+            endif
+            ! beta_s lower than beta_p
+            if (a_k%arx(19,j) .lt. a_k%arx(18,j))  then
+                tmp(1) = tmp(1) +  abs(a_k%arx(18,j) - a_k%arx(19,j))
+                tmp2 = a_k%arx(18,j)
+                a_k%arx(18,j) = a_k%arx(19,j) 
+                a_k%arx(19,j) = tmp2
             endif
             ! sigma should be bigger than gss
             if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
@@ -605,22 +638,21 @@ MODULE cma_es
                 a_k%arx(23,j) = a_k%arx(11,j) 
                 a_k%arx(11,j) = tmp2
             endif
+
             ! exponents ??
-!            if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
-!                tmp(1) = tmp(1) +  a_k%arx(22,j) - a_k%arx(21,j) 
-!                tmp2 = a_k%arx(21,j)
-!                a_k%arx(21,j) = a_k%arx(22,j) 
-!                a_k%arx(22,j) = tmp2
-!            endif
-!            ! exponents ??
-!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
-!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
-!                tmp2 = a_k%arx(5,j)
-!                a_k%arx(5,j) = a_k%arx(6,j) 
-!                a_k%arx(6,j) = tmp2
-!            endif
-!                a_k%arx(11,j) = a_k%arx(23,j) - 0.1_dp
-!            endif
+            if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(22,j) - a_k%arx(21,j) 
+                tmp2 = a_k%arx(21,j)
+                a_k%arx(21,j) = a_k%arx(22,j) 
+                a_k%arx(22,j) = tmp2
+            endif
+            ! exponents ??
+            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+                tmp2 = a_k%arx(5,j)
+                a_k%arx(5,j) = a_k%arx(6,j) 
+                a_k%arx(6,j) = tmp2
+            endif
 
     !        do i=1,n
     !                if (cmaes_opt%arx(i,k) .lt. 0._dp) cmaes_opt%arx(i,k) = 0._dp
@@ -739,20 +771,45 @@ MODULE cma_es
     subroutine write_x(cmaes_opt)
     implicit none
     type(cmaes_opt_type),TARGET                               :: cmaes_opt
-    integer                                                   :: i
+    integer                                                   :: i,j,k,l,n,t
     integer                                                   :: unit_number
            !open(12,position='append')
            call open_file(file_name="fort.13",unit_number=unit_number, &
                           file_action='write',file_status='replace')
            do i = 1,2*cmaes_opt%lambda_mo
               write(unit_number,*) cmaes_opt%population(i)%f, &
+                          cmaes_opt%population(i)%penalty, &
                           cmaes_opt%population(i)%id, &
                           cmaes_opt%population(i)%front, &
                           cmaes_opt%population(i)%I_dist, &
                           cmaes_opt%population(i)%sigma, &
+                          cmaes_opt%population(i)%trace, &
                           cmaes_opt%generation, &
                           cmaes_opt%population(i)%arx(:,1)
            enddo
            call close_file(unit_number)
+
+           n = cmaes_opt%n
+
+           do i = 1,2*cmaes_opt%lambda_mo
+                t = cmaes_opt%population(i)%id
+                call open_file(file_name="cov_"//trim(str(t)),unit_number=unit_number, &
+                          file_action='write',file_status='replace')
+                !----print matrix
+                DO k=1,n
+                  WRITE(unit_number,*) (cmaes_opt%population(i)%C(k,l), l=1,n)
+                END DO
+                call close_file(unit_number)
+           enddo
+
+
     end subroutine write_x
+
+    character(len=20) function str(k)
+!   "Convert an integer to string."
+    integer, intent(in) :: k
+    write (str, *) k
+    str = adjustl(str)
+    end function str
+
 END MODULE cma_es
