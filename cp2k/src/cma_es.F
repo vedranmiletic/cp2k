@@ -576,9 +576,7 @@ MODULE cma_es
     n = cmaes_opt%n
     allocate(tmp(n))
     tmp=0._dp
-    !alpha = 1.e2_dp
-    !alpha = 1.e-6_dp
-    alpha = 1.e-2_dp
+    alpha = cmaes_opt%penalty_alpha
     !CALL reset_to_next_rng_substream(cmaes_opt%rng_normal_stream, error=error)
     do j=1,a_k%lambda
         do i=1,n; a_k%arz(i,j) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo

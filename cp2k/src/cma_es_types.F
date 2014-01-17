@@ -76,6 +76,7 @@ MODULE cma_es_types
    !--bounderies
    REAL(KIND=dp),DIMENSION(:),POINTER                   :: l_bound,u_bound,insigma
    REAL(KIND=dp),DIMENSION(:),POINTER                   :: fmax,fmin
+   REAL(KIND=dp)                                        :: penalty_alpha
    !--stop criteria--------------
    REAL(KIND=dp)                                        :: stopfitness 
    REAL(KIND=dp)                                        :: stopeval

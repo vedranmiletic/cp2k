@@ -129,6 +129,7 @@ MODULE paramopt_master
                                                             ev_kcal=23.06035_dp
    REAL(kind=dp),POINTER                                 :: eps(:)
    REAL(kind=dp)                                         :: eps_factor=1e-8_dp
+   REAL(kind=dp)                                         :: penalty_alpha
    TYPE(cp_para_env_type), POINTER                       :: para_env
    TYPE(rng_stream_type),POINTER                         :: rng_stream
    LOGICAL,POINTER                                       :: sampling
@@ -204,6 +205,7 @@ MODULE paramopt_master
       cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
       CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
       CALL section_vals_val_get(cmaes_section,"ADDITIONAL_CONS",l_val=this%additional_constrain,error=error)
+      CALL section_vals_val_get(cmaes_section,"PENALTY",r_val=this%penalty_alpha,error=error)
     endif
     !------------------
     this%num_obj = 2
@@ -442,6 +444,7 @@ MODULE paramopt_master
                            seed=seed,error=this%error)
       this%cmaes_opt%generation = 1
       this%cmaes_opt%additional_constrain = this%additional_constrain
+      this%cmaes_opt%penalty_alpha = this%penalty_alpha
       !=============NEEEEEEEDS TO BE CHANGED AND MOVED TO INPUT FILE!!!!!!!==========================
       !---yannick this is a dummy at the moment the fmax gets overwritten...
       this%cmaes_opt%fmax = (/10_dp,1_dp/)
