@@ -135,6 +135,7 @@ MODULE paramopt_master
    LOGICAL                                               :: calc_deriv,benchmark
    LOGICAL                                               :: rand_inp
    LOGICAL                                               :: multi_obj
+   LOGICAL                                               :: additional_constrain
    REAL(KIND=dp)                                         :: step_size
    REAL(KIND=dp),POINTER                                 :: weights(:)
    TYPE(opt_state_type),POINTER                          :: powell_opt
@@ -202,6 +203,7 @@ MODULE paramopt_master
     if (this%run_type_id .eq. paramopt_cmaes_run) then
       cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
       CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
+      CALL section_vals_val_get(cmaes_section,"ADDITIONAL_CONS",l_val=this%additional_constrain,error=error)
     endif
     !------------------
     this%num_obj = 2
@@ -439,8 +441,10 @@ MODULE paramopt_master
       CALL create_rng_stream(this%cmaes_opt%rng_uniform_stream,'normal',distribution_type=UNIFORM, &
                            seed=seed,error=this%error)
       this%cmaes_opt%generation = 1
+      this%cmaes_opt%additional_constrain = this%additional_constrain
       !=============NEEEEEEEDS TO BE CHANGED AND MOVED TO INPUT FILE!!!!!!!==========================
-      this%cmaes_opt%fmax = (/100000_dp,10_dp/)
+      !---yannick this is a dummy at the moment the fmax gets overwritten...
+      this%cmaes_opt%fmax = (/10_dp,1_dp/)
       this%cmaes_opt%fmin = (/0_dp,0_dp/)
      !--------------init population-----------------
      do k=1,this%cmaes_opt%lambda_mo
@@ -666,6 +670,7 @@ MODULE paramopt_master
     CHARACTER(len=default_string_length)     :: report_status
     type(individual_type),POINTER            :: a_k
     type(individual_type),POINTER            :: a_k_parents
+    REAL(KIND=dp),DIMENSION(2)               :: tempmax
     r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
     CALL swarm_message_get(report, "status",report_status)
@@ -731,6 +736,7 @@ MODULE paramopt_master
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
+    tempmax =0._dp
     !--------------we are done with the iteration/condition-------- 
         do j=1,this%num_para_set 
           if (.not. this%benchmark) then
@@ -742,10 +748,16 @@ MODULE paramopt_master
                if (isnan(this%E_res(j))) then
                  a_k%f(1) = huge(1.0_dp) 
                else     
+                 !---yannick use ^2-------
                  a_k%f(1) = this%E_res(j) + a_k%penalty
+                 !the squaring is already done in the E_res component wise
+                 !a_k%f(1) = sqrt(abs(this%E_res(j))) + a_k%penalty
                  ! E_res is sum of energy error divided by num_atoms per calc
                endif
-               a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+                 !---yannick use ^2-------
+                 a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+                 ! here the squaring neeeds to be carried out
+                 !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
@@ -764,7 +776,12 @@ MODULE paramopt_master
            !  if (this%cmaes_opt%a_k(j)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(2) = 0._dp
              endif
           endif
+          if (a_k%f(1) .gt. tempmax(1)) tempmax(1) = a_k%f(1)
+          if (a_k%f(2) .gt. tempmax(2)) tempmax(2) = a_k%f(2)
         enddo
+        this%cmaes_opt%fmax(1) = tempmax(1)
+        this%cmaes_opt%fmax(2) = tempmax(2)
+        !-------------------------------------------------------
         if (this%calc_deriv) then
          do j=2,this%num_para_set
             this%grad_obj_f(j-1) = ( this%obj_f(j) - this%obj_f(1)) / this%eps(j-1)
@@ -1259,7 +1276,9 @@ end subroutine
                           END IF
                     END DO
                     write(*,*) '==============================asdfkjalsdkjfl==================='
-          obj_f = sum(this%res/real(this%ref_num_atoms))
+                    !---yannick use ^2 
+                    obj_f = sum(this%res/real(this%ref_num_atoms))
+                    !obj_f = sum(this%res/real(this%ref_num_atoms)**2)
                     write(*,*) obj_f
 
  END SUBROUTINE

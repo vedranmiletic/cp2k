@@ -86,6 +86,7 @@ MODULE cma_es_types
    TYPE(rng_stream_type),POINTER                        :: rng_normal_stream
    TYPE(rng_stream_type),POINTER                        :: rng_uniform_stream
    TYPE(cp_error_type),POINTER                          :: error
+   LOGICAL                                              :: additional_constrain
  END TYPE cmaes_opt_type
 !================================================================================
  PUBLIC :: cmaes_opt_type,individual_type,individual_type_p 

@@ -746,16 +746,28 @@ CONTAINS
        ! on for this element.
        sep%p_orbitals_on_h  = .TRUE.
        IF (present(optim_vars)) THEN
-       sep%alp              =   optim_vars(4)*Ang/angstrom
-       sep%beta(0)          =   optim_vars(3)*evolt/eV
-       sep%sto_exponents(0) =   optim_vars(5) 
-       sep%sto_exponents(1) =   optim_vars(6)
-       sep%uss              =   optim_vars(2)*evolt/eV
-       sep%gss              =   optim_vars(1)*evolt/eV
-       sep%asp              =   optim_vars(9) 
-       sep%app              =   optim_vars(10)
-       sep%de               =   optim_vars(8)/eV
-       sep%acoul            =   optim_vars(7)/eV
+        IF (size(optim_vars) .eq. 26) THEN
+           sep%alp              =   optim_vars(4)*Ang/angstrom
+           sep%beta(0)          =   optim_vars(3)*evolt/eV
+           sep%sto_exponents(0) =   optim_vars(5) 
+           sep%sto_exponents(1) =   optim_vars(6)
+           sep%uss              =   optim_vars(2)*evolt/eV
+           sep%gss              =   optim_vars(1)*evolt/eV
+           sep%asp              =   optim_vars(9) 
+           sep%app              =   optim_vars(10)
+           sep%de               =   optim_vars(8)/eV
+           sep%acoul            =   optim_vars(7)/eV
+        ELSE IF (size(optim_vars) .eq. 22) THEN
+           !----------without scp------------------------------
+           sep%alp              =   optim_vars(4)*Ang/angstrom
+           sep%beta(0)          =   optim_vars(3)*evolt/eV
+           sep%sto_exponents(0) =   optim_vars(5) 
+           sep%sto_exponents(1) =   optim_vars(6)
+           sep%uss              =   optim_vars(2)*evolt/eV
+           sep%gss              =   optim_vars(1)*evolt/eV
+           sep%de               =   optim_vars(8)/eV
+           sep%acoul            =   optim_vars(7)/eV
+        ENDIF
        ENDIF
     CASE (8)
        !Oxygen
@@ -779,22 +791,40 @@ CONTAINS
        sep%nr               =  2
        sep%acoul            =  16.22361790703965_dp       /eV
        IF (present(optim_vars)) THEN
-       sep%alp              =   optim_vars(20)*Ang/angstrom
-       sep%beta(0)          =   optim_vars(18)*evolt/eV
-       sep%beta(1)          =   optim_vars(19)*evolt/eV
-       sep%sto_exponents(0) =   optim_vars(21) 
-       sep%sto_exponents(1) =   optim_vars(22) 
-       sep%uss              =   optim_vars(16)*evolt/eV
-       sep%upp              =   optim_vars(17)*evolt/eV
-       sep%gss              =   optim_vars(11)*evolt/eV
-       sep%gsp              =   optim_vars(12)*evolt/eV
-       sep%gpp              =   optim_vars(13)*evolt/eV
-       sep%gp2              =   optim_vars(14)*evolt/eV
-       sep%hsp              =   optim_vars(15)*evolt/eV
-       sep%asp              =   optim_vars(25) 
-       sep%app              =   optim_vars(26)
-       sep%de               =   optim_vars(24)/eV
-       sep%acoul            =   optim_vars(23)/eV
+        IF (size(optim_vars) .eq. 26) THEN
+          sep%alp              =   optim_vars(20)*Ang/angstrom
+          sep%beta(0)          =   optim_vars(18)*evolt/eV
+          sep%beta(1)          =   optim_vars(19)*evolt/eV
+          sep%sto_exponents(0) =   optim_vars(21) 
+          sep%sto_exponents(1) =   optim_vars(22) 
+          sep%uss              =   optim_vars(16)*evolt/eV
+          sep%upp              =   optim_vars(17)*evolt/eV
+          sep%gss              =   optim_vars(11)*evolt/eV
+          sep%gsp              =   optim_vars(12)*evolt/eV
+          sep%gpp              =   optim_vars(13)*evolt/eV
+          sep%gp2              =   optim_vars(14)*evolt/eV
+          sep%hsp              =   optim_vars(15)*evolt/eV
+          sep%asp              =   optim_vars(25) 
+          sep%app              =   optim_vars(26)
+          sep%de               =   optim_vars(24)/eV
+          sep%acoul            =   optim_vars(23)/eV
+        ELSE IF (size(optim_vars) .eq. 22) THEN
+          !----------without scp------------------------------
+          sep%alp              =   optim_vars(18)*Ang/angstrom
+          sep%beta(0)          =   optim_vars(16)*evolt/eV
+          sep%beta(1)          =   optim_vars(17)*evolt/eV
+          sep%sto_exponents(0) =   optim_vars(19) 
+          sep%sto_exponents(1) =   optim_vars(20) 
+          sep%uss              =   optim_vars(14)*evolt/eV
+          sep%upp              =   optim_vars(15)*evolt/eV
+          sep%gss              =   optim_vars(9)*evolt/eV
+          sep%gsp              =   optim_vars(10)*evolt/eV
+          sep%gpp              =   optim_vars(11)*evolt/eV
+          sep%gp2              =   optim_vars(12)*evolt/eV
+          sep%hsp              =   optim_vars(13)*evolt/eV
+          sep%de               =   optim_vars(22)/eV
+          sep%acoul            =   optim_vars(21)/eV
+        ENDIF
        ENDIF
     END SELECT
     ! Finalize parameters for the element

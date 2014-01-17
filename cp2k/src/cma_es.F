@@ -576,8 +576,9 @@ MODULE cma_es
     n = cmaes_opt%n
     allocate(tmp(n))
     tmp=0._dp
-    alpha = 1.e2_dp
+    !alpha = 1.e2_dp
     !alpha = 1.e-6_dp
+    alpha = 1.e-2_dp
     !CALL reset_to_next_rng_substream(cmaes_opt%rng_normal_stream, error=error)
     do j=1,a_k%lambda
         do i=1,n; a_k%arz(i,j) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
@@ -596,7 +597,10 @@ MODULE cma_es
             enddo
             !-----------yannick----Gss and gpp sepcial conditions!-------------
             ! constrains on variables go here ---------------------------------
+        if (cmaes_opt%additional_constrain) then 
+          ! for scp-------------
             ! Gss gibber then gsp
+          if (n .eq. 26) then
             if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
                 tmp2 = a_k%arx(11,j)
@@ -653,11 +657,68 @@ MODULE cma_es
                 a_k%arx(5,j) = a_k%arx(6,j) 
                 a_k%arx(6,j) = tmp2
             endif
+        ! without scp-------------------------------------------    
+          else if (n .eq. 22) then
+            ! Gss gibber then gsp
+         if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
+                tmp2 = a_k%arx( 9,j)
+                a_k%arx( 9,j) = a_k%arx(10,j) 
+                a_k%arx(10,j) = tmp2
+            endif
+            ! Gpp bigger then gp2
+            if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+                tmp2 = a_k%arx(11,j)
+                a_k%arx(11,j) = a_k%arx(12,j) 
+                a_k%arx(12,j) = tmp2
+            endif
+            ! Uss lower then upp
+            if (a_k%arx(15,j) .lt. a_k%arx(14,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(15,j) 
+                tmp2 = a_k%arx(14,j)
+                a_k%arx(14,j) = a_k%arx(15,j) 
+                a_k%arx(15,j) = tmp2
+            endif
+            ! beta_s lower than beta_p
+            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+                tmp(1) = tmp(1) +  abs(a_k%arx(16,j) - a_k%arx(17,j))
+                tmp2 = a_k%arx(16,j)
+                a_k%arx(16,j) = a_k%arx(17,j) 
+                a_k%arx(17,j) = tmp2
+            endif
+            ! sigma should be bigger than gss
+            if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+                tmp2 = a_k%arx(7,j)
+                a_k%arx(7,j) = a_k%arx(1,j) 
+                a_k%arx(1,j) = tmp2
+            endif
+            ! sigma should be bigger than gss
+            if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+                tmp2 = a_k%arx(21,j)
+                a_k%arx(21,j) = a_k%arx( 9,j) 
+                a_k%arx( 9,j) = tmp2
+            endif
 
-    !        do i=1,n
-    !                if (cmaes_opt%arx(i,k) .lt. 0._dp) cmaes_opt%arx(i,k) = 0._dp
-    !                if (cmaes_opt%arx(i,k) .gt. 1._dp) cmaes_opt%arx(i,k) = 1._dp
-    !        enddo
+            ! exponents ??
+            if (a_k%arx(19,j) .lt. a_k%arx(20,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(20,j) - a_k%arx(19,j) 
+                tmp2 = a_k%arx(19,j)
+                a_k%arx(19,j) = a_k%arx(20,j) 
+                a_k%arx(20,j) = tmp2
+            endif
+            ! exponents ??
+            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+                tmp2 = a_k%arx(5,j)
+                a_k%arx(5,j) = a_k%arx(6,j) 
+                a_k%arx(6,j) = tmp2
+            endif
+
+           endif
+         endif
     enddo
     !---yannick this is stupid
     !print *,'new generating x...'
@@ -707,7 +768,8 @@ MODULE cma_es
                input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
                                 (input_set(j_p)%p%f(numcols)- &
                                  input_set(j_m)%p%f(numcols))/& 
-                                (fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
+                                (maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
+                                !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
                                 !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
            enddo 
         enddo 

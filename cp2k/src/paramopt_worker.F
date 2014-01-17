@@ -40,6 +40,7 @@ MODULE paramopt_worker
                                              f_env_add_defaults,&
                                              f_env_type,&
                                              get_energy,&
+                                             get_force,&
                                              get_natom, &
                                              get_pos, &
                                              calc_energy, &
@@ -267,6 +268,7 @@ MODULE paramopt_worker
     INTEGER                                  :: iter,i_inp,charge,i
     REAL(KIND=dp),DIMENSION(:),POINTER       :: x
     REAL(KIND=dp)                            :: energy
+    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE   :: forces
 
     this%x_old = this%x
     CALL swarm_message_get(cmd,"input",input_file)
@@ -343,17 +345,27 @@ MODULE paramopt_worker
       CALL swarm_message_add(report, "Epot", energy)
     !-----------------------------------------------------
     else if (command .eq. 'geo_opt') then
-      ALLOCATE(this%pos2(3*this%n_atoms))
-      ALLOCATE(this%pos(3*this%n_atoms))
-      ALLOCATE(this%g(2,3*this%n_atoms))
-      CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-      !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
+!      ALLOCATE(this%pos2(3*this%n_atoms))
+!      ALLOCATE(this%pos(3*this%n_atoms))
+!      ALLOCATE(this%g(2,3*this%n_atoms))
+!      CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+!      !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+!      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
+!      CALL get_energy(this%f_env_id,energy,ierr)
+!
+!      CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
+!      CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
+!                             RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
+!                             0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
+!        !!---------------cleanup-----------------------------
+!        deallocate(this%pos,this%pos2,this%g)!
+      !this is new with forces
+      allocate(forces(3*this%n_atoms))
+      CALL calc_energy_force(this%f_env_id, .TRUE. , ierr)
       CALL get_energy(this%f_env_id,energy,ierr)
-      CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
-      CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
-                             RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
-                             0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
+      CALL get_force(this%f_env_id, forces, 3*this%n_atoms, ierr)
+      this%rmsd = sum(abs(forces))
+      deallocate(forces) 
         !-------------report--------------------------------
         ! rmsd per atom ???
         this%rmsd = this%rmsd/real(this%n_atoms)
@@ -362,8 +374,6 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "iter", iter) 
         CALL swarm_message_add(report, "rmsd", this%rmsd)
         CALL swarm_message_add(report, "Epot", energy)
-        !!---------------cleanup-----------------------------
-        deallocate(this%pos,this%pos2,this%g)
     else
         !error
     endif

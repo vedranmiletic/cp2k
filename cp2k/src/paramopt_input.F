@@ -145,6 +145,15 @@ MODULE paramopt_input
     CALL section_add_keyword(cmaes_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
 
+    CALL keyword_create(keyword, name="ADDITIONAL_CONS",&
+         description="balba TODO.",&
+         default_l_val=.FALSE.,&
+         lone_keyword_l_val = .TRUE.,&
+         error=error)
+    CALL section_add_keyword(cmaes_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error)
+
+
     CALL section_add_subsection(paramopt_section, cmaes_section, error=error)
     CALL section_add_subsection(swarm_section, paramopt_section, error=error)
     CALL section_release(cmaes_section,error=error)
