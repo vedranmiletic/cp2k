@@ -582,6 +582,7 @@ MODULE cma_es
         do i=1,n; a_k%arz(i,j) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
     CALL DGEMV('N',N,N,1.0d0,a_k%BD,N,a_k%arz(:,j),1,0.0d0,a_k%multmp_vN,1)
     a_k%arx(:,j) = a_k%xmean + a_k%sigma * a_k%multmp_vN
+    if (cmaes_opt%generation .eq. 1) a_k%arx(:,j) = a_k%xmean
     ! check if x in boundaries...set to bound limit otherwiese
             do i=1,n
                     if (a_k%arx(i,j) .lt. cmaes_opt%l_bound(i)) then
