@@ -294,9 +294,9 @@ MODULE paramopt_worker
 !    this%dft_section => section_vals_get_subs_vals(this%root_section,"FORCE_EVAL%DFT",error=this%error)
 !    this%qs_section  => section_vals_get_subs_vals(this%dft_section, "QS", error = this%error)
 !    this%scptb_section  => section_vals_get_subs_vals(this%qs_section, "SCPTB", error = this%error)
-    CALL section_vals_val_set(this%root_section, &
-                              "GLOBAL%PRINT_LEVEL", &
-                              i_val=silent_print_level, error = this%error)
+    !CALL section_vals_val_set(this%root_section, &
+    !                          "GLOBAL%PRINT_LEVEL", &
+    !                          i_val=silent_print_level, error = this%error)
     !                          i_val=low_print_level, error = this%error)
     !------------------------------------------------------------------------
     CALL section_vals_val_set(this%root_section, &
