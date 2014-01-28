@@ -331,6 +331,7 @@ MODULE qs_environment_types
     LOGICAL :: run_rtp
     LOGICAL :: linres_run
     LOGICAL :: calc_image_preconditioner
+    LOGICAL :: converged
     INTEGER :: nelectron_total
     INTEGER :: nelectron_spin(2)
     REAL(KIND=dp)                                         :: sim_time

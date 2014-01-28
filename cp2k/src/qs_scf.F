@@ -195,7 +195,7 @@ CONTAINS
 
       CALL scf_env_do_scf(scf_env=scf_env, qs_env=qs_env,  &
                           converged=converged, should_stop=should_stop, error=error)
-
+      qs_env%converged=converged
       !   *** add the converged wavefunction to the wavefunction history
       IF ((ASSOCIATED(qs_env%wf_history)) .AND. &
           ((qs_env%scf_control%density_guess .NE. history_guess) .OR. &

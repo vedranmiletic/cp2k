@@ -757,6 +757,17 @@ CONTAINS
            sep%app              =   optim_vars(10)
            sep%de               =   optim_vars(8)/eV
            sep%acoul            =   optim_vars(7)/eV
+           !----one-center to original value-------------------
+        ELSE IF (size(optim_vars) .eq. 20) THEN
+           sep%alp              =   optim_vars(3)*Ang/angstrom
+           sep%beta(0)          =   optim_vars(2)*evolt/eV
+           sep%sto_exponents(0) =   optim_vars(4) 
+           sep%sto_exponents(1) =   optim_vars(5)
+           sep%uss              =   optim_vars(1)*evolt/eV
+           sep%asp              =   optim_vars(8) 
+           sep%app              =   optim_vars(9) 
+           sep%de               =   optim_vars(7)/eV
+           sep%acoul            =   optim_vars(6)/eV
         ELSE IF (size(optim_vars) .eq. 22) THEN
            !----------without scp------------------------------
            sep%alp              =   optim_vars(4)*Ang/angstrom
@@ -808,6 +819,19 @@ CONTAINS
           sep%app              =   optim_vars(26)
           sep%de               =   optim_vars(24)/eV
           sep%acoul            =   optim_vars(23)/eV
+          !----------one-center original value----------------
+        ELSE IF (size(optim_vars) .eq. 20) THEN
+          sep%alp              =   optim_vars(14)*Ang/angstrom
+          sep%beta(0)          =   optim_vars(12)*evolt/eV
+          sep%beta(1)          =   optim_vars(13)*evolt/eV
+          sep%sto_exponents(0) =   optim_vars(15) 
+          sep%sto_exponents(1) =   optim_vars(16) 
+          sep%uss              =   optim_vars(10)*evolt/eV
+          sep%upp              =   optim_vars(11)*evolt/eV
+          sep%asp              =   optim_vars(19) 
+          sep%app              =   optim_vars(20)
+          sep%de               =   optim_vars(18)/eV
+          sep%acoul            =   optim_vars(17)/eV
         ELSE IF (size(optim_vars) .eq. 22) THEN
           !----------without scp------------------------------
           sep%alp              =   optim_vars(18)*Ang/angstrom

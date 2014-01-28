@@ -1388,6 +1388,7 @@ CPSourceFileRef,&
       routineP = moduleN//':'//routineN
 
     LOGICAL                                  :: failure
+    LOGICAL                                  :: conv
     TYPE(cp_error_type)                      :: error
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(f_env_type), POINTER                :: f_env
@@ -1399,6 +1400,8 @@ CPSourceFileRef,&
        logger => cp_error_get_logger(error)
        CALL cp_iterate(logger%iter_info,error=error) ! add one to the iteration count
        CALL force_env_calc_energy_force(f_env%force_env,calc_force=calc_force,error=error)
+       !---yannick: these lines are only valid if qs exits...blablabla
+       conv=f_env%force_env%qs_env%converged
     END IF
     CALL f_env_rm_defaults(f_env,error,ierr)
 

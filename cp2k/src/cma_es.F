@@ -657,9 +657,9 @@ MODULE cma_es
                 a_k%arx(6,j) = tmp2
             endif
         ! without scp-------------------------------------------    
-          else if (n .eq. 22) then
+      else if (n .eq. 22) then
             ! Gss gibber then gsp
-         if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
+            if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
                 tmp2 = a_k%arx( 9,j)
                 a_k%arx( 9,j) = a_k%arx(10,j) 
@@ -714,6 +714,50 @@ MODULE cma_es
                 tmp2 = a_k%arx(5,j)
                 a_k%arx(5,j) = a_k%arx(6,j) 
                 a_k%arx(6,j) = tmp2
+            endif
+      else if (n .eq. 20) then
+            ! Uss lower then upp
+            if (a_k%arx(11,j) .lt. a_k%arx(10,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx(11,j) 
+                tmp2 = a_k%arx(10,j)
+                a_k%arx(10,j) = a_k%arx(11,j) 
+                a_k%arx(11,j) = tmp2
+            endif
+            ! beta_s lower than beta_p
+            if (a_k%arx(13,j) .lt. a_k%arx(12,j))  then
+                tmp(1) = tmp(1) +  abs(a_k%arx(12,j) - a_k%arx(13,j))
+                tmp2 = a_k%arx(12,j)
+                a_k%arx(12,j) = a_k%arx(13,j) 
+                a_k%arx(13,j) = tmp2
+            endif
+            ! sigma should be bigger than gss
+           ! if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+           !     tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+           !     tmp2 = a_k%arx(7,j)
+           !     a_k%arx(7,j) = a_k%arx(1,j) 
+           !     a_k%arx(1,j) = tmp2
+           ! endif
+            ! sigma should be bigger than gss
+           ! if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+           !     tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+           !     tmp2 = a_k%arx(21,j)
+           !     a_k%arx(21,j) = a_k%arx( 9,j) 
+           !     a_k%arx( 9,j) = tmp2
+           ! endif
+
+            ! exponents ??
+            if (a_k%arx(15,j) .lt. a_k%arx(16,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(15,j) 
+                tmp2 = a_k%arx(15,j)
+                a_k%arx(15,j) = a_k%arx(16,j) 
+                a_k%arx(16,j) = tmp2
+            endif
+            ! exponents ??
+            if (a_k%arx(4,j) .lt. a_k%arx(5,j))  then
+                tmp(1) = tmp(1) +  a_k%arx(5,j) - a_k%arx(4,j) 
+                tmp2 = a_k%arx(4,j)
+                a_k%arx(4,j) = a_k%arx(5,j) 
+                a_k%arx(5,j) = tmp2
             endif
 
            endif

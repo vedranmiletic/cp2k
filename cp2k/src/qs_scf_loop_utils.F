@@ -486,6 +486,15 @@ CONTAINS
         END IF
         inner_loop_converged=.FALSE.
         exit_inner_loop = .TRUE.
+     !-----yannick hack--------------------------
+     ELSE IF (scf_env%iter_delta > 10._dp) THEN
+        IF (output_unit>0) THEN
+           WRITE(UNIT=output_unit,FMT="(/,T3,A,F10.3/)")&
+                "*** SCF run NOT converged because of divergence***",scf_env%iter_delta
+        END IF
+        inner_loop_converged=.FALSE.
+        exit_inner_loop = .TRUE.
+
      END IF
  
   END SUBROUTINE qs_scf_check_inner_exit
