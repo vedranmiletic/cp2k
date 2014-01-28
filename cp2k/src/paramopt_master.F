@@ -477,7 +477,7 @@ MODULE paramopt_master
       if(.not.explicit_key) a_k_parents%sigma = 0._dp
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
                     this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
-      a_k_parents%sigma = ini_sigma
+      a_k_parents%sigma = a_k%sigma
       a_k_parents%f = huge(1._dp)
       a_k_parents%id = k+this%cmaes_opt%lambda_mo
       !print *,'initial x from a_k_parents',a_k_parents%arx
