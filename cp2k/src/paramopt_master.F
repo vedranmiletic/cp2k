@@ -113,7 +113,8 @@ MODULE paramopt_master
    REAL(KIND=dp),ALLOCATABLE                             :: timings(:)
    REAL(KIND=dp),POINTER                                 :: E_res(:)
    REAL(KIND=dp),POINTER                                 :: res(:)
-   REAL(KIND=dp),POINTER                                 :: rmsd(:,:)
+   REAL(KIND=dp),POINTER                                 :: rmsd(:)
+   REAL(KIND=dp),POINTER                                 :: force(:,:)
    REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
    REAL(KIND=dp),POINTER                                 :: obj_f(:)
    REAL(KIND=dp),POINTER                                 :: grad_obj_f(:)
@@ -233,7 +234,8 @@ MODULE paramopt_master
             this%lbfgs_opt,this%cmaes_opt)
     !-------------------
     allocate(this%E_res(this%num_para_set))
-    allocate(this%rmsd(this%num_ref,this%num_para_set))
+    allocate(this%rmsd(this%num_para_set))
+    allocate(this%force(this%num_ref,this%num_para_set))
     allocate(this%Epot(this%num_ref,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
     allocate(this%res(this%num_ref))
@@ -473,11 +475,11 @@ MODULE paramopt_master
       this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       a_k_parents => this%cmaes_opt%a_k_parents(k)%p
             ! fix sigma for first generation so better distr
-      ini_sigma = a_k_parents%sigma
+      !ini_sigma = a_k_parents%sigma
       if(.not.explicit_key) a_k_parents%sigma = 0._dp
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
                     this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
-      a_k_parents%sigma = a_k%sigma
+      a_k_parents%sigma = ini_sigma
       a_k_parents%f = huge(1._dp)
       a_k_parents%id = k+this%cmaes_opt%lambda_mo
       !print *,'initial x from a_k_parents',a_k_parents%arx
@@ -671,7 +673,6 @@ MODULE paramopt_master
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
-    REAL(KIND=dp)                            :: report_rmsd
     REAL(KIND=dp)                            :: E_res_temp
     CHARACTER(len=default_string_length)     :: report_status
     type(individual_type),POINTER            :: a_k
@@ -702,7 +703,7 @@ MODULE paramopt_master
    !    print *,'receved',i,j,this%function_matrix(i,j)-this%function_matrix(i,1),this%function_matrix(i,j)
    !    print *,'wid',report_worker_id
    !    print *,trim(this%input_files(i))
-    ELSE IF (report_status == 'rmsd_calc') THEN
+    ELSE IF (report_status == 'force_calc') THEN
     !---------we got a new message, deal with it :)---------------
     CALL swarm_message_get(report, "num_inp", i_inp)
     CALL swarm_message_get(report, "iter", r_iter)
@@ -711,7 +712,10 @@ MODULE paramopt_master
          j = mod(r_iter,this%num_para_set) + 1
          i = ceiling(real(r_iter)/real(this%num_para_set)) 
        CALL swarm_message_get(report, "conv", this%converged(i,j))    
-       CALL swarm_message_get(report, "rmsd", this%rmsd(i,j))
+       CALL swarm_message_get(report, "force", this%force(i,j))
+       if (i_inp .eq. 1) then
+            CALL swarm_message_get(report, "rmsd", this%rmsd(j))
+       endif
        CALL swarm_message_get(report, "Epot", this%Epot(i,j))
        !this%function_matrix(i,j) = this%rmsd(j)
        !------------change status---------------------------------
@@ -750,8 +754,9 @@ MODULE paramopt_master
              !-------------------for cmaes_opt------------------------------
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
+             a_k%rmsd = this%rmsd(j)
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%E_res(j))
+             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(j), this%E_res(j))
                if (isnan(this%E_res(j))) then
                  a_k%f(1) = huge(1.0_dp) 
                else     
@@ -762,14 +767,13 @@ MODULE paramopt_master
                  ! E_res is sum of energy error divided by num_atoms per calc
                endif
                  !---yannick use ^2-------
-                 a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
+                 a_k%f(2) = sum(this%force(:,j)) + a_k%penalty
                  ! here the squaring neeeds to be carried out
                  !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
-              call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%E_res(j))
+              call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(j), this%E_res(j))
              this%obj_f(j) = this%weights(1)*this%E_res(j) + &
                           this%weights(2)*this%function_matrix(this%num_inp,j) 
              endif
@@ -886,7 +890,7 @@ MODULE paramopt_master
          !   else if (i .eq. this%num_inp) then
          !      CALL swarm_message_add(cmd, "command", "geo_opt")
          !   endif
-            CALL swarm_message_add(cmd, "command", "geo_opt")
+            CALL swarm_message_add(cmd, "command", "force")
             CALL swarm_message_add(cmd, "input", this%input_files(i))
             CALL swarm_message_add(cmd, "coord", this%coord_files(i))
             CALL swarm_message_add(cmd, "charge", this%charges(i))
@@ -1239,9 +1243,10 @@ subroutine sample(this,n,x,l_bound,u_bound)
 end subroutine
 ! *****************************************************************************
 ! *****************************************************************************
- SUBROUTINE calc_obj_f(this, Epot, Conv, obj_f)
+ SUBROUTINE calc_obj_f(this, Epot, Conv, rmsd, obj_f)
     TYPE(paramopt_master_type)               :: this
     REAL(KIND=dp),intent(in)                 :: Epot(:)
+    REAL(KIND=dp),intent(in)                 :: rmsd
     INTEGER,intent(in),OPTIONAL              :: Conv(:)
     REAL(KIND=dp),intent(out)                :: obj_f
     REAL(KIND=dp)                            :: energy
@@ -1291,7 +1296,7 @@ end subroutine
                     obj_f = sum(this%res/real(this%ref_num_atoms))
                     !obj_f = sum(this%res/real(this%ref_num_atoms)**2)
         IF (ANY(Conv .eq. 0)) obj_f=huge(0._dp)         
-                    write(*,*) obj_f
+                    write(*,*) obj_f,rmsd
  END SUBROUTINE
 ! *****************************************************************************
 ! *****************************************************************************

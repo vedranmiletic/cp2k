@@ -64,6 +64,7 @@ MODULE cma_es_types
    INTEGER                                         :: s_i_count
    !--------------------------------------------------------------------------
    REAL(KIND=dp)                                   :: penalty
+   REAL(KIND=dp)                                   :: rmsd
  END TYPE individual_type 
 !================================================================================
  TYPE cmaes_opt_type

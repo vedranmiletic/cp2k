@@ -889,6 +889,7 @@ MODULE cma_es
                           cmaes_opt%population(i)%I_dist, &
                           cmaes_opt%population(i)%sigma, &
                           cmaes_opt%population(i)%trace, &
+                          cmaes_opt%population(i)%rmsd, &
                           cmaes_opt%generation, &
                           cmaes_opt%population(i)%arx(:,1)
            enddo

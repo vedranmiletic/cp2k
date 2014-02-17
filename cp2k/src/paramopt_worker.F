@@ -113,6 +113,7 @@ MODULE paramopt_worker
    REAL(kind=dp)                                    :: Epot
    REAL(kind=dp)                                    :: timings
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
+   REAL(kind=dp)                                    :: force
    REAL(kind=dp)                                    :: rmsd
    INTEGER                                          :: f_env_id
    TYPE(f_env_type), POINTER                        :: f_env
@@ -194,13 +195,9 @@ MODULE paramopt_worker
         this%Epot = 0._dp
         this%timings = 0._dp
         this%rmsd = 0._dp
+        this%force = 0._dp
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init called."
         IF (this%iw>0) WRITE(this%iw,*) "paramopt_worker_init done."
-
-
-
-
-
   END SUBROUTINE paramopt_worker_init
 ! *****************************************************************************
 ! *****************************************************************************
@@ -239,7 +236,7 @@ MODULE paramopt_worker
     REAL(KIND=dp)                            :: energy
 
     CALL swarm_message_get(cmd, "command", command)
-    if (command .eq. 'energy' .or. command .eq. 'geo_opt') then
+    if (command .eq. 'energy' .or. command .eq. 'force') then
         CALL paramopt_geo_energy(this,cmd,command,report)
     else if (command .eq. 'benchmark') then
         CALL swarm_message_get(cmd,"x",this%x)
@@ -354,22 +351,8 @@ MODULE paramopt_worker
 !      CALL swarm_message_add(report, "conv", this%converged) 
 !      CALL swarm_message_add(report, "Epot", energy)
 !    !-----------------------------------------------------
-!    else if (command .eq. 'geo_opt') then
-    if (command .eq. 'geo_opt') then
-!      ALLOCATE(this%pos2(3*this%n_atoms))
-!      ALLOCATE(this%pos(3*this%n_atoms))
-!      ALLOCATE(this%g(2,3*this%n_atoms))
-!      CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-!      !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-!      CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
-!      CALL get_energy(this%f_env_id,energy,ierr)
-!
-!      CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
-!      CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
-!                             RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
-!                             0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-!        !!---------------cleanup-----------------------------
-!        deallocate(this%pos,this%pos2,this%g)!
+    if (command .eq. 'force') then
+
       !this is new with forces
       allocate(forces(3*this%n_atoms))
       CALL calc_energy_force(this%f_env_id, .TRUE. , ierr)
@@ -380,16 +363,35 @@ MODULE paramopt_worker
       else
               this%converged = 0
       endif
-      this%rmsd = sum(abs(forces))
-      deallocate(forces) 
+      this%force = sum(abs(forces))
+      deallocate(forces)
+      !-------------------------------------------------------
+      if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
+        ALLOCATE(this%pos2(3*this%n_atoms))
+        ALLOCATE(this%pos(3*this%n_atoms))
+        ALLOCATE(this%g(2,3*this%n_atoms))
+        CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
+        !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+        CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
+        !CALL get_energy(this%f_env_id,energy,ierr)
+        CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
+        CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
+                               RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
+                               0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
+         !!---------------cleanup-----------------------------
+          deallocate(this%pos,this%pos2,this%g)!
+      endif 
         !-------------report--------------------------------
         ! rmsd per atom ???
         this%rmsd = this%rmsd/real(this%n_atoms)
-        CALL swarm_message_add(report, "status", "rmsd_calc") 
+        CALL swarm_message_add(report, "status", "force_calc") 
         CALL swarm_message_add(report, "num_inp", i_inp) 
         CALL swarm_message_add(report, "iter", iter)
         CALL swarm_message_add(report, "conv", this%converged) 
-        CALL swarm_message_add(report, "rmsd", this%rmsd)
+        CALL swarm_message_add(report, "force", this%force)
+        if (i_inp .eq. 1) then
+           CALL swarm_message_add(report, "rmsd", this%rmsd)
+        endif
         CALL swarm_message_add(report, "Epot", energy)
     else
         !error
