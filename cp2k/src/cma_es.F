@@ -598,14 +598,14 @@ MODULE cma_es
             ! constrains on variables go here ---------------------------------
         if (cmaes_opt%additional_constrain) then 
           ! for scp-------------
-            ! Gss gibber then gsp
           if (n .eq. 26) then
-            if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
-                tmp2 = a_k%arx(11,j)
-                a_k%arx(11,j) = a_k%arx(12,j) 
-                a_k%arx(12,j) = tmp2
-            endif
+            ! Gss gibber then gsp
+          !  if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+          !      tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+          !      tmp2 = a_k%arx(11,j)
+          !      a_k%arx(11,j) = a_k%arx(12,j) 
+          !      a_k%arx(12,j) = tmp2
+          !  endif
             ! Gpp bigger then gp2
             if (a_k%arx(13,j) .lt. a_k%arx(14,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(13,j) 
@@ -628,19 +628,19 @@ MODULE cma_es
                 a_k%arx(19,j) = tmp2
             endif
             ! sigma should be bigger than gss
-            if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
-                tmp2 = a_k%arx(7,j)
-                a_k%arx(7,j) = a_k%arx(1,j) 
-                a_k%arx(1,j) = tmp2
-            endif
+         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+         !       tmp2 = a_k%arx(7,j)
+         !       a_k%arx(7,j) = a_k%arx(1,j) 
+         !       a_k%arx(1,j) = tmp2
+         !   endif
             ! sigma should be bigger than gss
-            if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(23,j) - a_k%arx(11,j) 
-                tmp2 = a_k%arx(23,j)
-                a_k%arx(23,j) = a_k%arx(11,j) 
-                a_k%arx(11,j) = tmp2
-            endif
+         !   if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
+         !       tmp(1) = tmp(1) +  a_k%arx(23,j) - a_k%arx(11,j) 
+         !       tmp2 = a_k%arx(23,j)
+         !       a_k%arx(23,j) = a_k%arx(11,j) 
+         !       a_k%arx(11,j) = tmp2
+         !   endif
 
             ! exponents ??
             if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
@@ -659,12 +659,12 @@ MODULE cma_es
         ! without scp-------------------------------------------    
       else if (n .eq. 22) then
             ! Gss gibber then gsp
-            if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
-                tmp2 = a_k%arx( 9,j)
-                a_k%arx( 9,j) = a_k%arx(10,j) 
-                a_k%arx(10,j) = tmp2
-            endif
+         !   if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
+         !       tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
+         !       tmp2 = a_k%arx( 9,j)
+         !       a_k%arx( 9,j) = a_k%arx(10,j) 
+         !       a_k%arx(10,j) = tmp2
+         !   endif
             ! Gpp bigger then gp2
             if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
                 tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
@@ -687,19 +687,19 @@ MODULE cma_es
                 a_k%arx(17,j) = tmp2
             endif
             ! sigma should be bigger than gss
-            if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
-                tmp2 = a_k%arx(7,j)
-                a_k%arx(7,j) = a_k%arx(1,j) 
-                a_k%arx(1,j) = tmp2
-            endif
-            ! sigma should be bigger than gss
-            if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
-                tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
-                tmp2 = a_k%arx(21,j)
-                a_k%arx(21,j) = a_k%arx( 9,j) 
-                a_k%arx( 9,j) = tmp2
-            endif
+         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+         !       tmp2 = a_k%arx(7,j)
+         !       a_k%arx(7,j) = a_k%arx(1,j) 
+         !       a_k%arx(1,j) = tmp2
+         !   endif
+         !   ! sigma should be bigger than gss
+         !   if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+         !       tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+         !       tmp2 = a_k%arx(21,j)
+         !       a_k%arx(21,j) = a_k%arx( 9,j) 
+         !       a_k%arx( 9,j) = tmp2
+         !   endif
 
             ! exponents ??
             if (a_k%arx(19,j) .lt. a_k%arx(20,j))  then
