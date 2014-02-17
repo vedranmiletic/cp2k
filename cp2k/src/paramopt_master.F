@@ -768,6 +768,7 @@ MODULE paramopt_master
                endif
                  !---yannick use ^2-------
                  a_k%f(2) = sum(this%force(:,j)) + a_k%penalty
+                 if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
                  ! here the squaring neeeds to be carried out
                  !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
