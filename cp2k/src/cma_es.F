@@ -13,10 +13,9 @@ MODULE cma_es
   USE cma_es_utils,                    ONLY: mrgrnk, &
                                              tool_symmatrix, &
                                              tool_eigendecomp, &
-                                             a_k_copy
+                                             a_k_copy, &
+                                             write_x
   USE cma_es_types,                    ONLY: individual_type,individual_type_p,cmaes_opt_type
-  USE cp_files,                        ONLY: open_file,&
-                                             close_file
   USE parallel_rng_types,              ONLY: rng_stream_type, &
                                              create_rng_stream, &
                                              next_random_number, &
@@ -872,50 +871,8 @@ MODULE cma_es
 !       print *,size(output_set)
        deallocate(tmp_set)
     END SUBROUTINE
-!===========================================================================
-    subroutine write_x(cmaes_opt)
-    implicit none
-    type(cmaes_opt_type),TARGET                               :: cmaes_opt
-    integer                                                   :: i,j,k,l,n,t
-    integer                                                   :: unit_number
-           !open(12,position='append')
-           call open_file(file_name="fort.13",unit_number=unit_number, &
-                          file_action='write',file_status='replace')
-           do i = 1,2*cmaes_opt%lambda_mo
-              write(unit_number,*) cmaes_opt%population(i)%f, &
-                          cmaes_opt%population(i)%penalty, &
-                          cmaes_opt%population(i)%id, &
-                          cmaes_opt%population(i)%front, &
-                          cmaes_opt%population(i)%I_dist, &
-                          cmaes_opt%population(i)%sigma, &
-                          cmaes_opt%population(i)%trace, &
-                          cmaes_opt%population(i)%rmsd, &
-                          cmaes_opt%generation, &
-                          cmaes_opt%population(i)%arx(:,1)
-           enddo
-           call close_file(unit_number)
-
-           n = cmaes_opt%n
-
-           do i = 1,2*cmaes_opt%lambda_mo
-                t = cmaes_opt%population(i)%id
-                call open_file(file_name="cov_"//trim(str(t)),unit_number=unit_number, &
-                          file_action='write',file_status='replace')
-                !----print matrix
-                DO k=1,n
-                  WRITE(unit_number,*) (cmaes_opt%population(i)%C(k,l), l=1,n)
-                END DO
-                call close_file(unit_number)
-           enddo
 
 
-    end subroutine write_x
 
-    character(len=20) function str(k)
-!   "Convert an integer to string."
-    integer, intent(in) :: k
-    write (str, *) k
-    str = adjustl(str)
-    end function str
 
 END MODULE cma_es

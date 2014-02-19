@@ -11,17 +11,282 @@
 MODULE cma_es_utils
   USE kinds,                           ONLY: dp
   USE cma_es_types,                    ONLY: individual_type,individual_type_p,cmaes_opt_type
+  USE paramopt_types,                  ONLY: paramopt_master_type
+  USE parallel_rng_types,              ONLY: rng_stream_type, &
+                                             create_rng_stream, &
+                                             next_random_number, &
+                                             reset_to_next_rng_substream, &
+                                             GAUSSIAN, &
+                                             UNIFORM
+  USE paramopt_utils,                   ONLY: var_trans,&
+                                             var_back_trans
+    USE cp_files,                        ONLY: open_file,&
+                                             close_file
 #include "cp_common_uses.h"
     implicit none
     private 
     
     CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cma_es_utils'
-    public :: mrgrnk,tool_symmatrix,tool_eigendecomp,a_k_copy !,a_k_init
+    public :: mrgrnk,tool_symmatrix,tool_eigendecomp,a_k_copy
+    public :: a_k_init
+    public :: write_x
+    public :: read_x
+    public :: str !convert integer to string
 !	  private :: R_mrgrnk, I_mrgrnk, D_mrgrnk
       interface mrgrnk
          module procedure D_mrgrnk, R_mrgrnk, I_mrgrnk
       end interface mrgrnk
       contains
+!=============================================================================
+ SUBROUTINE a_k_init(a_k,lambda_mo,num_obj,step_size,insigma,this,k,x)
+    IMPLICIT NONE
+    TYPE(paramopt_master_type)               :: this
+    type(individual_type),POINTER            :: a_k
+    REAL(kind=dp),DIMENSION(:)               :: insigma
+    REAL(kind=dp),DIMENSION(:),OPTIONAL      :: x
+    REAL(kind=dp)                            :: step_size
+    INTEGER                                  :: n,l
+    INTEGER                                  :: k
+    INTEGER                                  :: i,j
+    INTEGER                                  :: lambda_mo
+    INTEGER                                  :: num_obj
+    INTEGER                                  :: allocstat
+    INTEGER                                  :: unit_number
+    n = size(this%x)
+    !random x
+    if (this%rand_inp) then
+    do i=1,n; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo 
+        call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
+    endif
+    if (present(x)) then
+        this%x = x
+    endif
+      ! initialize a_k
+               IF (.NOT. ALLOCATED(a_k%B)) THEN
+                     ALLOCATE(a_k%B(n,n),stat=allocStat)
+                     IF(allocStat .NE. 0) STOP 'Error allocating B'
+               END IF
+               a_k%B = 0._dp
+               DO i = 1,n
+                a_k%B(i,i) = 1._dp
+               END DO  
+               IF (.NOT. ALLOCATED(a_k%D)) THEN
+                   ALLOCATE(a_k%D(n,n),stat=allocStat)
+                   IF(allocStat .NE. 0) STOP 'Error allocating D'
+               END IF
+               a_k%D = 0._dp
+               DO i = 1, n
+                  a_k%D(i,i) = sqrt(insigma(i)*1_dp/product(insigma)**(1._dp/size(insigma)))
+                  !d * 1/nsqrt(det) so that det ~ 1
+                  ! and sqrt(d) so that BD*BD^t = C
+                  !a_k%D(i,i) = 1._dp 
+               END DO
+               IF (.NOT. ALLOCATED(a_k%BD)) THEN 
+                   ALLOCATE(a_k%BD(n,n),stat=allocStat)
+                   IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix BD'
+               END IF
+         !      a_k%BD = matmul(a_k%B,a_k%D) 
+               CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n) 
+               IF (.NOT. ALLOCATED(a_k%C)) THEN
+                   ALLOCATE(a_k%C(n,n),stat=allocStat)
+                   IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix C'
+               END IF
+          !     a_k%C = matmul(a_k%BD,transpose(a_k%BD))
+               CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
+             allocate(a_k%multmp_vN(n))
+             !----------(1+1) CMA-ES--------------------------
+             a_k%lambda = 1
+             a_k%mu = 1
+             ALLOCATE(a_k%s_i(2*lambda_mo))
+             ALLOCATE(a_k%triuC(n,n),stat=allocStat)
+             ALLOCATE(a_k%arx(n,a_k%lambda),stat=allocStat)
+             ALLOCATE(a_k%arz(n,a_k%lambda),stat=allocStat)
+             ALLOCATE(a_k%xmean(n))
+             ALLOCATE(a_k%zmean(n))
+             ALLOCATE(a_k%xold(n))
+             ALLOCATE(a_k%f(num_obj))
+             ALLOCATE(a_k%tempMat(n,a_k%mu))
+             ALLOCATE(a_k%multmp_mN(n,n))
+             ALLOCATE(a_k%multmp_mN2(n,n))
+             ALLOCATE(a_k%multmp_mMU(a_k%mu,n))
+             ALLOCATE(a_k%mutmp(n,a_k%mu))
+             ALLOCATE(a_k%weightsMat(a_k%mu,a_k%mu))
+             ALLOCATE(a_k%weights(a_k%mu))
+             ALLOCATE(a_k%ps(n))
+             ALLOCATE(a_k%pc(n))
+             ALLOCATE(a_k%colVec(n,1))
+             ALLOCATE(a_k%rowVec(1,n))
+             do i=1,lambda_mo; a_k%s_i(i)%p=>null(); enddo
+             a_k%front = 0
+             a_k%penalty = 0._dp
+             a_k%weights = 1._dp !equal weights
+             ! normalize weights
+             a_k%weights = a_k%weights/sum(a_k%weights)
+                   !  mueff
+             a_k%vecsum = sum(a_k%weights)
+             a_k%vecnorm = sqrt(sum(a_k%weights**2))
+         !    this%cmaes_opt%mueff = this%cmaes_opt%vecsum**2 / this%cmaes_opt%vecnorm**2
+               !  Strategy internal parameter setting: Adaptation
+         !    this%cmaes_opt%a_k%cc = 4.0_dp/(REAL(this%num_var)+4.0_dp)
+         !    this%cmaes_opt%a_k%cs = REAL((this%cmaes_opt%mueff+2))/REAL((this%num_var+this%cmaes_opt%mueff+3))
+         !    this%cmaes_opt%a_k%mucov = this%cmaes_opt%mueff
+         !    this%cmaes_opt%a_k%ccov = (1._dp/this%cmaes_opt%mucov) * 2._dp/(REAL(this%num_var)+1.41)**2 + &
+         !                          (1._dp - 1._dp/this%cmaes_opt%mucov) * min(1.0_dp,(2.0_dp*this%cmaes_opt%mueff-1._dp) &
+         !                          /((REAL(this%num_var)+2._dp)**2 + this%cmaes_opt%mueff))
+         !    this%cmaes_opt%a_k%damps = 1._dp + 2._dp*max(0._dp, sqrt((this%cmaes_opt%mueff-1.0_dp)/ &
+         !                           real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
+             !----------------------default for (1+lambda) strategy----------------------------------
+             a_k%damps = 1._dp + real(n)/(2._dp*a_k%lambda)
+             !a_k%damps = 1._dp  
+             a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda)/2._dp))
+             a_k%cp = a_k%p_target*a_k%lambda/ &
+                  (2._dp+a_k%p_target*a_k%lambda)
+             a_k%cc = 2._dp/(real(n) + 2._dp)
+             a_k%ccov = 2._dp/(real(n)**2 + 6._dp)
+             a_k%ccovm = 0.4_dp/(real(n)**1.6_dp + 1._dp)
+             a_k%p_tresh = 0.44_dp
+             a_k%p_succ = a_k%p_target
+             !-----------------------------------------------------------
+             a_k%arx(:,1) = this%x
+             a_k%xmean = this%x
+             a_k%sigma = step_size
+             a_k%pc = 0._dp
+             a_k%ps = 0._dp
+         !    this%cmaes_opt%a_k%hsig = 1._dp
+             a_k%ps = 0._dp
+             a_k%chiN = sqrt(REAL(n))*((1.0_dp-1.0_dp/(4.0_dp*REAL(n))) &
+                                   +1.0_dp/(21.0_dp*REAL(n*n)))
+             a_k%d_count = 0
+             a_k%s_i_count = 0
+             a_k%I_dist = 0._dp
+             a_k%kernel_dist = 0._dp
+             a_k%hypervol = 0._dp
+             a_k%trace = 0._dp
+             a_k%det = 0._dp
+             a_k%Id = k
+             a_k%f =0.0_dp
+             if (k .gt. lambda_mo) a_k%f = huge(1._dp) 
+
+ END SUBROUTINE
+!===========================================================================
+    subroutine write_x(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),TARGET                               :: cmaes_opt
+    integer                                                   :: i,j,k,l,n,t
+    integer                                                   :: unit_number1
+    integer                                                   :: unit_number2
+    integer                                                   :: unit_number3
+           !open(12,position='append')
+           call open_file(file_name="fort.13",unit_number=unit_number1, &
+                          file_action='write',file_status='replace')
+           n = cmaes_opt%n
+           do i = 1,2*cmaes_opt%lambda_mo
+              write(unit_number1,*) &
+                          cmaes_opt%population(i)%id, &
+                          cmaes_opt%population(i)%f, &
+                          cmaes_opt%population(i)%sigma, &
+                          cmaes_opt%population(i)%p_succ, &
+                          cmaes_opt%generation, &
+                          cmaes_opt%population(i)%arx(:,1), &
+                          cmaes_opt%population(i)%penalty, &
+                          cmaes_opt%population(i)%front, &
+                          cmaes_opt%population(i)%I_dist, &
+                          cmaes_opt%population(i)%trace, &
+                          cmaes_opt%population(i)%rmsd
+
+              t = cmaes_opt%population(i)%id
+              call open_file(file_name="bd_"//trim(str(t)),unit_number=unit_number2, &
+              file_action='write',file_status='replace')
+              !----print matrix
+              DO k=1,n
+                WRITE(unit_number2,*) (cmaes_opt%population(i)%BD(k,l), l=1,n)
+              END DO
+              call close_file(unit_number2)
+
+              call open_file(file_name="pc_"//trim(str(t)),unit_number=unit_number3, &
+                        file_action='write',file_status='replace')
+              !----print matrix
+              DO k=1,n
+                WRITE(unit_number3,*) cmaes_opt%population(i)%pc(k)
+              END DO
+              call close_file(unit_number3)
+                   
+                !================================
+        !        call open_file(file_name="cov_"//trim(str(t)),unit_number=unit_number, &
+        !                  file_action='write',file_status='replace')
+        !        !----print matrix
+        !        DO k=1,n
+        !          WRITE(unit_number,*) (cmaes_opt%population(i)%C(k,l), l=1,n)
+        !        END DO
+        !        call close_file(unit_number)
+                !================================
+           enddo
+           call close_file(unit_number1)
+
+    end subroutine write_x
+!===========================================================================
+    subroutine read_x(cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),TARGET                               :: cmaes_opt
+    integer                                                   :: i,j,k,l,n,t
+    integer                                                   :: unit_number1
+    integer                                                   :: unit_number2
+    integer                                                   :: unit_number3
+           !open(12,position='append')
+           call open_file(file_name="fort.13",unit_number=unit_number1, &
+                          file_action='read')
+           n = cmaes_opt%n
+           do i = 1,2*cmaes_opt%lambda_mo
+              read(unit_number1,*) &
+                          cmaes_opt%population(i)%id, &
+                          cmaes_opt%population(i)%f, &
+                          cmaes_opt%population(i)%sigma, &
+                          cmaes_opt%population(i)%p_succ, &
+                          cmaes_opt%generation, &
+                          cmaes_opt%population(i)%arx(:,1), &
+                          cmaes_opt%population(i)%penalty, &
+                          cmaes_opt%population(i)%front, &
+                          cmaes_opt%population(i)%I_dist, &
+                          cmaes_opt%population(i)%trace, &
+                          cmaes_opt%population(i)%rmsd
+
+              t = cmaes_opt%population(i)%id
+              call open_file(file_name="bd_"//trim(str(t)),unit_number=unit_number2, &
+              file_action='read')
+              !----print matrix
+              DO k=1,n
+                READ(unit_number2,*) (cmaes_opt%population(i)%BD(k,l), l=1,n)
+              END DO
+              call close_file(unit_number2)
+
+              call open_file(file_name="pc_"//trim(str(t)),unit_number=unit_number3, &
+                        file_action='read')
+              !----print matrix
+              DO k=1,n
+                READ(unit_number3,*) cmaes_opt%population(i)%pc(k)
+              END DO
+              call close_file(unit_number3)
+                   
+                !================================
+        !        call open_file(file_name="cov_"//trim(str(t)),unit_number=unit_number, &
+        !                  file_action='write',file_status='replace')
+        !        !----print matrix
+        !        DO k=1,n
+        !          WRITE(unit_number,*) (cmaes_opt%population(i)%C(k,l), l=1,n)
+        !        END DO
+        !        call close_file(unit_number)
+                !================================
+           enddo
+           call close_file(unit_number1)
+
+    end subroutine read_x
+ !=============================================================================
+     character(len=20) function str(k)
+!   "Convert an integer to string."
+    integer, intent(in) :: k
+    write (str, *) k
+    str = adjustl(str)
+    end function str
 ! *****************************************************************************
  SUBROUTINE a_k_copy(a_k2,a_k1)
     IMPLICIT NONE

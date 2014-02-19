@@ -461,6 +461,8 @@ OBJECTS_GENERIC =\
  paramopt_input.o\
  paramopt_master.o\
  paramopt_worker.o\
+ paramopt_utils.o\
+ paramopt_types.o\
  particle_list_types.o\
  particle_types.o\
  paw_proj_set_types.o\

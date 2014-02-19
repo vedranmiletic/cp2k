@@ -30,8 +30,8 @@ MODULE swarm_master
                                              default_string_length
   USE paramopt_master,                 ONLY: paramopt_master_finalize,&
                                              paramopt_master_init,&
-                                             paramopt_master_steer,&
-                                             paramopt_master_type
+                                             paramopt_master_steer
+  USE paramopt_types,                  ONLY: paramopt_master_type
   USE swarm_message,                   ONLY: swarm_message_add,&
                                              swarm_message_equal,&
                                              swarm_message_file_read,&

@@ -13,7 +13,8 @@ MODULE paramopt_master
   USE cp_files,                        ONLY: open_file,&
                                              close_file
   USE cma_es,                          ONLY: cmaes,gen_pop
-!  USE cma_es_utils,                    ONLY: a_k_init
+  USE cma_es_utils,                    ONLY: a_k_init, &
+                                             read_x
   USE cma_es_types,                    ONLY: individual_type, &
                                              individual_type_p, &
                                              cmaes_opt_type
@@ -37,6 +38,14 @@ MODULE paramopt_master
                                              reset_to_next_rng_substream, &
                                              GAUSSIAN, &
                                              UNIFORM
+  USE paramopt_utils,                  ONLY: variance, &
+                                             var_trans, &
+                                             var_back_trans, &
+                                             sample
+  USE paramopt_types,                  ONLY: lbfgs_opt_type, &
+                                             gauss_opt_type, &
+                                             paramopt_master_type, &
+                                             ener_ref_type
   USE physcon,                         ONLY: angstrom,&
                                              kelvin
   USE powell,                          ONLY: powell_optimize, &
@@ -54,116 +63,10 @@ MODULE paramopt_master
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'paramopt'
 
- PUBLIC :: paramopt_master_type
  PUBLIC :: paramopt_master_init, paramopt_master_finalize
  PUBLIC :: paramopt_master_steer
 
-
   
- TYPE lbfgs_opt_type
-     CHARACTER (len=60) :: task
-     CHARACTER (len=60) :: csave
-     LOGICAL :: lsave (4)
-     INTEGER :: m, print_every, master, max_f_per_iter, status, n_iter
-     INTEGER :: ref_count, id_nr, lenwa
-     INTEGER, DIMENSION(:), POINTER :: kind_of_bound, i_work_array, isave
-     REAL(kind=dp),POINTER :: f=>null()
-     REAL(kind=dp) :: wanted_relative_f_delta, wanted_projected_gradient,&
-          last_f, projected_gradient, eold, emin
-     REAL(kind=dp), DIMENSION(:), POINTER :: x,lower_bound,upper_bound,&
-          gradient,dsave,work_array
- END TYPE lbfgs_opt_type
- 
- TYPE gauss_opt_type
-   INTEGER                                              :: n,nf
-   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE               :: eta,m,xmin
-   REAL(KIND=dp),DIMENSION(:),POINTER                   :: x 
-   REAL(KIND=dp),DIMENSION(:),POINTER                   :: l_bound,u_bound
-   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE             :: C,Q
-   REAL(KIND=dp)                                        :: c_t,fmin,r
-   REAL(KIND=dp),POINTER                                :: f=>null()
-   REAL(KIND=dp)                                        :: wm,wc,wt,beta,p,fe,fc
-   CHARACTER(len=default_string_length)                 :: task
-   TYPE(rng_stream_type),POINTER                        :: rng_normal_stream
- 
- END TYPE gauss_opt_type
-
- TYPE paramopt_master_type
-   PRIVATE
-   INTEGER                                               :: iw
-   INTEGER                                               :: num_inp
-   INTEGER                                               :: num_calc
-   INTEGER                                               :: num_ref
-   INTEGER                                               :: num_var
-   INTEGER                                               :: num_obj
-   INTEGER                                               :: num_para_set
-   INTEGER                                               :: n_walkers
-   INTEGER                                               :: inp_iter
-   INTEGER                                               :: run_type_id
-   INTEGER                                               :: input_seed
-   INTEGER,ALLOCATABLE                                   :: i_recv(:)
-   TYPE(cp_error_type),POINTER                           :: error
-   TYPE(ener_ref_type),POINTER                           :: ener_ref(:)
-   CHARACTER(len=default_string_length),POINTER          :: input_files(:)
-   CHARACTER(len=default_string_length),POINTER          :: coord_files(:)
-   INTEGER,POINTER                                       :: charges(:)
-   INTEGER,ALLOCATABLE                                   :: ref_num_atoms(:)
-   REAL(KIND=dp),ALLOCATABLE                             :: Epot(:,:)
-   INTEGER,ALLOCATABLE                                   :: converged(:,:) 
-   REAL(KIND=dp),ALLOCATABLE                             :: timings(:)
-   REAL(KIND=dp),POINTER                                 :: E_res(:)
-   REAL(KIND=dp),POINTER                                 :: res(:)
-   REAL(KIND=dp),POINTER                                 :: rmsd(:)
-   REAL(KIND=dp),POINTER                                 :: force(:,:)
-   REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
-   REAL(KIND=dp),POINTER                                 :: obj_f(:)
-   REAL(KIND=dp),POINTER                                 :: grad_obj_f(:)
-   REAL(KIND=dp),POINTER                                 :: x(:)
-   REAL(KIND=dp),POINTER                                 :: init_x(:)
-   REAL(KIND=dp),POINTER                                 :: x_temp(:)
-   REAL(KIND=dp),POINTER                                 :: xtrans(:)
-   REAL(KIND=dp),POINTER                                 :: xtransold(:)
-   REAL(KIND=dp),POINTER                                 :: xold(:)
-   REAL(KIND=dp),POINTER                                 :: u_bound(:)
-   REAL(KIND=dp),POINTER                                 :: l_bound(:)
-   REAL(KIND=dp)                                         :: pi=2*asin(1._dp), &
-                                                            kcalmol=6.27509468713739E+02_dp, &
-                                                            ev=27.2116_dp,&
-                                                            ev_kcal=23.06035_dp
-   REAL(kind=dp),POINTER                                 :: eps(:)
-   REAL(kind=dp)                                         :: eps_factor=1e-8_dp
-   REAL(kind=dp)                                         :: penalty_alpha
-   TYPE(cp_para_env_type), POINTER                       :: para_env
-   TYPE(rng_stream_type),POINTER                         :: rng_stream
-   LOGICAL,POINTER                                       :: sampling
-   LOGICAL                                               :: calc_deriv,benchmark
-   LOGICAL                                               :: rand_inp
-   LOGICAL                                               :: multi_obj
-   LOGICAL                                               :: additional_constrain
-   REAL(KIND=dp)                                         :: step_size
-   REAL(KIND=dp),POINTER                                 :: weights(:)
-   TYPE(opt_state_type),POINTER                          :: powell_opt
-   TYPE(gauss_opt_type),POINTER                          :: gauss_opt
-   TYPE(lbfgs_opt_type),POINTER                          :: lbfgs_opt
-   TYPE(cmaes_opt_type),POINTER                          :: cmaes_opt
- END TYPE paramopt_master_type
-
- TYPE :: ener_ref_type
-   PRIVATE
-   INTEGER                                               :: id
-   CHARACTER(len=default_string_length)                  :: mol
-   CHARACTER(len=default_string_length)                  :: mol_ref1
-   CHARACTER(len=default_string_length)                  :: mol_ref2
-   CHARACTER(len=default_string_length)                  :: mol_ref3
-   CHARACTER(len=default_string_length)                  :: mol_ref4
-   INTEGER                                               :: stoch1
-   INTEGER                                               :: stoch2
-   INTEGER                                               :: stoch3
-   INTEGER                                               :: stoch4
-   INTEGER                                               :: stoch5
-   REAL(KIND=dp)                                         :: ref  
- END TYPE ener_ref_type                                               
-
  CONTAINS
 
 ! *****************************************************************************
@@ -182,7 +85,7 @@ MODULE paramopt_master
     TYPE(section_vals_type), POINTER            :: cmaes_section => null()
     INTEGER                                     :: i,charge
     INTEGER                                     :: time(3)
-    LOGICAL                                     :: restart,explicit_key
+    LOGICAL                                     :: explicit_key
     REAL(kind=dp),DIMENSION(3,2)                :: seed
 
     type(individual_type),POINTER               :: a_k
@@ -268,6 +171,7 @@ MODULE paramopt_master
     CALL section_vals_val_get(paramopt_section,"LOWER_BOUNDS", r_vals=this%l_bound, error=error)
     CALL section_vals_val_get(paramopt_section,"WEIGHTS", r_vals=this%weights, error=error)
     CALL section_vals_val_get(paramopt_section,"RUN_TYPE",i_val=this%run_type_id,error=error)
+    CALL section_vals_val_get(paramopt_section,"RESTART",l_val=this%restart,error=error)
     
 
     CALL section_vals_val_get(paramopt_section,"INITIAL_X" ,explicit=explicit_key,error=error)
@@ -427,7 +331,7 @@ MODULE paramopt_master
       allocate(this%cmaes_opt%insigma(this%num_var))
       !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
       this%cmaes_opt%insigma = 0.2_dp*(this%u_bound-this%l_bound)
-      if (this%step_size .eq. 0._dp) this%step_size = maxval(this%cmaes_opt%insigma)
+      if (this%step_size .eq. 0._dp) this%step_size = 1._dp !the insigmas are already normalized
       print *,'this is insigma',this%cmaes_opt%insigma
       print *,'this is step_size',this%step_size
       this%cmaes_opt%error => this%error
@@ -459,14 +363,13 @@ MODULE paramopt_master
       this%cmaes_opt%population_p(k)%p => this%cmaes_opt%population(k)
       this%cmaes_opt%a_k(k)%p => this%cmaes_opt%population(k)
       a_k => this%cmaes_opt%a_k(k)%p
+
       CALL a_k_init(a_k,this%cmaes_opt%lambda_mo,this%num_obj, &
-                    this%step_size,this%cmaes_opt%insigma,this)
-      !--------------------------------------   
-      a_k%f = 0._dp
-      a_k%id = k
+                    this%step_size,this%cmaes_opt%insigma,this,k)
+
       ! fix sigma for first generation so better distr
       ini_sigma = a_k%sigma
-      if(.not. explicit_key) a_k%sigma = 0._dp
+      a_k%sigma = 0._dp
       CALL gen_pop(a_k,this%cmaes_opt)
       a_k%sigma = ini_sigma
       print *,'initial x from a_k',a_k%arx
@@ -474,18 +377,17 @@ MODULE paramopt_master
       this%cmaes_opt%population_p(k+this%cmaes_opt%lambda_mo)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       a_k_parents => this%cmaes_opt%a_k_parents(k)%p
-            ! fix sigma for first generation so better distr
-      !ini_sigma = a_k_parents%sigma
-      if(.not.explicit_key) a_k_parents%sigma = 0._dp
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
-                    this%step_size,this%cmaes_opt%insigma,this,a_k%arx(:,1))
+                    this%step_size,this%cmaes_opt%insigma,this,k+this%cmaes_opt%lambda_mo,a_k%arx(:,1))
       a_k_parents%sigma = ini_sigma
-      a_k_parents%f = huge(1._dp)
-      a_k_parents%id = k+this%cmaes_opt%lambda_mo
-      !print *,'initial x from a_k_parents',a_k_parents%arx
-      !----init tmp too---------------
      enddo
-     nullify(a_k,a_k_parents) 
+     nullify(a_k,a_k_parents)
+     
+      !--------------------------------------  
+      if (this%restart) then
+          print *,"==========restart file read==============="
+          call read_x(this%cmaes_opt)
+      endif
     endif
 !================================================================================
     if (.not. this%benchmark) then
@@ -534,131 +436,6 @@ MODULE paramopt_master
     !------------------------
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init done"
  END SUBROUTINE paramopt_master_init
-!=============================================================================
- SUBROUTINE a_k_init(a_k,lambda_mo,num_obj,step_size,insigma,this,x)
-    IMPLICIT NONE
-    TYPE(paramopt_master_type)               :: this
-    type(individual_type),POINTER            :: a_k
-    REAL(kind=dp),DIMENSION(:)               :: insigma
-    REAL(kind=dp),DIMENSION(:),OPTIONAL      :: x
-    REAL(kind=dp)                            :: step_size
-    INTEGER                                  :: i,n
-    INTEGER                                  :: lambda_mo
-    INTEGER                                  :: num_obj
-    INTEGER                                  :: allocstat
-    n = size(this%x)
-    !random x
-    if (this%rand_inp) then
-    do i=1,n; this%xtrans(i) = next_random_number(this%rng_stream,error=this%error); enddo 
-        call var_back_trans(this%xtrans,this%x,this%l_bound,this%u_bound)
-    endif
-    if (present(x)) then
-        this%x = x
-    endif
-      ! initialize a_k
-               IF (.NOT. ALLOCATED(a_k%B)) THEN
-                     ALLOCATE(a_k%B(n,n),stat=allocStat)
-                     IF(allocStat .NE. 0) STOP 'Error allocating B'
-               END IF
-               a_k%B = 0._dp
-               DO i = 1,n
-                a_k%B(i,i) = 1._dp
-               END DO  
-               IF (.NOT. ALLOCATED(a_k%D)) THEN
-                   ALLOCATE(a_k%D(n,n),stat=allocStat)
-                   IF(allocStat .NE. 0) STOP 'Error allocating D'
-               END IF
-               a_k%D = 0._dp
-               DO i = 1, n
-                  a_k%D(i,i) = sqrt(insigma(i)*1_dp/product(insigma)**(1._dp/size(insigma)))
-                  !d * 1/nsqrt(det) so that det ~ 1
-                  ! and sqrt(d) so that BD*BD^t = C
-                  !a_k%D(i,i) = 1._dp 
-               END DO
-               IF (.NOT. ALLOCATED(a_k%BD)) THEN 
-                   ALLOCATE(a_k%BD(n,n),stat=allocStat)
-                   IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix BD'
-               END IF
-         !      a_k%BD = matmul(a_k%B,a_k%D) 
-               CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n) 
-               IF (.NOT. ALLOCATED(a_k%C)) THEN
-                   ALLOCATE(a_k%C(n,n),stat=allocStat)
-                   IF(allocStat .NE. 0) STOP 'Error allocating internal Matrix C'
-               END IF
-          !     a_k%C = matmul(a_k%BD,transpose(a_k%BD))
-               CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n) 
-             allocate(a_k%multmp_vN(n))
-             !----------(1+1) CMA-ES--------------------------
-             a_k%lambda = 1
-             a_k%mu = 1
-             ALLOCATE(a_k%s_i(2*lambda_mo))
-             ALLOCATE(a_k%triuC(n,n),stat=allocStat)
-             ALLOCATE(a_k%arx(n,a_k%lambda),stat=allocStat)
-             ALLOCATE(a_k%arz(n,a_k%lambda),stat=allocStat)
-             ALLOCATE(a_k%xmean(n))
-             ALLOCATE(a_k%zmean(n))
-             ALLOCATE(a_k%xold(n))
-             ALLOCATE(a_k%f(num_obj))
-             ALLOCATE(a_k%tempMat(n,a_k%mu))
-             ALLOCATE(a_k%multmp_mN(n,n))
-             ALLOCATE(a_k%multmp_mN2(n,n))
-             ALLOCATE(a_k%multmp_mMU(a_k%mu,n))
-             ALLOCATE(a_k%mutmp(n,a_k%mu))
-             ALLOCATE(a_k%weightsMat(a_k%mu,a_k%mu))
-             ALLOCATE(a_k%weights(a_k%mu))
-             ALLOCATE(a_k%ps(n))
-             ALLOCATE(a_k%pc(n))
-             ALLOCATE(a_k%colVec(n,1))
-             ALLOCATE(a_k%rowVec(1,n))
-             do i=1,lambda_mo; a_k%s_i(i)%p=>null(); enddo
-             a_k%front = 0
-             a_k%penalty = 0._dp
-             a_k%weights = 1._dp !equal weights
-             ! normalize weights
-             a_k%weights = a_k%weights/sum(a_k%weights)
-                   !  mueff
-             a_k%vecsum = sum(a_k%weights)
-             a_k%vecnorm = sqrt(sum(a_k%weights**2))
-         !    this%cmaes_opt%mueff = this%cmaes_opt%vecsum**2 / this%cmaes_opt%vecnorm**2
-               !  Strategy internal parameter setting: Adaptation
-         !    this%cmaes_opt%a_k%cc = 4.0_dp/(REAL(this%num_var)+4.0_dp)
-         !    this%cmaes_opt%a_k%cs = REAL((this%cmaes_opt%mueff+2))/REAL((this%num_var+this%cmaes_opt%mueff+3))
-         !    this%cmaes_opt%a_k%mucov = this%cmaes_opt%mueff
-         !    this%cmaes_opt%a_k%ccov = (1._dp/this%cmaes_opt%mucov) * 2._dp/(REAL(this%num_var)+1.41)**2 + &
-         !                          (1._dp - 1._dp/this%cmaes_opt%mucov) * min(1.0_dp,(2.0_dp*this%cmaes_opt%mueff-1._dp) &
-         !                          /((REAL(this%num_var)+2._dp)**2 + this%cmaes_opt%mueff))
-         !    this%cmaes_opt%a_k%damps = 1._dp + 2._dp*max(0._dp, sqrt((this%cmaes_opt%mueff-1.0_dp)/ &
-         !                           real(this%num_var+1))-1.0_dp)+this%cmaes_opt%cs
-             !----------------------default for (1+lambda) strategy----------------------------------
-             a_k%damps = 1._dp + real(n)/(2._dp*a_k%lambda)
-             !a_k%damps = 1._dp  
-             a_k%p_target = 1_dp/(5._dp + sqrt(real(a_k%lambda)/2._dp))
-             a_k%cp = a_k%p_target*a_k%lambda/ &
-                  (2._dp+a_k%p_target*a_k%lambda)
-             a_k%cc = 2._dp/(real(n) + 2._dp)
-             a_k%ccov = 2._dp/(real(n)**2 + 6._dp)
-             a_k%ccovm = 0.4_dp/(real(n)**1.6_dp + 1._dp)
-             a_k%p_tresh = 0.44_dp
-             a_k%p_succ = a_k%p_target
-             !-----------------------------------------------------------
-             a_k%arx(:,1) = this%x
-             a_k%xmean = this%x
-             a_k%sigma = step_size
-             a_k%pc = 0._dp
-             a_k%ps = 0._dp
-         !    this%cmaes_opt%a_k%hsig = 1._dp
-             a_k%ps = 0._dp
-             a_k%chiN = sqrt(REAL(n))*((1.0_dp-1.0_dp/(4.0_dp*REAL(n))) &
-                                   +1.0_dp/(21.0_dp*REAL(n*n)))
-             a_k%d_count = 0
-             a_k%s_i_count = 0
-             a_k%I_dist = 0._dp
-             a_k%kernel_dist = 0._dp
-             a_k%hypervol = 0._dp
-             a_k%trace = 0._dp
-             a_k%det = 0._dp
- END SUBROUTINE
-
 
 ! *****************************************************************************
  SUBROUTINE paramopt_master_steer(this, report, cmd, should_stop)
@@ -939,310 +716,7 @@ MODULE paramopt_master
 
 
 !========================================================================================================
-     
-! *****************************************************************************
-subroutine read4file(n,x,ex)
-    implicit none
-    integer,intent(in)       :: n
-    integer                  :: i,fileid,k
-    real(kind=dp),intent(out) :: x(n)
-    character(200)            :: str,str2,str3,filename
-    logical,intent(out)      :: ex
 
-    inquire(file="para.xml.restart",exist=ex)
-    k=1
-    if (ex) then
-        print *,'read from restart file'
-        filename="para.xml.restart"
-    else
-        filename="para.xml"
-    endif
-
-
-    fileid=9999
-    open(fileid,file=filename)
-    
-    do i=1,59 
-    select case (i)
-    case default
-     read(fileid,*) str
-  !  case (17)
-  !   read(fileid,*) str,x(k),str2
-  !   k=k+1
-    case (19:20)        
-     read(fileid,*) str,x(k),str2
-     k=k+1
-     
-  !  case (25)
-  !   read(fileid,*) str,str3,x(k),str2
-  !   k=k+1
-
-    case (28:30)
-     read(fileid,*) str,x(k),str2
-     k=k+1
-
-  !  case (36)
-  !   read(fileid,*) str,x(k),str2
-  !   k=k+1
-
-    case (38:39)
-     read(fileid,*) str,x(k),str2
-     k=k+1
-
-    case (44:45) 
-     read(fileid,*) str,x(k),str2
-     k=k+1
-
-  !  case (50:51) 
-  !   read(fileid,*) str,str3,x(k),str2
-  !   k=k+1 
-    
-    case (54:56) 
-     read(fileid,*) str,x(k),str2
-     k=k+1 
-
-    end select
-    
-    end do
-    if (k-1 .ne. n) write(*,*) "something is very wrong"
-
-    close(fileid)
-    end subroutine
-
-! *****************************************************************************
-! *****************************************************************************
-subroutine para2file(n,x,inputstr,outputstr)
-    implicit none
-    integer,intent(in)          :: n
-    integer                     :: fileid2
-    integer                     :: i,rank,ierr,fileid,k
-    real(kind=dp),intent(in)    :: x(n)
-    real(kind=dp)               :: dummy=0._dp
-    character(len=*),intent(in) :: inputstr
-    character(len=*),intent(in) :: outputstr
-    character(200)              :: line
-    character(24)              :: str,str2,str3
-    
-    fileid = 2222
-    fileid=fileid2+100 
-    open(fileid,file=adjustl(trim(inputstr)))
-    open(fileid2,status='replace',file=adjustl(trim(outputstr)))
-    k=1 
-!   print *,'x to file',k,x
-    do i=1,59
-!    print *,'k',k
-    select case (i)
-    case default
-     read(fileid,'(A)') line
-!     str=adjustl(trim(str))
-     write(fileid2,'(A)') line
-  !  case (17)
-  !   read(fileid,*) str,dummy,str2
-  !   str=adjustl(trim(str))
-! !    str2=adjustl(trim(str2))
-  !   str2="</Charge_width>"
-  !   write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
-  !   k=k+1
-   ! case (19:20)        
-   !  read(fileid,'(A,F13.7,A)') str,dummy,str2
-!  !   str=adjustl(trim(str))d
-   !  str2=adjustl(trim(str2))
-   !  write(fileid2,'(A,F13.7,A)') str,x(k),str2
-   !  k=k+1
-    case (25)
-     read(fileid,*) str,str3,dummy,str2
-     str=adjustl(trim(str))
-     str3=adjustl(trim(str3))
-!     str2=adjustl(trim(str2))
-     str2="</ETA>"
-     write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
-        k=k+1
-    case (28:30)
-     read(fileid,'(A16,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,X,A)') str,x(k),str2
-        k=k+1
- !   case (36)
- !    read(fileid,*) str,dummy,str2
- !    str=adjustl(trim(str))
-!!     str2=adjustl(trim(str2))
- !    str2="</Charge_width>"
- !    write(fileid2,'(8X,A,F13.7,X,A)') str,x(k),str2
- !       k=k+1
-    case (38:39) 
-     read(fileid,'(A,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A)') str,x(k),str2
-        k=k+1
-    case (44:45) 
-     read(fileid,'(A,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,A)') str,x(k),str2
-        k=k+1
-  !  case (50:51) 
-  !   read(fileid,*) str,str3,dummy,str2
-! !    str=adjustl(trim(str))
-  !   str3=adjustl(trim(str3))
-! !    str2=adjustl(trim(str2))
-  !   str2="</ETA>"
-  !   write(fileid2,'(12X,A4,X,A6,F13.7,X,A)') str,str3,x(k),str2
-  !      k=k+1
-    case (54:56) 
-     read(fileid,'(A16,F13.7,A)') str,dummy,str2
-!     str=adjustl(trim(str))
-     str2=adjustl(trim(str2))
-     write(fileid2,'(A,F13.7,X,A)') str,x(k),str2
-        k=k+1
-
-     end select 
-    enddo
-
-    print *,'file written'
-!    call RENAME(inputstr,"para.xml.restart",ierr)
-!    if (ierr .ne. 0) print*,'shit...moving file failed'
-!    call RENAME('temp',inputstr,ierr)
-!    if (ierr .ne. 0) print*,'shit...moving file failed'
-   
-    close(fileid)
-    close(fileid2)
-end subroutine
-! *****************************************************************************
-! *****************************************************************************
-      subroutine var_trans(x,y,lbnd,ubnd)
-      real(kind=dp),dimension(:) :: x,lbnd,ubnd
-      real(kind=dp),dimension(:),intent(out) :: y
-      y = ((x - lbnd) / (ubnd - lbnd))
-      end subroutine
-! *****************************************************************************
-! *****************************************************************************
-      subroutine var_back_trans(x,y,lbnd,ubnd)
-      real(kind=dp),dimension(:) :: x,y,lbnd,ubnd
-      y = x*(ubnd-lbnd) + lbnd
-      end subroutine
-! *****************************************************************************
-! *****************************************************************************
-subroutine sample(this,n,x,l_bound,u_bound)
-    !--------------------------------------------------------------
-    TYPE(paramopt_master_type)               :: this
-    integer,intent(in) :: n
-    integer,parameter :: dp=8
-    integer :: irand,t,j
-    real(kind=dp) :: x(n)
-    real(kind=dp) :: sampler,rnum,step,temp
-    real(kind=dp) :: sampx(n),sr,tmpx(n),tmpx2(n),l_bound(n),u_bound(n)
-    logical :: generate
-    
-    sampler=1._dp/(2._dp*sqrt(real(n)))
-    generate=.TRUE.
-!    step=1._dp/2._dp
-    step = this%step_size
-    tmpx = x
-    !=================random uniform sampling======================
-!   do i=1,n; tmpx(i) = next_random_number(this%rng_stream,error=this%error); enddo
-!    call var_back_trans(tmpx,x,l_bound,u_bound)
-    !==============================================================
-!    t=1
-!    irand=7
-!            do while (generate)
-!--------------------------random only one variable---------------------------
-!                call random_number(rnum)
-                 rnum = next_random_number(this%rng_stream,error=this%error)
-                 irand=int(rnum*n)+1
-                 print *,'change var num',irand
-!
-!                irand = 2 
-!                call var_trans(x,tmpx,l_bound,u_bound)
-                 rnum = next_random_number(this%rng_stream,error=this%error)
-!                !print *,'after var trans',tmpx(irand)
-                if (rnum .gt. 0.5_dp) then
-                    step=step
-                else
-                    step=-step
-                endif
-                tmpx(irand) = tmpx(irand) + step
-!               ! print *,'before check',tmpx(irand) 
-                if (tmpx(irand) .gt. 1.0_dp) then 
-                    tmpx(irand) = tmpx(irand) - 2*step
-                endif
-                
-                if (tmpx(irand) .lt. 0._dp) then
-                    tmpx(irand) = tmpx(irand) + 2*abs(step)
-                endif
-              x = tmpx  
-              !  call var_back_trans(tmpx,x,l_bound,u_bound)
-!             !   print *,'test',tmpx(irand)
-!             !   print *,'old var',x(irand), &
-!             !   'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
-!--------------------------random ball walk-------------------------------------  
-!                call random_number(sampx)   
-!                call var_trans(x,tmpx,l_bound,u_bound)
-!                sampx = sampx-tmpx
-!                sampx(7) = 0._dp
-!                sr = sqrt(sum(sampx**2))
-!                stepr = 1._dp/(2._dp*sqrt(real(n)))
-!                sampx = stepr*sampx/sr
-!                tmpx = tmpx+sampx
-!--------------------------random sample---------------------------------------
-!                call random_number(sampx)
-!                tmpx=sampx
-!                tmpx(7)=1._dp
-!              !  if (tmpx(4) .gt. tmpx(5)) then 
-!              !      temp=tmpx(4)
-!              !      tmpx(4)=tmpx(5)
-!              !      tmpx(5)=temp 
-!              !  endif
-!              !  if (tmpx(21) .gt. tmpx(22)) then 
-!              !      temp=tmpx(21)
-!              !      tmpx(21)=tmpx(22)
-!              !      tmpx(22)=temp 
-!              !  endif
-!--------------------------change one random variable---------------------------
-!                print *,'generation loop',t
-!                do while (irand .eq. 7)
-!                 call random_number(rnum)
-!                 irand=int(rnum*n)+1
-!                enddo
-!                call random_number(rnum)
-!                call var_trans(x,tmpx,l_bound,u_bound)
-!                tmpx(irand) = rnum
-!                print *,'change var',irand
-!                print *,'test',tmpx(irand)
-!                print *,'old var',x(irand), &
-!                'new var',(tmpx(irand)*((u_bound(irand)) - (l_bound(irand)))) + (l_bound(irand))
-!-------------------------------------------------------------------------------
-!                call var_back_trans(tmpx,x,l_bound,u_bound)
-
-            !    do j=1,n
-            !        if (tmpx2(j) .lt. l_bound(j)) then
-            !            generate = .TRUE. 
-            !            print *,j,tmpx2(j)
-            !            exit
-            !        else
-            !            generate = .FALSE.
-            !        endif
-            !        if (tmpx2(j) .gt. u_bound(j)) then
-            !            generate = .TRUE.
-            !            print *,j,tmpx2(j)
-            !            exit
-            !        else
-            !            generate = .FALSE.
-            !        endif   
-            !        !    call random_number(random)
-            !        !    j = random*n
-            !        !    if (j .eq. 0) j = 1
-            !        !    call random_number(random)
-            !        !    x(j) = random*abs(u_bound(j)-l_bound(j)) + l_bound(j)
-            !    enddo
-!                    generate = .FALSE.
-!            enddo
-!            x = tmpx2
-
-!            if (this%para_env%mepos .eq. 0) print *,'change var',irand,'new value',x(irand)
-end subroutine
-! *****************************************************************************
 ! *****************************************************************************
  SUBROUTINE calc_obj_f(this, Epot, Conv, rmsd, obj_f)
     TYPE(paramopt_master_type)               :: this
@@ -1458,13 +932,6 @@ end subroutine
       endif
     endif
 END SUBROUTINE
-FUNCTION Variance (Array)
-IMPLICIT NONE
-REAL(kind=dp)::Variance,X
-REAL(kind=dp),INTENT(IN),DIMENSION(:)::Array
-X = SUM(Array)/SIZE(Array)
-Variance = SUM((Array-X)**2)/SIZE(Array)
-END FUNCTION Variance
 
 END MODULE paramopt_master
 

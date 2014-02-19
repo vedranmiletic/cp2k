@@ -93,6 +93,14 @@ MODULE paramopt_input
     CALL section_add_keyword(paramopt_section,keyword,error=error)
     CALL keyword_release(keyword,error=error)
 
+    CALL keyword_create(keyword, name="RESTART",&
+         description="balba TODO.",&
+         default_l_val=.FALSE.,&
+         lone_keyword_l_val = .TRUE.,&
+         error=error)
+    CALL section_add_keyword(paramopt_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error)
+
     CALL keyword_create(keyword, name="STEP_SIZE",&
          description="balba TODO.",&
          default_r_val= 0.0_dp,error=error)
@@ -144,6 +152,8 @@ MODULE paramopt_input
          default_i_val=1,error=error)
     CALL section_add_keyword(cmaes_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
+
+
 
     CALL keyword_create(keyword, name="ADDITIONAL_CONS",&
          description="balba TODO.",&
