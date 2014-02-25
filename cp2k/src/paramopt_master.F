@@ -138,6 +138,7 @@ MODULE paramopt_master
     !-------------------
     allocate(this%E_res(this%num_para_set))
     allocate(this%rmsd(this%num_para_set))
+    allocate(this%dipole(this%num_para_set))
     allocate(this%force(this%num_ref,this%num_para_set))
     allocate(this%Epot(this%num_ref,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
@@ -463,7 +464,8 @@ MODULE paramopt_master
     CALL swarm_message_get(report, "num_inp", i_inp)
     CALL swarm_message_get(report, "iter", r_iter)
     j = mod(r_iter,this%num_para_set) + 1
-    i = ceiling(r_iter/real(this%num_para_set))
+    !i = ceiling(r_iter/real(this%num_para_set))
+    i = i_inp
        CALL swarm_message_get(report, "conv", this%converged(i,j))
        CALL swarm_message_get(report, "Epot", this%function_matrix(i,j))
        !------------change status---------------------------------
@@ -487,11 +489,13 @@ MODULE paramopt_master
          ! map this%inp_iter to task and send out
          ! k = inp_iter, m = num_para_set
          j = mod(r_iter,this%num_para_set) + 1
-         i = ceiling(real(r_iter)/real(this%num_para_set)) 
+         !i = ceiling(real(r_iter)/real(this%num_para_set)) 
+         i = i_inp
        CALL swarm_message_get(report, "conv", this%converged(i,j))    
        CALL swarm_message_get(report, "force", this%force(i,j))
        if (i_inp .eq. 1) then
             CALL swarm_message_get(report, "rmsd", this%rmsd(j))
+            CALL swarm_message_get(report, "dipole", this%dipole(j))
        endif
        CALL swarm_message_get(report, "Epot", this%Epot(i,j))
        !this%function_matrix(i,j) = this%rmsd(j)
@@ -512,7 +516,8 @@ MODULE paramopt_master
          ! map this%inp_iter to task and send out
          ! k = inp_iter, m = num_para_set
          j = mod(r_iter,this%num_para_set) + 1
-         i = ceiling(real(r_iter)/real(this%num_para_set))
+        ! i = ceiling(real(r_iter)/real(this%num_para_set))
+         i = i_inp
       CALL swarm_message_get(report, "Epot", this%function_matrix(1,j))
       CALL swarm_message_get(report, "rmsd", this%function_matrix(2,j))
        !------------change status---------------------------------
@@ -532,8 +537,9 @@ MODULE paramopt_master
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
              a_k%rmsd = this%rmsd(j)
+             a_k%dipole = this%dipole(j)
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(j), this%E_res(j))
+             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(j), this%dipole(j), this%E_res(j))
                if (isnan(this%E_res(j))) then
                  a_k%f(1) = huge(1.0_dp) 
                else     
@@ -551,7 +557,7 @@ MODULE paramopt_master
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
-              call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(j), this%E_res(j))
+              call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(j), this%dipole(j), this%E_res(j))
              this%obj_f(j) = this%weights(1)*this%E_res(j) + &
                           this%weights(2)*this%function_matrix(this%num_inp,j) 
              endif
@@ -653,7 +659,7 @@ MODULE paramopt_master
           !this%x_matrix(:,3) = this%x - this%eps 
     ENDIF
     
-    !--------------master have a task to distr---------
+    !--------------master have a task to distr since they have nothing to do---------
     IF (this%inp_iter .gt. 0 .and. report_status == "wait_done" ) THEN
          ! send new task to idle worker
          ! map this%inp_iter to task and send out
@@ -663,11 +669,6 @@ MODULE paramopt_master
          a_k => this%cmaes_opt%a_k(j)%p
          this%x_temp = this%x
          if (.not. this%benchmark) then
-         !   if (i .lt. this%num_inp) then
-         !      CALL swarm_message_add(cmd, "command", "energy")
-         !   else if (i .eq. this%num_inp) then
-         !      CALL swarm_message_add(cmd, "command", "geo_opt")
-         !   endif
             CALL swarm_message_add(cmd, "command", "force")
             CALL swarm_message_add(cmd, "input", this%input_files(i))
             CALL swarm_message_add(cmd, "coord", this%coord_files(i))
@@ -718,10 +719,11 @@ MODULE paramopt_master
 !========================================================================================================
 
 ! *****************************************************************************
- SUBROUTINE calc_obj_f(this, Epot, Conv, rmsd, obj_f)
+ SUBROUTINE calc_obj_f(this, Epot, Conv, rmsd, dipole, obj_f)
     TYPE(paramopt_master_type)               :: this
     REAL(KIND=dp),intent(in)                 :: Epot(:)
     REAL(KIND=dp),intent(in)                 :: rmsd
+    REAL(KIND=dp),intent(in)                 :: dipole
     INTEGER,intent(in),OPTIONAL              :: Conv(:)
     REAL(KIND=dp),intent(out)                :: obj_f
     REAL(KIND=dp)                            :: energy
@@ -771,7 +773,7 @@ MODULE paramopt_master
                     obj_f = sum(this%res/real(this%ref_num_atoms))
                     !obj_f = sum(this%res/real(this%ref_num_atoms)**2)
         IF (ANY(Conv .eq. 0)) obj_f=huge(0._dp)         
-                    write(*,*) obj_f,rmsd
+                    write(*,*) obj_f,rmsd,dipole
  END SUBROUTINE
 ! *****************************************************************************
 ! *****************************************************************************

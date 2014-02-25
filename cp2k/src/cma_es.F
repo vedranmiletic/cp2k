@@ -813,8 +813,25 @@ MODULE cma_es
                                 (maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
                                 !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
                                 !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
-           enddo 
-        enddo 
+               if (input_set(j_p)%p%f(numcols) .eq. huge(1._dp) .or. &
+                   input_set(j_m)%p%f(numcols) .eq. huge(1._dp)) input_set(j)%p%I_dist = tiny(1._dp)
+           enddo
+        enddo
+
+        !---------this is a version where dipole error is used as criteria------
+         do i = 1,nondominated_size
+             if (input_set(i)%p%I_dist .eq. huge(1._dp)) then
+             else
+                 if (input_set(i)%p%dipole .eq. huge(1._dp)) then
+                    input_set(i)%p%I_dist =  tiny(1._dp)
+                 else 
+                    input_set(i)%p%I_dist =  1._dp/input_set(i)%p%dipole
+                 endif
+             endif
+         enddo
+
+
+
 !        allocate(tmp_array(size(input_set))) 
 !      do i = 1, nondominated_size
 !            tmp_array(i) = input_set(i)%p%I_dist

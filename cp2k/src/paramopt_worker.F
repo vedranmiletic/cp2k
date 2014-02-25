@@ -71,6 +71,8 @@ MODULE paramopt_worker
                                              mp_sum
   USE mulliken,                        ONLY: compute_multipoles
   USE particle_types,                  ONLY: particle_type
+  USE physcon,                         ONLY: angstrom,&
+                                             debye
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_environment_methods,          ONLY: qs_env_update_s_mstruct, &
@@ -113,8 +115,10 @@ MODULE paramopt_worker
    REAL(kind=dp)                                    :: Epot
    REAL(kind=dp)                                    :: timings
    REAL(kind=dp),DIMENSION(3,3)                     :: dipole
+   REAL(kind=dp)                                    :: dipole_error
    REAL(kind=dp)                                    :: force
    REAL(kind=dp)                                    :: rmsd
+   REAL(kind=dp),DIMENSION(3)                       :: charge
    INTEGER                                          :: f_env_id
    TYPE(f_env_type), POINTER                        :: f_env
    TYPE(force_env_type), POINTER                    :: force_env
@@ -267,7 +271,10 @@ MODULE paramopt_worker
     INTEGER                                  :: iter,i_inp,charge,i
     REAL(KIND=dp),DIMENSION(:),POINTER       :: x
     REAL(KIND=dp)                            :: energy
+    REAL(KIND=dp)                            :: dummy
     REAL(KIND=dp),DIMENSION(:),ALLOCATABLE   :: forces
+    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE   :: dipole
+    REAL(KIND=dp),PARAMETER                  :: debye_conv=0.208194242_dp
 
     this%x_old = this%x
     CALL swarm_message_get(cmd,"input",input_file)
@@ -370,27 +377,35 @@ MODULE paramopt_worker
         ALLOCATE(this%pos2(3*this%n_atoms))
         ALLOCATE(this%pos(3*this%n_atoms))
         ALLOCATE(this%g(2,3*this%n_atoms))
+        ALLOCATE(dipole(this%n_atoms))
         CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
         !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-        CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.FALSE.,error=this%error)
-        !CALL get_energy(this%f_env_id,energy,ierr)
+        CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.TRUE.,error=this%error)
         CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
         CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
                                RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
                                0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-         !!---------------cleanup-----------------------------
-          deallocate(this%pos,this%pos2,this%g)!
+        !-----------calculate dipole--------------------------
+        CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
+        dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9)  
+        do i = 1,3
+        dipole=dipole + this%dipole(:,i)
+        enddo
+        this%dipole_error = abs(1.86_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+        !!---------------cleanup-----------------------------
+          deallocate(this%pos,this%pos2,this%g,dipole)!
       endif 
         !-------------report--------------------------------
-        ! rmsd per atom ???
-        this%rmsd = this%rmsd/real(this%n_atoms)
+        ! force per atom 
+        this%force = this%force/real(this%n_atoms)
         CALL swarm_message_add(report, "status", "force_calc") 
         CALL swarm_message_add(report, "num_inp", i_inp) 
         CALL swarm_message_add(report, "iter", iter)
         CALL swarm_message_add(report, "conv", this%converged) 
         CALL swarm_message_add(report, "force", this%force)
-        if (i_inp .eq. 1) then
+        if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
            CALL swarm_message_add(report, "rmsd", this%rmsd)
+           CALL swarm_message_add(report, "dipole", this%dipole_error)
         endif
         CALL swarm_message_add(report, "Epot", energy)
     else
@@ -1050,7 +1065,7 @@ END FUNCTION pythag
 !>     be sure force environments are set correctly and input file geo_opt section exists 
 !> \author misteliy
 ! *****************************************************************************
-  SUBROUTINE calc_multipole(f_env_id,dipole,ierr)
+  SUBROUTINE calc_multipole(f_env_id,charge,dipole,ierr)
     
     INTEGER                                  :: f_env_id
     REAL(KIND=dp), DIMENSION(:, :), TARGET   :: dipole
@@ -1058,7 +1073,8 @@ END FUNCTION pythag
 
     INTEGER                                  :: handle, nblock, nspin
     LOGICAL                                  :: failure
-    REAL(KIND=dp), DIMENSION(:), POINTER     :: charge
+    REAL(KIND=dp), DIMENSION(:),TARGET       :: charge
+    REAL(KIND=dp), DIMENSION(:), POINTER     :: charge_ptr
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: dipole_ptr
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: quadrupole
@@ -1077,50 +1093,44 @@ END FUNCTION pythag
     TYPE(qs_environment_type), POINTER       :: qs_env
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(scp_environment_type), POINTER      :: scp_env
+    INTEGER                                  :: iatom
 
-!-------------------error-----------------------------------
 !-------------------------------------------------------------
 
-    PRINT *,'in here'
-    failure=.FALSE. 
+    failure=.FALSE.
     NULLIFY(f_env, force_env, globenv, matrix_p, rho, qs_env, dipole_ptr)
-    CALL f_env_add_defaults(f_env_id,f_env,error, failure, handle)
-    PRINT *,'after add defaults'
+    CALL f_env_get_from_id(f_env_id,f_env,error) 
     IF (.not.failure) THEN
     force_env  => f_env%force_env
     globenv    => force_env%globenv
     qs_env     => force_env%qs_env
-    PRINT *,'after force_env'
-    PRINT *,ASSOCIATED(qs_env),'qs_env?',qs_env%id_nr
 
     CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
                     rho=rho,matrix_s=matrix_s, &
                     scp_env=scp_env, &
                     para_env=para_env, &
                     error=error)
-    PRINT *,ASSOCIATED(scp_env),'scp_env?'
     pscp => scp_env%pscp
-    PRINT *,ASSOCIATED(qs_env%scp_env),'scp_env?'
     CALL calc_energy_force(f_env_id,.TRUE.,ierr)
     CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
                     rho=rho,matrix_s=matrix_s,&
                     para_env=para_env,error=error)
-    PRINT *,ASSOCIATED(rho),'rho'
-    PRINT *,ASSOCIATED(atomic_kind_set),'atomic_kind_set'
-    PRINT *,ASSOCIATED(particle_set),'particle set'
-    PRINT *,ASSOCIATED(matrix_s),'matrix s'
-    PRINT *,ASSOCIATED(para_env),'para env'
     CALL cp_error_check(error,failure)
     matrix_p   => rho%rho_ao
+
     ! here we get the numbers for charges
     nspin=SIZE(matrix_p)
     CALL cp_dbcsr_get_info(matrix_s(1)%matrix,nblkrows_total=nblock)
-    ALLOCATE(charge(nblock))
-!    ALLOCATE(dipole_ptr(3,nblock))
     ALLOCATE(quadrupole(3,3,nblock))
     dipole_ptr => dipole
+    charge_ptr => charge
     CALL compute_multipoles(atomic_kind_set,particle_set,&
-                                matrix_p,pscp,matrix_s(1)%matrix,charge,dipole_ptr,quadrupole,para_env)
+                                matrix_p,pscp,matrix_s(1)%matrix,charge_ptr,dipole_ptr,quadrupole,para_env)
+!    do iatom=1,3
+!          WRITE(*,'(a, f20.10)') 'charge =     ',charge_ptr(iatom)
+!          WRITE(*,'(a,3f20.10)') 'dipole =     ',dipole_ptr(:,iatom)
+!    enddo
+    DEALLOCATE(quadrupole)
     ELSE
        PRINT *,'dipole failure'
       ! write out something?

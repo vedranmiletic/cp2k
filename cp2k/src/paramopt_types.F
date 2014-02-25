@@ -78,6 +78,7 @@ MODULE paramopt_types
    REAL(KIND=dp),POINTER                                 :: E_res(:)
    REAL(KIND=dp),POINTER                                 :: res(:)
    REAL(KIND=dp),POINTER                                 :: rmsd(:)
+   REAL(KIND=dp),POINTER                                 :: dipole(:)
    REAL(KIND=dp),POINTER                                 :: force(:,:)
    REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
    REAL(KIND=dp),POINTER                                 :: obj_f(:)

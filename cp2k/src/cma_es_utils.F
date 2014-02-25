@@ -165,7 +165,9 @@ MODULE cma_es_utils
              a_k%det = 0._dp
              a_k%Id = k
              a_k%f =0.0_dp
-             if (k .gt. lambda_mo) a_k%f = huge(1._dp) 
+             a_k%rmsd = huge(1._dp)
+             a_k%dipole = huge(1._dp)
+             a_k%f = huge(1._dp) 
 
  END SUBROUTINE
 !===========================================================================
@@ -192,7 +194,9 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%front, &
                           cmaes_opt%population(i)%I_dist, &
                           cmaes_opt%population(i)%trace, &
-                          cmaes_opt%population(i)%rmsd
+                          cmaes_opt%population(i)%rmsd, &
+                          cmaes_opt%population(i)%dipole 
+
 
               t = cmaes_opt%population(i)%id
               call open_file(file_name="bd_"//trim(str(t)),unit_number=unit_number2, &
@@ -248,7 +252,9 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%front, &
                           cmaes_opt%population(i)%I_dist, &
                           cmaes_opt%population(i)%trace, &
-                          cmaes_opt%population(i)%rmsd
+                          cmaes_opt%population(i)%rmsd, &
+                          cmaes_opt%population(i)%dipole 
+
 
               t = cmaes_opt%population(i)%id
               call open_file(file_name="bd_"//trim(str(t)),unit_number=unit_number2, &

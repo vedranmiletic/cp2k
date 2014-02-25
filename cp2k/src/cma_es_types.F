@@ -65,6 +65,7 @@ MODULE cma_es_types
    !--------------------------------------------------------------------------
    REAL(KIND=dp)                                   :: penalty
    REAL(KIND=dp)                                   :: rmsd
+   REAL(KIND=dp)                                   :: dipole
  END TYPE individual_type 
 !================================================================================
  TYPE cmaes_opt_type
