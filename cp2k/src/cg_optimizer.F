@@ -158,8 +158,8 @@ CONTAINS
        ![NB] consistent energies and forces not required for CG, but some line minimizers might set it
        save_consistent_energy_force = gopt_env%require_consistent_energy_force
        gopt_env%require_consistent_energy_force = .FALSE.
-       CALL cp_eval_at(gopt_env, x0, opt_energy, xi, gopt_env%force_env%para_env%mepos,&
-                       .FALSE., gopt_env%force_env%para_env, error)
+       CALL cp_eval_at(gopt_env=gopt_env,x=x0,f=opt_energy,gradient=xi,master=gopt_env%force_env%para_env%mepos,&
+                       final_evaluation=.FALSE.,para_env=gopt_env%force_env%para_env,error=error)
        gopt_env%require_consistent_energy_force = save_consistent_energy_force
 
        g    = -xi
@@ -202,8 +202,8 @@ CONTAINS
           ![NB] consistent energies and forces not required for CG, but some line minimizers might set it
           save_consistent_energy_force = gopt_env%require_consistent_energy_force
           gopt_env%require_consistent_energy_force = .FALSE.
-          CALL cp_eval_at(gopt_env, x0, opt_energy, xi, gopt_env%force_env%para_env%mepos,&
-                          .FALSE., gopt_env%force_env%para_env, error)
+          CALL cp_eval_at(gopt_env=gopt_env,x=x0,f=opt_energy,gradient=xi,master=gopt_env%force_env%para_env%mepos,&
+                          final_evaluation=.FALSE.,para_env=gopt_env%force_env%para_env,error=error)
           gopt_env%require_consistent_energy_force = save_consistent_energy_force
 
           ! Get Conjugate Directions:  updates the searching direction (h)

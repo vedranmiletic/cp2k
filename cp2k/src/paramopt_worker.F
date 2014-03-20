@@ -240,8 +240,10 @@ MODULE paramopt_worker
     REAL(KIND=dp)                            :: energy
 
     CALL swarm_message_get(cmd, "command", command)
-    if (command .eq. 'energy' .or. command .eq. 'force') then
+    if (command .eq. 'energy' .or. command .eq. 'calc_full') then
         CALL paramopt_geo_energy(this,cmd,command,report)
+    else if (command .eq. 'skip') then
+        CALL paramopt_skip(this,cmd,command,report)
     else if (command .eq. 'benchmark') then
         CALL swarm_message_get(cmd,"x",this%x)
         CALL swarm_message_get(cmd,"num_inp",i_inp)
@@ -254,6 +256,35 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "rmsd", this%rmsd)  
     endif
    END SUBROUTINE paramopt_worker_execute
+  !---------------------------------------------------------------------
+   SUBROUTINE paramopt_skip(this, cmd, command, report)
+    TYPE(paramopt_worker_type), &
+      INTENT(INOUT)                          :: this
+    CHARACTER(len=*), PARAMETER :: routineN = 'paramopt_geo_energy', &
+      routineP = moduleN//':'//routineN
+    CHARACTER(len=default_string_length)     :: command
+    TYPE(swarm_message_type), INTENT(IN)     :: cmd
+    TYPE(swarm_message_type), INTENT(INOUT)  :: report
+    CHARACTER(len=default_string_length)     :: output_path, input_file, coord_file
+    INTEGER                                  :: ierr
+    INTEGER                                  :: iter,i_inp,charge,i
+    CALL swarm_message_get(cmd,"input",input_file)
+    CALL swarm_message_get(cmd,"coord",coord_file)
+    CALL swarm_message_get(cmd,"charge",charge)
+    CALL swarm_message_get(cmd,"num_inp",i_inp)
+    CALL swarm_message_get(cmd,"iter",iter)
+    CALL swarm_message_get(cmd,"x",this%x)
+           !---report bs-----------
+        CALL swarm_message_add(report, "status", "calc") 
+        CALL swarm_message_add(report, "num_inp", i_inp) 
+        CALL swarm_message_add(report, "iter", iter)
+        CALL swarm_message_add(report, "conv", 0) 
+        CALL swarm_message_add(report, "rmsd", huge(1._dp))
+        if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
+           CALL swarm_message_add(report, "dipole",huge(1._dp) )
+        endif
+        CALL swarm_message_add(report, "Epot", huge(1._dp)) 
+   END SUBROUTINE paramopt_skip
 !----------------------------------------------------------------------------------------------------
    SUBROUTINE paramopt_geo_energy(this, cmd, command, report)
     TYPE(paramopt_worker_type), &
@@ -277,6 +308,8 @@ MODULE paramopt_worker
     REAL(KIND=dp),PARAMETER                  :: debye_conv=0.208194242_dp
 
     this%x_old = this%x
+    this%rmsd = 0._dp
+    energy=0._dp
     CALL swarm_message_get(cmd,"input",input_file)
     CALL swarm_message_get(cmd,"coord",coord_file)
     CALL swarm_message_get(cmd,"charge",charge)
@@ -288,6 +321,7 @@ MODULE paramopt_worker
     x = this%x
     if (this%iw .gt. 0) then
         write(this%iw,*) '----------------------yannick--------------------'
+        write(this%iw,*) 'num inp',i_inp
         do i=1,size(x)
         write(this%iw,*) 'x',i,x(i),x(i)-this%x_old(i)
         enddo
@@ -358,22 +392,25 @@ MODULE paramopt_worker
 !      CALL swarm_message_add(report, "conv", this%converged) 
 !      CALL swarm_message_add(report, "Epot", energy)
 !    !-----------------------------------------------------
-    if (command .eq. 'force') then
-
+    if (command .eq. 'calc_full') then
       !this is new with forces
       allocate(forces(3*this%n_atoms))
       CALL calc_energy_force(this%f_env_id, .TRUE. , ierr)
       CALL get_energy(this%f_env_id,energy,ierr)
       CALL get_force(this%f_env_id, forces, 3*this%n_atoms, ierr)
-      if (this%force_env%qs_env%converged) then
+      !print *,'yannick1',coord_file,sum(abs(forces)),this%force_env%qs_env%converged
+
+      this%force = sum(abs(forces))/this%n_atoms
+      if (this%force_env%qs_env%converged .and. this%force .lt.  5._dp) then
               this%converged = 1
       else
               this%converged = 0
       endif
-      this%force = sum(abs(forces))
       deallocate(forces)
       !-------------------------------------------------------
-      if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
+      if (this%converged .eq. 1) then
+      !if (this%n_atoms .le. 12) then
+        ! only (H2O)_4 to geom optim
         ALLOCATE(this%pos2(3*this%n_atoms))
         ALLOCATE(this%pos(3*this%n_atoms))
         ALLOCATE(this%g(2,3*this%n_atoms))
@@ -381,30 +418,50 @@ MODULE paramopt_worker
         CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
         !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
         CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.TRUE.,error=this%error)
+
         CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
         CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
                                RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
                                0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-        !-----------calculate dipole--------------------------
-        CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
-        dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9)  
-        do i = 1,3
-        dipole=dipole + this%dipole(:,i)
-        enddo
-        this%dipole_error = abs(1.86_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+        !print *,'yannick1',coord_file,'after geoopt',this%force_env%qs_env%converged
+         !----------------calc energy--------------------
+         if (this%force_env%qs_env%converged) then
+              this%converged = 1
+         else
+              this%converged = 0
+              this%dipole_error = huge(1._dp)
+              this%rmsd = huge(1._dp)
+         endif 
+         !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
+         CALL get_energy(this%f_env_id,energy,ierr)
+        !------------------------------------------------ 
+        if (coord_file .eq. 'WATER27structures/H2O.xyz') then
+          !-----------calculate dipole--------------------------
+          CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
+          dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9)  
+          do i = 1,3
+            dipole=dipole + this%dipole(:,i)
+          enddo
+          this%dipole_error = abs(1.86_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+          deallocate(dipole)
+        endif
         !!---------------cleanup-----------------------------
-          deallocate(this%pos,this%pos2,this%g,dipole)!
-      endif 
+          deallocate(this%pos,this%pos2,this%g)!
+      !endif 
+      else
+        this%dipole_error = huge(1._dp)
+        this%rmsd = huge(1._dp)
+      endif
         !-------------report--------------------------------
         ! force per atom 
         this%force = this%force/real(this%n_atoms)
-        CALL swarm_message_add(report, "status", "force_calc") 
+        CALL swarm_message_add(report, "status", "calc") 
         CALL swarm_message_add(report, "num_inp", i_inp) 
         CALL swarm_message_add(report, "iter", iter)
         CALL swarm_message_add(report, "conv", this%converged) 
-        CALL swarm_message_add(report, "force", this%force)
+        !CALL swarm_message_add(report, "force", this%force)
+        CALL swarm_message_add(report, "rmsd", this%rmsd)
         if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
-           CALL swarm_message_add(report, "rmsd", this%rmsd)
            CALL swarm_message_add(report, "dipole", this%dipole_error)
         endif
         CALL swarm_message_add(report, "Epot", energy)

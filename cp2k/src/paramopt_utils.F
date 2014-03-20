@@ -28,6 +28,7 @@ MODULE paramopt_utils
 
 
  PUBLIC :: Variance
+ PUBLIC :: Deviation
  PUBLIC :: var_trans,var_back_trans
  PUBLIC :: sample
 
@@ -54,6 +55,15 @@ MODULE paramopt_utils
   X = SUM(Array)/SIZE(Array)
   Variance = SUM((Array-X)**2)/SIZE(Array)
  END FUNCTION Variance
+ ! *****************************************************************************
+! *****************************************************************************
+ subroutine Deviation (Array)
+  IMPLICIT NONE
+  REAL(kind=dp)::X
+  REAL(kind=dp),INTENT(INOUT),DIMENSION(:)::Array
+  X = SUM(Array)/SIZE(Array)
+  array = (Array-X)
+ end subroutine deviation
  ! *****************************************************************************
 ! *****************************************************************************
  subroutine var_trans(x,y,lbnd,ubnd)

@@ -22,6 +22,7 @@ MODULE cma_es
                                              reset_to_next_rng_substream, &
                                              GAUSSIAN, &
                                              UNIFORM
+   USE paramopt_utils,                 ONLY: deviation
 #include "cp_common_uses.h"
     implicit none
     private 
@@ -99,6 +100,7 @@ MODULE cma_es
                   CALL tool_eigendecomp(a_k%triuC,cmaes_opt%n,a_k%D,a_k%B,cmaes_opt%info)
                           !if tool_eigendecomp returned Error go to the Restart Loop
                   IF (cmaes_opt%info .NE. 0) THEN
+                      print *,'error in a_k',a_k%Id
                       STOP
                   END IF
                   !-----------------------------------------------------------------------
@@ -288,7 +290,7 @@ MODULE cma_es
          TYPE(individual_type),POINTER                    :: a_k,a_k2
          INTEGER                                     :: nondominated_size
          INTEGER                                     :: popsize
-         INTEGER                                     :: i,j,k 
+         INTEGER                                     :: i,j,k,t 
          INTEGER                                     :: numrows,numcols
          numrows=size(input_set)
          numcols=size(input_set(1)%p%f) 
@@ -298,16 +300,23 @@ MODULE cma_es
             k = 1
             do j = 1,numrows
                 a_k2 => input_set(j)%p
-                !----yannick watch out...f now is hardcoded to only have 2 obj!!!!
-                if ((a_k%f(1) .lt. a_k2%f(1)) .and. &
-                    (a_k%f(2) .lt. a_k2%f(2)) ) then
+                if (all(a_k%f .lt. a_k2%f)) then
                     a_k%s_i(k)%p => a_k2
                     a_k%s_i_count = a_k%s_i_count + 1
                     k = k +1
-                else if (a_k%f(1) .gt. a_k2%f(1) .and. &
-                         a_k%f(2) .gt. a_k2%f(2) ) then
-                   a_k%d_count = a_k%d_count + 1
+                else if (all(a_k%f .gt. a_k2%f)) then
+                    a_k%d_count = a_k%d_count + 1
                 endif
+
+               ! if ((a_k%f(1) .lt. a_k2%f(1)) .and. &
+               !     (a_k%f(2) .lt. a_k2%f(2)) ) then
+               !     a_k%s_i(k)%p => a_k2
+               !     a_k%s_i_count = a_k%s_i_count + 1
+               !     k = k +1
+               ! else if (a_k%f(1) .gt. a_k2%f(1) .and. &
+               !          a_k%f(2) .gt. a_k2%f(2) ) then
+               !    a_k%d_count = a_k%d_count + 1
+               ! endif
             enddo 
          enddo
          nondominated_size = 0
@@ -778,69 +787,84 @@ MODULE cma_es
          REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
          REAL(kind=dp),DIMENSION(:),POINTER          :: fmax,fmin
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: maxvals,minvals
+         REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: tmp
          INTEGER,DIMENSION(:),ALLOCATABLE            :: idxsel
          INTEGER                                     :: nondominated_size
          INTEGER                                     :: numcols
          INTEGER                                     :: sel_target
-         INTEGER                                     :: i,j,k 
-         INTEGER                                     :: j_m,j_p 
+         INTEGER                                     :: i,j,k,n 
+         INTEGER                                     :: j_m,j_p
+         print *,'before crowding distance' 
          nondominated_size=size(input_set)
-         ! this should not be hardcoded
          numcols=size(input_set(1)%p%f)
-!         if (allocated(output_Set)) deallocate(output_set)
-!         allocate(output_set(sel_target)) 
-         allocate(newsort(nondominated_size,numcols))
-         allocate(idxsel(nondominated_size))
-         ! crowding-distance-assignment
          do i = 1,nondominated_size
-             newsort(i,:) = input_set(i)%p%f(:)
              input_set(i)%p%I_dist = 0._dp
          enddo
-        
-        do k = 1,numcols     ! num objectives 
-           CALL mrgrnk(newsort(:,numcols),idxsel)
-         !  print *,'this are the best I dist',input_set(idxsel(1))%p%id, &
-         !           input_set(idxsel(nondominated_size))%p%id
-           input_set(idxsel(1))%p%I_dist = huge(1._dp) 
-           input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
-           do i = 2,nondominated_size-1
-               j = idxsel(i)
-               j_p = idxsel(i+1)
-               j_m = idxsel(i-1)
-               input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
-                                (input_set(j_p)%p%f(numcols)- &
-                                 input_set(j_m)%p%f(numcols))/& 
-                                (maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
-                                !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
-                                !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
-               if (input_set(j_p)%p%f(numcols) .eq. huge(1._dp) .or. &
-                   input_set(j_m)%p%f(numcols) .eq. huge(1._dp)) input_set(j)%p%I_dist = tiny(1._dp)
+         !------------------------------------------------
+!         allocate(newsort(nondominated_size,numcols))
+!         allocate(idxsel(nondominated_size))
+!         ! crowding-distance-assignment
+!         do i = 1,nondominated_size
+!             newsort(i,:) = input_set(i)%p%f(:)
+!         enddo
+!        
+!        do k = 1,numcols     ! num objectives 
+!           CALL mrgrnk(newsort(:,numcols),idxsel)
+!         !  print *,'this are the best I dist',input_set(idxsel(1))%p%id, &
+!         !           input_set(idxsel(nondominated_size))%p%id
+!           input_set(idxsel(1))%p%I_dist = huge(1._dp) 
+!           input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
+!           do i = 2,nondominated_size-1
+!               j = idxsel(i)
+!               j_p = idxsel(i+1)
+!               j_m = idxsel(i-1)
+!               input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
+!                                (input_set(j_p)%p%f(numcols)- &
+!                                 input_set(j_m)%p%f(numcols))/& 
+!                                (maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
+!                                !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
+!                                !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
+!           !-------------check I_dist for NaN and Inf----------------------------------------
+!           if (isnan( input_set(j)%p%I_dist)) input_set(j)%p%I_dist = tiny(1._dp)
+!           if (( input_set(j)%p%I_dist) .gt. huge(1._dp) ) input_set(j)%p%I_dist = tiny(1._dp)
+!           enddo
+!        enddo
+!       deallocate(newsort,idxsel) 
+        !------use standard deviation as crowding distance---------------------
+        n = size(input_set(1)%p%arx(:,1))
+        allocate(tmp(nondominated_size))
+           do i = 1,n
+               do k =1,nondominated_size
+               tmp(k) = input_set(k)%p%arx(i,1)
+               enddo
+               print *,'yannick xn',tmp
+               call deviation(tmp)
+               print *,'yannick var',tmp
+               do k =1,nondominated_size
+               input_set(k)%p%I_dist = input_set(k)%p%I_dist + tmp(k)**2 
+               enddo 
            enddo
-        enddo
+        deallocate(tmp)
+        !---------------------take the norm of the standard deviation/variance---------
+          do k =1,nondominated_size
+             input_set(k)%p%I_dist = sqrt(input_set(k)%p%I_dist)
+          enddo
 
-        !---------this is a version where dipole error is used as criteria------
-         do i = 1,nondominated_size
-             if (input_set(i)%p%I_dist .eq. huge(1._dp)) then
-             else
-                 if (input_set(i)%p%dipole .eq. huge(1._dp)) then
-                    input_set(i)%p%I_dist =  tiny(1._dp)
-                 else 
-                    input_set(i)%p%I_dist =  1._dp/input_set(i)%p%dipole
-                 endif
-             endif
-         enddo
+!         do i = 1,nondominated_size
 
-
-
-!        allocate(tmp_array(size(input_set))) 
-!      do i = 1, nondominated_size
-!            tmp_array(i) = input_set(i)%p%I_dist
-!      enddo 
-!      CALL mrgrnk(tmp_array,idxsel)
-!      DO i=1,sel_target
-!        output_set(i) = input_set(idxsel(i))
-!      END DO
-       deallocate(newsort,idxsel) 
+!         enddo
+!        !---------this is a version where dipole error is used as criteria------
+!         do i = 1,nondominated_size
+!             if (input_set(i)%p%I_dist .eq. huge(1._dp)) then
+!             else
+!                 if (input_set(i)%p%dipole .eq. huge(1._dp)) then
+!                    input_set(i)%p%I_dist =  tiny(1._dp)
+!                 else 
+!                    input_set(i)%p%I_dist =  1._dp/input_set(i)%p%dipole
+!                 endif
+!             endif
+!         enddo
+!
        END SUBROUTINE crowding_distance
 !===========================================================================
     SUBROUTINE new_front(global_set,input_set,output_set)

@@ -18,7 +18,7 @@
 !> \author Teodoro Laino [tlaino] - University of Zurich - 01.2008
 ! *****************************************************************************
   RECURSIVE SUBROUTINE cp_eval_at(gopt_env,x,f,gradient,master,&
-                                  final_evaluation,para_env,error)
+                                  final_evaluation,para_env,ene_conv,error)
 
     USE averages_types,                  ONLY: average_quantities_type,&
                                                create_averages,&
@@ -94,6 +94,7 @@
     INTEGER                                  :: ensemble, handle, i, idg, idir, ip, &
                                                 nparticle, nsize, shell_index, stat
     LOGICAL                                  :: failure, explicit, my_final_evaluation
+    LOGICAL, OPTIONAL,INTENT(OUT)            :: ene_conv
     REAL(KIND=dp)                            :: f_ts, potential_energy
     REAL(KIND=dp), DIMENSION(3)              :: r, s
     REAL(KIND=dp), DIMENSION(3,3)            :: av_ptens, h_ref
@@ -145,6 +146,8 @@
           ! Possibly take the potential energy
           IF (PRESENT(f)) THEN
              CALL force_env_get(gopt_env%force_env,potential_energy=f,error=error)
+             !----yannick hack----
+             IF (PRESENT(ene_conv)) ene_conv = gopt_env%force_env%qs_env%converged
           END IF
           ! Possibly take the gradients
           IF (PRESENT(gradient)) THEN

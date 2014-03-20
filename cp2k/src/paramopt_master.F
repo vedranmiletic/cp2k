@@ -90,7 +90,7 @@ MODULE paramopt_master
 
     type(individual_type),POINTER               :: a_k
     type(individual_type),POINTER               :: a_k_parents
-    INTEGER                                     :: k
+    INTEGER                                     :: k,n
     INTEGER                                     :: unit_number
     REAL(kind=dp)                               :: ini_sigma
 
@@ -114,10 +114,12 @@ MODULE paramopt_master
       CALL section_vals_val_get(cmaes_section,"PENALTY",r_val=this%penalty_alpha,error=error)
     endif
     !------------------
-    this%num_obj = 2
+    n = this%num_var
+    !------------------
+    this%num_obj = 4
     this%multi_obj = .true.
     !-------------------
-    this%num_inp = 30
+    this%num_inp = 32 ! now also H2 and O3 in the set!!!
     if (this%benchmark) this%num_inp = 2 !is basically the number of objectives
     !-------------------
     this%num_calc = 30
@@ -137,10 +139,10 @@ MODULE paramopt_master
             this%lbfgs_opt,this%cmaes_opt)
     !-------------------
     allocate(this%E_res(this%num_para_set))
-    allocate(this%rmsd(this%num_para_set))
+    allocate(this%rmsd(this%num_inp,this%num_para_set))
     allocate(this%dipole(this%num_para_set))
-    allocate(this%force(this%num_ref,this%num_para_set))
-    allocate(this%Epot(this%num_ref,this%num_para_set))
+    allocate(this%force(this%num_inp,this%num_para_set))
+    allocate(this%Epot(this%num_inp,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
     allocate(this%res(this%num_ref))
     allocate(this%ref_num_atoms(this%num_ref))
@@ -158,7 +160,6 @@ MODULE paramopt_master
     ALLOCATE(this%input_files(this%num_inp))
     ALLOCATE(this%coord_files(this%num_inp))
     ALLOCATE(this%charges(this%num_inp))
-    allocate(this%res(this%num_inp))
     allocate(this%rng_stream)
 
     allocate(this%timings(this%num_inp))
@@ -213,6 +214,7 @@ MODULE paramopt_master
     !---------------------
     this%res = 0._dp
     this%E_res = 0._dp
+    this%rmsd = 0._dp
     !------------------------
     ! chose optim method
     SELECT CASE (this%run_type_id)
@@ -388,6 +390,13 @@ MODULE paramopt_master
       if (this%restart) then
           print *,"==========restart file read==============="
           call read_x(this%cmaes_opt)
+          !-----c matrix from bd
+          do k=1,this%cmaes_opt%lambda_mo
+            a_k => this%cmaes_opt%a_k(k)%p
+            CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
+            a_k_parents => this%cmaes_opt%a_k_parents(k)%p
+            CALL DGEMM('N','T',n,n,n,1.0d0,a_k_parents%BD,n,a_k_parents%BD,n,0.0d0,a_k_parents%C,n)
+          enddo
       endif
     endif
 !================================================================================
@@ -407,9 +416,13 @@ MODULE paramopt_master
 !    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
 !    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
 !    this%input_files(this%num_inp-1) = 'dipole.inp'
-!    this%input_files(this%num_ref+1) = 'geo_opt.inp' 
-!    this%charges(this%num_ref+1) = 0
-!    this%coord_files(this%num_ref+1) = "WATER27structures/H2O.xyz" 
+    this%input_files(this%num_ref+1) = 'H2.inp' 
+    this%charges(this%num_ref+1) = 0._dp
+    this%coord_files(this%num_ref+1) = "WATER27structures/H2.xyz"
+    !---------------------
+    this%input_files(this%num_ref+2) = 'O3.inp' 
+    this%charges(this%num_ref+2) = 0._dp
+    this%coord_files(this%num_ref+2) = "WATER27structures/O3.xyz"
     !---------------------
     call open_file(file_name='WATER27.dat',unit_number=unit_number, &
                           file_action='read')
@@ -435,6 +448,7 @@ MODULE paramopt_master
     !------------------------
 !    allocate(this%function_matrix(this%num_para_set,this%num_inp))
     !------------------------
+    this%converged = 1
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init done"
  END SUBROUTINE paramopt_master_init
 
@@ -448,6 +462,7 @@ MODULE paramopt_master
       routineP = moduleN//':'//routineN
     INTEGER                                  :: i,j,k,i_inp,r_iter
     INTEGER                                  :: report_worker_id
+    REAL(KIND=dp)                            :: t1,t2
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11,h2o_eaip_id=31 
     real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
     REAL(KIND=dp)                            :: energy
@@ -459,43 +474,20 @@ MODULE paramopt_master
     r_iter = 1
     CALL swarm_message_get(report, "worker_id", report_worker_id)
     CALL swarm_message_get(report, "status",report_status)
-    IF (report_status == "ene_calc") THEN
+    IF (report_status == 'calc') THEN
     !---------we got a new message, deal with it :)---------------
-    CALL swarm_message_get(report, "num_inp", i_inp)
-    CALL swarm_message_get(report, "iter", r_iter)
-    j = mod(r_iter,this%num_para_set) + 1
-    !i = ceiling(r_iter/real(this%num_para_set))
-    i = i_inp
-       CALL swarm_message_get(report, "conv", this%converged(i,j))
-       CALL swarm_message_get(report, "Epot", this%function_matrix(i,j))
-       !------------change status---------------------------------
-       report_status = "wait_done"
-       !------------deal with condition---------------------------
-       this%i_recv(j) = this%i_recv(j) + 1
-       !---------------print------------------------------------
-   !      IF(this%iw>0) THEN
-   !         WRITE (this%iw,'(A,20X,I8,I8,I8)')&
-   !                " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
-   !         WRITE (this%iw,'(A,20X,E15.8)')&
-   !                " PRMOPT| Reported potential Energy [Hartree] ", this%function_matrix(i,j)
-   !         END IF
-   !    print *,'receved',i,j,this%function_matrix(i,j)-this%function_matrix(i,1),this%function_matrix(i,j)
-   !    print *,'wid',report_worker_id
-   !    print *,trim(this%input_files(i))
-    ELSE IF (report_status == 'force_calc') THEN
-    !---------we got a new message, deal with it :)---------------
-    CALL swarm_message_get(report, "num_inp", i_inp)
-    CALL swarm_message_get(report, "iter", r_iter)
+      CALL swarm_message_get(report, "num_inp", i_inp)
+      CALL swarm_message_get(report, "iter", r_iter)
          ! map this%inp_iter to task and send out
          ! k = inp_iter, m = num_para_set
          j = mod(r_iter,this%num_para_set) + 1
-         !i = ceiling(real(r_iter)/real(this%num_para_set)) 
          i = i_inp
        CALL swarm_message_get(report, "conv", this%converged(i,j))    
-       CALL swarm_message_get(report, "force", this%force(i,j))
+       !CALL swarm_message_get(report, "force", this%force(i,j))
+       CALL swarm_message_get(report, "rmsd", this%rmsd(i,j))
        if (i_inp .eq. 1) then
-            CALL swarm_message_get(report, "rmsd", this%rmsd(j))
             CALL swarm_message_get(report, "dipole", this%dipole(j))
+
        endif
        CALL swarm_message_get(report, "Epot", this%Epot(i,j))
        !this%function_matrix(i,j) = this%rmsd(j)
@@ -508,24 +500,10 @@ MODULE paramopt_master
     !        WRITE (this%iw,'(A,20X,I8,I8,I8)')&
     !               " PRMOPT| Reporting worker ", report_worker_id, i_inp, r_iter
     !        WRITE (this%iw,'(A,20X,E15.8)')&
+    !               " PRMOPT| Reported energy ", this%Epot(i,j)
+    !        WRITE (this%iw,'(A,20X,E15.8)')&
     !               " PRMOPT| Reported rmsd ", this%rmsd(i,j)
     !     END IF
-    ELSE IF (report_status == "bench_calc") THEN
-      CALL swarm_message_get(report, "num_inp", i_inp)
-      CALL swarm_message_get(report, "iter", r_iter)
-         ! map this%inp_iter to task and send out
-         ! k = inp_iter, m = num_para_set
-         j = mod(r_iter,this%num_para_set) + 1
-        ! i = ceiling(real(r_iter)/real(this%num_para_set))
-         i = i_inp
-      CALL swarm_message_get(report, "Epot", this%function_matrix(1,j))
-      CALL swarm_message_get(report, "rmsd", this%function_matrix(2,j))
-       !------------change status---------------------------------
-       report_status = "wait_done"
-       !------------deal with condition---------------------------
-       this%i_recv(j) = this%i_recv(j) + 1
-    ELSE
-        ! error
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
@@ -536,10 +514,10 @@ MODULE paramopt_master
              !-------------------for cmaes_opt------------------------------
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
-             a_k%rmsd = this%rmsd(j)
+             a_k%rmsd = sum(this%rmsd(:,j))
              a_k%dipole = this%dipole(j)
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(j), this%dipole(j), this%E_res(j))
+             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(:,j), this%dipole(j), this%E_res(j))
                if (isnan(this%E_res(j))) then
                  a_k%f(1) = huge(1.0_dp) 
                else     
@@ -550,16 +528,20 @@ MODULE paramopt_master
                  ! E_res is sum of energy error divided by num_atoms per calc
                endif
                  !---yannick use ^2-------
-                 a_k%f(2) = sum(this%force(:,j)) + a_k%penalty
+                 a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
+                 a_k%f(3) = this%dipole(j) + a_k%penalty
+                 if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
+                 a_k%f(4) = (this%rmsd(1,j)) + a_k%penalty
+                 if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
                  ! here the squaring neeeds to be carried out
                  !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
-              call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(j), this%dipole(j), this%E_res(j))
-             this%obj_f(j) = this%weights(1)*this%E_res(j) + &
-                          this%weights(2)*this%function_matrix(this%num_inp,j) 
+             ! call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(:,j), this%dipole(j), this%E_res(j))
+             !this%obj_f(j) = this%weights(1)*this%E_res(j) + &
+             !             this%weights(2)*this%function_matrix(this%num_inp,j) 
              endif
           else
              if (associated(this%cmaes_opt)) then
@@ -578,7 +560,7 @@ MODULE paramopt_master
         this%cmaes_opt%fmax(1) = tempmax(1)
         this%cmaes_opt%fmax(2) = tempmax(2)
         !---------------reset logical convergence value
-        this%converged = 0
+        this%converged = 1
         !-------------------------------------------------------
         if (this%calc_deriv) then
          do j=2,this%num_para_set
@@ -587,18 +569,6 @@ MODULE paramopt_master
         endif 
         if (this%calc_deriv) print *,'gradient'
         if (this%calc_deriv) print *,this%grad_obj_f
-        !--------------------new x to file?--------------------
-        if (.not. this%benchmark) then
-        !CALL para2file(this%num_var,this%x,"para.xml","para.xml.old.out") 
-        !   !open(12,position='append')
-        !   open(12)
-        !   do i = 1,this%cmaes_opt%lambda_mo
-        !      write(12,*) this%cmaes_opt%a_k_parents(i)%f,this%cmaes_opt%a_k_parents(i)%id
-        !      write(12,*) this%cmaes_opt%a_k(i)%f,this%cmaes_opt%a_k(i)%id
-        !   enddo
-        !   close(12)
-        endif
-        !----new x-------------------
         !------------------------optimizer-----------------------------
           CALL var_trans(this%x,this%xtrans,this%l_bound,this%u_bound)
           if (associated(this%powell_opt)) CALL powell_optimize(this%num_var, &
@@ -625,6 +595,9 @@ MODULE paramopt_master
          !        if (this%cmaes_opt%a_k(i)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(i)%f(2) = 0._dp
          !        print *,'f to decide',this%cmaes_opt%a_k(i)%p%f,this%cmaes_opt%a_k_parents(i)%p%f
          !    enddo
+        call cpu_time(t2) 
+        IF(this%iw>0) write (this%iw, * ) 'Elapsed real time = ', t2-t1
+        call cpu_time(t1)
              this%cmaes_opt%generation = this%cmaes_opt%generation + 1
         !     if (this%cmaes_opt%generation .eq. 2000) STOP
              CALL cmaes(this%x,this%cmaes_opt)
@@ -645,10 +618,6 @@ MODULE paramopt_master
          !---------reset inp_iter--------
          this%inp_iter = this%num_inp*this%num_para_set
          this%i_recv = 0
-         !--------------------new x to file?--------------------
-          if (.not. this%benchmark) then
-          !CALL para2file(this%num_var,this%x,"para.xml","para.xml.out")
-          endif
           !-----------------x for diff-------------------------
           if (this%calc_deriv) this%eps = this%eps_factor*this%x
              !----check lowest eps....eps should not be zero!
@@ -664,17 +633,28 @@ MODULE paramopt_master
          ! send new task to idle worker
          ! map this%inp_iter to task and send out
          ! k = inp_iter, m = num_para_set
+         ! j should represent the param_set 
          j = mod(this%inp_iter,this%num_para_set) + 1 !x(j)
          i = ceiling(real(this%inp_iter)/real(this%num_para_set))
          a_k => this%cmaes_opt%a_k(j)%p
          this%x_temp = this%x
          if (.not. this%benchmark) then
-            CALL swarm_message_add(cmd, "command", "force")
-            CALL swarm_message_add(cmd, "input", this%input_files(i))
-            CALL swarm_message_add(cmd, "coord", this%coord_files(i))
-            CALL swarm_message_add(cmd, "charge", this%charges(i))
-            CALL swarm_message_add(cmd, "num_inp",i)
-            CALL swarm_message_add(cmd, "iter", this%inp_iter)
+            if (any(this%converged(:,j) .eq. 0)) then 
+              CALL swarm_message_add(cmd, "command", "skip")
+              CALL swarm_message_add(cmd, "input", this%input_files(i))
+              CALL swarm_message_add(cmd, "coord", this%coord_files(i))
+              CALL swarm_message_add(cmd, "charge", this%charges(i))
+              CALL swarm_message_add(cmd, "num_inp",i)
+              CALL swarm_message_add(cmd, "iter", this%inp_iter)
+              print *,'skipped yannick'
+            else
+              CALL swarm_message_add(cmd, "command", "calc_full")
+              CALL swarm_message_add(cmd, "input", this%input_files(i))
+              CALL swarm_message_add(cmd, "coord", this%coord_files(i))
+              CALL swarm_message_add(cmd, "charge", this%charges(i))
+              CALL swarm_message_add(cmd, "num_inp",i)
+              CALL swarm_message_add(cmd, "iter", this%inp_iter)
+            endif
             if (associated(this%cmaes_opt)) then
               this%x_temp = a_k%arx(:,1)
             endif
@@ -722,20 +702,24 @@ MODULE paramopt_master
  SUBROUTINE calc_obj_f(this, Epot, Conv, rmsd, dipole, obj_f)
     TYPE(paramopt_master_type)               :: this
     REAL(KIND=dp),intent(in)                 :: Epot(:)
-    REAL(KIND=dp),intent(in)                 :: rmsd
+    REAL(KIND=dp),intent(in)                 :: rmsd(:)
     REAL(KIND=dp),intent(in)                 :: dipole
     INTEGER,intent(in),OPTIONAL              :: Conv(:)
     REAL(KIND=dp),intent(out)                :: obj_f
     REAL(KIND=dp)                            :: energy
-    real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref
+    real(kind=dp) :: h2o8s4_ref,h2o_eaip_ref,h2o_ref,h3op_ref,ohm_ref,h2_ref,o3_ref
+    real(kind=dp)                             :: h_err,o_err
     integer,parameter    :: h2o_id=1,h3o_id=16,ohm_id=22,h2o8s4_id=11 !,h2o_eaip_id=31
-    integer                                  :: i 
+    integer                                  :: i
+       
         !---------------energy references-------------------------------------------
         h2o_ref      = Epot(h2o_id)
         !h2o_eaip_ref = Epot(h2o_eaip_id)
         h3op_ref     = Epot(h3o_id)
         ohm_ref      = Epot(ohm_id) 
         h2o8s4_ref   = Epot(h2o8s4_id)
+        h2_ref       = -1.151518_dp
+        o3_ref       = -47.363791_dp
         !---------------------------------------------------------------------------
                     write(*,*) '==============================asdfkjalsdkjfl==================='
                     DO i=1,this%num_ref
@@ -771,9 +755,14 @@ MODULE paramopt_master
                     write(*,*) '==============================asdfkjalsdkjfl==================='
                     !---yannick use ^2 
                     obj_f = sum(this%res/real(this%ref_num_atoms))
+                    !----handle H2 and O3 seperatly
+                    !h_err = abs(Epot(this%num_ref+1) - h2_ref)/2._dp
+                    !o_err = abs(Epot(this%num_ref+2) - o3_ref)/3._dp
+                    !obj_f = obj_f + h_err + o_err
+                    !play with quadr?
                     !obj_f = sum(this%res/real(this%ref_num_atoms)**2)
         IF (ANY(Conv .eq. 0)) obj_f=huge(0._dp)         
-                    write(*,*) obj_f,rmsd,dipole
+                    write(*,*) obj_f,sum(rmsd),dipole
  END SUBROUTINE
 ! *****************************************************************************
 ! *****************************************************************************

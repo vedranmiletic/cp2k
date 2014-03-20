@@ -108,6 +108,7 @@ CONTAINS
                                                 hesrest, ionode, &
                                                 shell_present, should_stop, &
                                                 use_mod_hes, use_rfo
+    LOGICAL                                  :: ene_conv
     REAL(KIND=dp)                            :: ediff, emin, eold, etot, &
                                                 pred, rad, rat, step, t_diff, &
                                                 t_now, t_old
@@ -246,8 +247,8 @@ CONTAINS
     CALL print_geo_opt_header(gopt_env, output_unit, wildcard)
 
     ! Calculate Energy & Gradients
-    CALL cp_eval_at(gopt_env, x0, etot, g, gopt_env%force_env%para_env%mepos,&
-                    .FALSE., gopt_env%force_env%para_env, error)
+    CALL cp_eval_at(gopt_env=gopt_env,x=x0,f=etot,gradient=g,master=gopt_env%force_env%para_env%mepos,&
+                    final_evaluation=.FALSE.,para_env=gopt_env%force_env%para_env,error=error)
 
     ! Print info at time 0
     emin = etot
@@ -319,10 +320,16 @@ CONTAINS
        eold = etot
 
        ! Energy & Gradients at new step
-       CALL cp_eval_at(gopt_env, x0, etot, g, gopt_env%force_env%para_env%mepos,&
-                       .FALSE., gopt_env%force_env%para_env, error)
+       CALL cp_eval_at(gopt_env=gopt_env, x=x0, f=etot,gradient=g, &
+                       master=gopt_env%force_env%para_env%mepos, &
+                       final_evaluation=.FALSE., para_env=gopt_env%force_env%para_env, &
+                       ene_conv=ene_conv,error=error)
        ediff = etot - eold
-
+       ! yannicks hack - geo opt should only be carried out when energy is converged otherwise exit
+       IF (.NOT. ene_conv)  THEN
+         !print *,'yannick exit cuz energy did not converge',ene_conv
+         EXIT
+       ENDIF
        ! check for an external exit command
        CALL external_control(should_stop,"GEO",globenv=globenv,error=error)
        IF(should_stop) EXIT

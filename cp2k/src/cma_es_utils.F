@@ -193,9 +193,7 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%penalty, &
                           cmaes_opt%population(i)%front, &
                           cmaes_opt%population(i)%I_dist, &
-                          cmaes_opt%population(i)%trace, &
-                          cmaes_opt%population(i)%rmsd, &
-                          cmaes_opt%population(i)%dipole 
+                          cmaes_opt%population(i)%trace
 
 
               t = cmaes_opt%population(i)%id
@@ -251,10 +249,7 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%penalty, &
                           cmaes_opt%population(i)%front, &
                           cmaes_opt%population(i)%I_dist, &
-                          cmaes_opt%population(i)%trace, &
-                          cmaes_opt%population(i)%rmsd, &
-                          cmaes_opt%population(i)%dipole 
-
+                          cmaes_opt%population(i)%trace
 
               t = cmaes_opt%population(i)%id
               call open_file(file_name="bd_"//trim(str(t)),unit_number=unit_number2, &
