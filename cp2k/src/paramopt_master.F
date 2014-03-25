@@ -111,6 +111,7 @@ MODULE paramopt_master
       cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
       CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
       CALL section_vals_val_get(cmaes_section,"ADDITIONAL_CONS",l_val=this%additional_constrain,error=error)
+      CALL section_vals_val_get(cmaes_section,"VARIANCE_SORTING",l_val=this%variance_sorting,error=error)
       CALL section_vals_val_get(cmaes_section,"PENALTY",r_val=this%penalty_alpha,error=error)
     endif
     !------------------
@@ -343,8 +344,8 @@ MODULE paramopt_master
       allocate(this%cmaes_opt%population_p(2*this%cmaes_opt%lambda_mo))
       allocate(this%cmaes_opt%a_k(this%cmaes_opt%lambda_mo))
       allocate(this%cmaes_opt%a_k_parents(this%cmaes_opt%lambda_mo))
-      allocate(this%cmaes_opt%fmax(this%num_obj))
-      allocate(this%cmaes_opt%fmin(this%num_obj))
+      !allocate(this%cmaes_opt%fmax(this%num_obj))
+      !allocate(this%cmaes_opt%fmin(this%num_obj))
       this%cmaes_opt%n = this%num_var
       this%cmaes_opt%l_bound => this%l_bound
       this%cmaes_opt%u_bound => this%u_bound
@@ -356,11 +357,12 @@ MODULE paramopt_master
                            seed=seed,error=this%error)
       this%cmaes_opt%generation = 1
       this%cmaes_opt%additional_constrain = this%additional_constrain
+      this%cmaes_opt%variance_sorting = this%variance_sorting
       this%cmaes_opt%penalty_alpha = this%penalty_alpha
       !=============NEEEEEEEDS TO BE CHANGED AND MOVED TO INPUT FILE!!!!!!!==========================
       !---yannick this is a dummy at the moment the fmax gets overwritten...
-      this%cmaes_opt%fmax = (/10_dp,1_dp/)
-      this%cmaes_opt%fmin = (/0_dp,0_dp/)
+      !this%cmaes_opt%fmax = (/10_dp,1_dp/)
+      !this%cmaes_opt%fmin = (/0_dp,0_dp/)
      !--------------init population-----------------
      do k=1,this%cmaes_opt%lambda_mo
       this%cmaes_opt%population_p(k)%p => this%cmaes_opt%population(k)
@@ -554,11 +556,7 @@ MODULE paramopt_master
            !  if (this%cmaes_opt%a_k(j)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(2) = 0._dp
              endif
           endif
-          if (a_k%f(1) .gt. tempmax(1)) tempmax(1) = a_k%f(1)
-          if (a_k%f(2) .gt. tempmax(2)) tempmax(2) = a_k%f(2)
         enddo
-        this%cmaes_opt%fmax(1) = tempmax(1)
-        this%cmaes_opt%fmax(2) = tempmax(2)
         !---------------reset logical convergence value
         this%converged = 1
         !-------------------------------------------------------
@@ -595,9 +593,11 @@ MODULE paramopt_master
          !        if (this%cmaes_opt%a_k(i)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(i)%f(2) = 0._dp
          !        print *,'f to decide',this%cmaes_opt%a_k(i)%p%f,this%cmaes_opt%a_k_parents(i)%p%f
          !    enddo
-        call cpu_time(t2) 
-        IF(this%iw>0) write (this%iw, * ) 'Elapsed real time = ', t2-t1
-        call cpu_time(t1)
+        IF(this%iw>0) THEN
+          call cpu_time(t2) 
+          write (this%iw, * ) 'Elapsed real time = ', t2-t1
+          call cpu_time(t1)
+        ENDIF
              this%cmaes_opt%generation = this%cmaes_opt%generation + 1
         !     if (this%cmaes_opt%generation .eq. 2000) STOP
              CALL cmaes(this%x,this%cmaes_opt)

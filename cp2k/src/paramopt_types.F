@@ -104,6 +104,7 @@ MODULE paramopt_types
    LOGICAL                                               :: calc_deriv,benchmark
    LOGICAL                                               :: rand_inp
    LOGICAL                                               :: multi_obj
+   LOGICAL                                               :: variance_sorting
    LOGICAL                                               :: additional_constrain
    LOGICAL                                               :: restart
    REAL(KIND=dp)                                         :: step_size

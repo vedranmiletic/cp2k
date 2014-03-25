@@ -22,7 +22,8 @@ MODULE cma_es
                                              reset_to_next_rng_substream, &
                                              GAUSSIAN, &
                                              UNIFORM
-   USE paramopt_utils,                 ONLY: deviation
+   USE paramopt_utils,                 ONLY: deviation, &
+                                             plugin
 #include "cp_common_uses.h"
     implicit none
     private 
@@ -389,7 +390,7 @@ MODULE cma_es
 !        print * ,'id',i,'fronts',cmaes_opt%population(i)%front,'s_i_count',cmaes_opt%population(i)%s_i_count
 !        do j = 1,cmaes_opt%population(i)%s_i_count; print *,'s_i',cmaes_opt%population(i)%s_i(j)%p%id; enddo
 !    enddo
-    CALL crowding_distance(new_set,cmaes_opt%fmax,cmaes_opt%fmin)
+    CALL crowding_distance(new_set,cmaes_opt%variance_sorting)
     !CALL kernel_distance(new_set,cmaes_opt%error)
           !====ad front to Q
           do i = 1,size(new_set)
@@ -410,7 +411,7 @@ MODULE cma_es
         enddo
 !        print *,'size',size(tmp_set),size(sel_set)
         CALL new_front(tmp_set,sel_set,new_set)
-        CALL crowding_distance(new_set,cmaes_opt%fmax,cmaes_opt%fmin)
+        CALL crowding_distance(new_set,cmaes_opt%variance_sorting)
         !CALL kernel_distance(new_set,cmaes_opt%error)
         !print *,'size new set', size(new_set)
         tmp_off = tmp_off + size(new_set)
@@ -515,7 +516,13 @@ MODULE cma_es
 !                           deallocate(tabu_list,tmp_set)
            !-------------------------------------------
            do i = 1,cmaes_opt%lambda_mo-psize
-               idx = size(idxsel)+1-i
+               !---yannick depend what sorting we want
+               ! smallest is best  
+               ! 1) kernel density 
+               idx = i
+               ! biggest is best
+               ! 2) crowding distance
+               !idx = size(idxsel)+1-i
                sel_set(k)%p => tmp_set(idxsel(idx))%p
                k = k + 1
            enddo
@@ -781,19 +788,26 @@ MODULE cma_es
     deallocate(tmp)
     end subroutine gen_pop
 
-     SUBROUTINE crowding_distance(input_set,fmax,fmin)
+     SUBROUTINE crowding_distance(input_set,variance_sorting)
          IMPLICIT NONE
          TYPE(individual_type_p),DIMENSION(:)        :: input_Set
          REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
          REAL(kind=dp),DIMENSION(:),POINTER          :: fmax,fmin
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: maxvals,minvals
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: tmp
+         REAL(kind=dp),DIMENSION(:),ALLOCATABLE      :: mydeviation,myIdist,maxIdist
+         REAL(kind=dp)                               :: mymax,mymin,mydev
          INTEGER,DIMENSION(:),ALLOCATABLE            :: idxsel
          INTEGER                                     :: nondominated_size
          INTEGER                                     :: numcols
          INTEGER                                     :: sel_target
          INTEGER                                     :: i,j,k,n 
          INTEGER                                     :: j_m,j_p
+         LOGICAL                                     :: variance_sorting
+         !--------kernel density estim----------
+         REAL(kind=dp),DIMENSION(:),ALLOCATABLE :: x,f
+         REAL(kind=dp)                          :: h
+         INTEGER                                :: m
          print *,'before crowding distance' 
          nondominated_size=size(input_set)
          numcols=size(input_set(1)%p%f)
@@ -801,55 +815,84 @@ MODULE cma_es
              input_set(i)%p%I_dist = 0._dp
          enddo
          !------------------------------------------------
-!         allocate(newsort(nondominated_size,numcols))
-!         allocate(idxsel(nondominated_size))
-!         ! crowding-distance-assignment
-!         do i = 1,nondominated_size
-!             newsort(i,:) = input_set(i)%p%f(:)
-!         enddo
-!        
-!        do k = 1,numcols     ! num objectives 
-!           CALL mrgrnk(newsort(:,numcols),idxsel)
-!         !  print *,'this are the best I dist',input_set(idxsel(1))%p%id, &
-!         !           input_set(idxsel(nondominated_size))%p%id
-!           input_set(idxsel(1))%p%I_dist = huge(1._dp) 
-!           input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
-!           do i = 2,nondominated_size-1
-!               j = idxsel(i)
-!               j_p = idxsel(i+1)
-!               j_m = idxsel(i-1)
-!               input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
-!                                (input_set(j_p)%p%f(numcols)- &
-!                                 input_set(j_m)%p%f(numcols))/& 
-!                                (maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
-!                                !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
-!                                !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
-!           !-------------check I_dist for NaN and Inf----------------------------------------
-!           if (isnan( input_set(j)%p%I_dist)) input_set(j)%p%I_dist = tiny(1._dp)
-!           if (( input_set(j)%p%I_dist) .gt. huge(1._dp) ) input_set(j)%p%I_dist = tiny(1._dp)
-!           enddo
-!        enddo
-!       deallocate(newsort,idxsel) 
+         allocate(newsort(nondominated_size,numcols))
+         allocate(idxsel(nondominated_size))
+         allocate(x(nondominated_size))
+         allocate(f(nondominated_size))
+!         allocate(myIdist(nondominated_size))
+!         allocate(maxIdist(nondominated_size))
+         ! crowding-distance-assignment
+         do i = 1,nondominated_size
+             newsort(i,:) = input_set(i)%p%f(:)
+         enddo
+        
+        do k = 1,numcols     ! num objectives 
+           CALL mrgrnk(newsort(:,k),idxsel)
+
+           !============calculate using crowding dist NAGA-II===========
+           !input_set(idxsel(1))%p%I_dist = huge(1._dp) 
+           !input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
+           !do i = 2,nondominated_size-1
+           !    j = idxsel(i)
+           !    j_p = idxsel(i+1)
+           !    j_m = idxsel(i-1)
+           !    mymax = maxval(newsort(:,numcols))
+           !    mymin = minval(newsort(:,numcols))
+           !    mydev = mymax - mymin
+           !    if (mydev .gt. huge(1._dp)) mydev = 1._dp
+           !    if (isnan(mydev)) mydev = 1._dp
+           !    if (mydev .eq. 0_dp) mydev = 1._dp
+           !    input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
+           !                     (input_set(j_p)%p%f(numcols)- &
+           !                      input_set(j_m)%p%f(numcols))/& 
+           !                     mydev
+           !                     !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
+           !                     !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
+           !!-------------check I_dist for NaN and Inf----------------------------------------
+           !if (isnan( input_set(j)%p%I_dist)) input_set(j)%p%I_dist = tiny(1._dp)
+           !if (( input_set(j)%p%I_dist) .gt. huge(1._dp) ) input_set(j)%p%I_dist = tiny(1._dp)
+           !enddo           
+           !!============calculate using plugin density (kernel density estimation)
+           input_set(idxsel(1))%p%I_dist = -huge(1._dp) 
+           input_set(idxsel(nondominated_size))%p%I_dist = -huge(1._dp)
+                x = newsort(:,k)
+                m = size(x)
+                call plugin(x,m,x,m,f,h)
+                do i = 2,nondominated_size-1 
+                   j = idxsel(i)
+                   input_set(j)%p%I_dist = input_set(j)%p%I_dist  + f(i)
+                enddo
+        enddo
+        deallocate(x,f)
+        deallocate(newsort,idxsel) 
+        
+
+        if (variance_sorting) then
         !------use standard deviation as crowding distance---------------------
         n = size(input_set(1)%p%arx(:,1))
         allocate(tmp(nondominated_size))
+        allocate(mydeviation(nondominated_size))
+        mydeviation =0._dp
            do i = 1,n
                do k =1,nondominated_size
                tmp(k) = input_set(k)%p%arx(i,1)
                enddo
-               print *,'yannick xn',tmp
                call deviation(tmp)
-               print *,'yannick var',tmp
-               do k =1,nondominated_size
-               input_set(k)%p%I_dist = input_set(k)%p%I_dist + tmp(k)**2 
-               enddo 
+               ! deviation is already normalized...it is a realtive standard error
+               mydeviation(:) = mydeviation(:) + tmp(:)**2 
            enddo
         deallocate(tmp)
-        !---------------------take the norm of the standard deviation/variance---------
-          do k =1,nondominated_size
-             input_set(k)%p%I_dist = sqrt(input_set(k)%p%I_dist)
-          enddo
+        !-------sqrt and normalize----------
+        mydeviation(:) = sqrt(mydeviation(:))
+        !mydeviation(:) = mydeviation(:)/maxval(mydeviation(:))
+        do i = 1,nondominated_size
+             input_set(i)%p%I_dist = -mydeviation(i)
+        enddo
+        
 
+        deallocate(mydeviation)
+
+       endif
 !         do i = 1,nondominated_size
 
 !         enddo

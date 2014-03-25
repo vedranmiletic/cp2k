@@ -153,7 +153,13 @@ MODULE paramopt_input
     CALL section_add_keyword(cmaes_section, keyword, error=error)
     CALL keyword_release(keyword,error=error)
 
-
+    CALL keyword_create(keyword, name="VARIANCE_SORTING",&
+         description="balba TODO.",&
+         default_l_val=.FALSE.,&
+         lone_keyword_l_val = .TRUE.,&
+         error=error)
+    CALL section_add_keyword(cmaes_section, keyword, error=error)
+    CALL keyword_release(keyword,error=error)
 
     CALL keyword_create(keyword, name="ADDITIONAL_CONS",&
          description="balba TODO.",&
