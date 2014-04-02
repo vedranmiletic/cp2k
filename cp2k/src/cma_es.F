@@ -842,7 +842,7 @@ MODULE cma_es
            !    if (mydev .gt. huge(1._dp)) mydev = 1._dp
            !    if (isnan(mydev)) mydev = 1._dp
            !    if (mydev .eq. 0_dp) mydev = 1._dp
-           !    input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
+           !    input_set(j)%p%I_dist = input_set(j)%p%I_dist * & 
            !                     (input_set(j_p)%p%f(numcols)- &
            !                      input_set(j_m)%p%f(numcols))/& 
            !                     mydev
