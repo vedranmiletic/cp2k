@@ -494,7 +494,7 @@ MODULE paramopt_utils
 !-                         
 200      CONTINUE                                             
       RETURN                                                            
-      END             
+      END SUBROUTINE          
 
 END MODULE paramopt_utils
 

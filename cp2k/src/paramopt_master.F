@@ -595,8 +595,7 @@ MODULE paramopt_master
          !    enddo
         IF(this%iw>0) THEN
           call cpu_time(t2) 
-          write (this%iw, * ) 'Elapsed real time = ', t2-t1
-          call cpu_time(t1)
+          write (this%iw, * ) 'Elapsed real time = ', t2
         ENDIF
              this%cmaes_opt%generation = this%cmaes_opt%generation + 1
         !     if (this%cmaes_opt%generation .eq. 2000) STOP

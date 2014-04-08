@@ -178,12 +178,24 @@ MODULE cma_es_utils
     integer                                                   :: unit_number1
     integer                                                   :: unit_number2
     integer                                                   :: unit_number3
+           ! do not print file if trace is not valid
+           call system('cp fort.13 fort.13.bkp')
+           n = cmaes_opt%n
+           do j=1,2*cmaes_opt%lambda_mo
+             if (cmaes_opt%population(j)%trace /= cmaes_opt%population(j)%trace) then
+                   print *,'trace is NaN yannick'
+                   STOP
+             endif
+             if (isNaN(cmaes_opt%population(j)%trace)) then
+                   print *,'trace is NaN yannick'
+                   STOP
+             endif
+           enddo
            !open(12,position='append')
            call open_file(file_name="fort.13",unit_number=unit_number1, &
                           file_action='write',file_status='replace')
-           n = cmaes_opt%n
            do i = 1,2*cmaes_opt%lambda_mo
-              write(unit_number1,*) &
+             write(unit_number1,*) &
                           cmaes_opt%population(i)%id, &
                           cmaes_opt%population(i)%f, &
                           cmaes_opt%population(i)%sigma, &
@@ -466,6 +478,7 @@ MODULE cma_es_utils
       !-------------------------------------------------------------------------
       IF(info .GT. 0) THEN
         WRITE(*,*) 'EVD failed to converge'
+        STOP
       END IF
       IF(info .LT. 0) WRITE(*,*) 'EVD: Illegal value'
       

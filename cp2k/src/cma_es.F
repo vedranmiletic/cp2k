@@ -220,7 +220,11 @@ MODULE cma_es
        else
        a_k%pc = (1._dp - a_k%cc)*a_k%pc
        endif
-                                   
+                                  
+      !postcondition
+      if (any(isnan(a_k%pc))) then
+             print *,'pc is NaN'
+      endif 
 !       cmaes_opt%pc = (1-cmaes_opt%cc)*cmaes_opt%pc + cmaes_opt%hsig* &
 !                     (sqrt(cmaes_opt%cc*(2._dp-cmaes_opt%cc)*cmaes_opt%mueff)/cmaes_opt%sigma)* &
 !                     (cmaes_opt%xmean-cmaes_opt%xold) !hsig = 1 check above eq
@@ -281,7 +285,12 @@ MODULE cma_es
                    - a_k%ccovm*(a_k%multmp_mN) ! plus rank one update
       endif
 
-      
+      if(any(isNaN(a_k%C))) then
+        print *,'yannick Covariance Matrix is NaN'
+        STOP
+      endif
+
+
     end subroutine
 !===========================================================================
     SUBROUTINE pareto_front(input_set,nondominated_set)
