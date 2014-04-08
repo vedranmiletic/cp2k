@@ -93,7 +93,7 @@ MODULE cma_es
                   !-----------------------------------------------------------------------
                   !  Enforce symmetry
                   !-----------------------------------------------------------------------
-                  CALL tool_symmatrix(a_k%C,cmaes_opt%n,a_k%triuC)      
+                  CALL tool_symmatrix(a_k%C,cmaes_opt%n,a_k%triuC) 
                          !-----------------------------------------------------------------------
                   !  Eigen decomposition, D=diagonal matrix of eigenvalues, 
                   !  B=normalized eigenvectors
@@ -101,24 +101,25 @@ MODULE cma_es
                   CALL tool_eigendecomp(a_k%triuC,cmaes_opt%n,a_k%D,a_k%B,cmaes_opt%info)
                           !if tool_eigendecomp returned Error go to the Restart Loop
                   IF (cmaes_opt%info .NE. 0) THEN
-                      print *,'error in a_k',a_k%Id
+                      print *,'error in a_k',a_k%Id,'eigendecomp failed'
+                      print *,a_k%triuC
                       STOP
                   END IF
                   !-----------------------------------------------------------------------
                   !  D contains standard ind_counter now
                   !----------------------ind_counter---------------------------------------
-                  !normalize D such that det = 1 
-                       ! yannick new e.g. not sure....
-                       tmp = 1._dp
-                       do i=1,n
-                       tmp = tmp*a_k%D(i,i)
-                       enddo
-                       a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
-                       !---
-                  a_k%D = sqrt(a_k%D)
+                  !   !normalize D such that det = 1 
+                  !     ! yannick new e.g. not sure....
+                  !     tmp = 1._dp
+                  !     do i=1,n
+                  !     tmp = tmp*a_k%D(i,i)
+                  !     enddo
+                  !     a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
+                  !     !---
+                    a_k%D = sqrt(a_k%D)
                   CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n)
                   !---recover C???-----------
-                  CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n) 
+                  CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
                   !-------get trace and determinant
                   a_k%trace = 0.0_dp
                   a_k%det = 1.0_dp
@@ -135,6 +136,10 @@ MODULE cma_es
          enddo 
          
          call selection(cmaes_opt)
+         !-------------------------------------------------------------------------
+         ! numerical error management
+         !-------------------------------------------------------------------------
+         !CALL err_mng(cmaes_opt%population,cmaes_opt%n)
 !----------------------okay?----------------------
          do k = 1, 2*cmaes_opt%lambda_mo
          a_k => cmaes_opt%population(k)
@@ -144,6 +149,7 @@ MODULE cma_es
          enddo
 !--------output---------------------------------------------------------------
          call write_x(cmaes_opt)
+         print *,'write x done'
          !=============yannick I'm not sure if that should happen here....
 !----for 1:lambda_mo generate new population----------------------------------
          !print *,"generating new population"
@@ -216,7 +222,7 @@ MODULE cma_es
 !      END IF
        if (a_k%p_succ .lt. a_k%p_tresh) then
        a_k%pc = (1._dp - a_k%cc)*a_k%pc + sqrt(a_k%cc*(2_dp-a_k%cc))* &
-                        (a_k%xmean-a_k%xold)
+                        (a_k%xmean-a_k%xold)/a_k%sigma
        else
        a_k%pc = (1._dp - a_k%cc)*a_k%pc
        endif
@@ -564,6 +570,7 @@ MODULE cma_es
                        routineP, cp_to_string(n)//" n ne lambda_mo "//&
                        cp_to_string(cmaes_opt%lambda_mo),cmaes_opt%error)
     deallocate(sel_set)
+    print *,'selection done'
     end subroutine selection
 !===========================================================================
     subroutine dominates(a_k,a_k_parents,boolean)
@@ -817,7 +824,6 @@ MODULE cma_es
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE :: x,f
          REAL(kind=dp)                          :: h
          INTEGER                                :: m
-         print *,'before crowding distance' 
          nondominated_size=size(input_set)
          numcols=size(input_set(1)%p%f)
          do i = 1,nondominated_size
@@ -965,7 +971,122 @@ MODULE cma_es
        deallocate(tmp_set)
     END SUBROUTINE
 
-
-
+!===========================================================================
+!    subroutine err_mng(population,n)
+!    TYPE(individual_type_p),DIMENSION(:)              :: population
+!    integer                                           :: n
+!    real(kind=dp),allocatable(:)                      :: diag
+!    TYPE(individual_type),POINTER                     :: a_k
+!
+!    allocate(diag(n))
+!      
+!    do i=1,asdfadfa  
+!          a_k => population(i)%p
+!
+!      !-------------------------------------------------------------------------
+!      !  NUMERICAL ERROR MANAGEMENT
+!      !-------------------------------------------------------------------------	  
+!      DO j = 1, n
+!        diag(i) = a_k%C(j,j) ! Get diagonal vector of C
+!      END DO
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust maximal coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      IF(any(sigma*sqrt(diag) .GT. maxdx)) sigma = minval(maxdx/sqrt(diag))
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust minimal coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      IF(any(sigma*sqrt(diag) .LT. mindx)) &
+!        sigma = maxval(mindx/sqrt(diag)) * exp(0.05+cs/damps)
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust too low coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      mask = .FALSE.
+!      tempMat2 = 0._MK
+!      DO i = 1, input%N
+!        IF(xmean(i) .EQ. xmean(i) + 0.2_MK*sigma*sqrt(diag(i))) &
+!                                                        mask(i,i) = .TRUE.
+!        tempMat2(i,i) = diag(i)
+!      END DO
+!      
+!      IF(any(mask)) THEN
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnnoeffectcoord'
+!        ELSE
+!            WRITE(*,*) 'Warning: Iteration ', countIter, &
+!                            ': Coordinate axis std deviation too low'
+!            WHERE(.NOT. mask)
+!                tempMat2 = 0._MK
+!            END WHERE
+!            C = C + ccov*tempMat2
+!            sigma = sigma*exp(0.05_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of (numerical) precision problem
+!      !-------------------------------------------------------------------------
+!      IF(all(xmean .EQ. xmean + &
+!        0.1_MK*sigma*BD(:,1+int(mod((countIter-lastRestart),input%N))))) THEN
+!        i = 1+int(mod((countIter-lastRestart),input%N))
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnnoeffectaxis'
+!        ELSE
+!            WRITE(*,*) 'Warning: Iteration ', countIter, &
+!                            ': Main axis std deviation ', sigma*D(i,i), &
+!                            ' has no effect'
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!            
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of equal function values (flat fitness)
+!      !-------------------------------------------------------------------------
+!      temp = int(0.1_MK+lambda/4._MK)				! Little hack to round up
+!      IF(real(temp) .NE. (0.1_MK+lambda/4._MK)) &
+!        temp = temp + 1._MK
+!      IF(fitness%sel(1) .EQ. fitness%sel(1+int(temp))) THEN
+!        IF(options%WarnOnEqualFunctionValues .AND. options%stopOnWarnings) THEN
+!            stopflag = 'warnequalfunvals'
+!        ELSE
+!            IF(options%WarnOnEqualFunctionValues) THEN
+!            DO i = 1, input%N
+!                diag(i) = D(i,i)
+!            END DO
+!            WRITE(*,*) &
+!                'Warning: Iteration ', countIter, ': Equal function values f=',&
+!                fitness%sel(1), ' at maximal main axis sigma ', &
+!                sigma*maxval(diag)
+!            END IF
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of equal function values
+!      !-------------------------------------------------------------------------
+!      temp = tool_myrange(fitness%hist,size(fitness%hist),fitness%sel(1),1,posInf)
+!      IF((countIter - lastRestart .GT. 2) .AND. (temp .EQ. 0.)) THEN
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnequalfunvalhist'
+!        ELSE
+!            DO i = 1, input%N
+!                diag(i) = D(i,i)
+!            END DO
+!            WRITE(*,*) &
+!                'Warning: Iteration ', countIter, ': Equal function values', &
+!                'at maximal main axis sigma ', sigma*maxval(diag)	  		
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      deallocate(diag)
+!    end subroutine err_mng
+!
+!===========================================================================
 
 END MODULE cma_es

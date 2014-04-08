@@ -181,16 +181,20 @@ MODULE cma_es_utils
            ! do not print file if trace is not valid
            call system('cp fort.13 fort.13.bkp')
            n = cmaes_opt%n
-           do j=1,2*cmaes_opt%lambda_mo
-             if (cmaes_opt%population(j)%trace /= cmaes_opt%population(j)%trace) then
-                   print *,'trace is NaN yannick'
-                   STOP
-             endif
-             if (isNaN(cmaes_opt%population(j)%trace)) then
-                   print *,'trace is NaN yannick'
-                   STOP
-             endif
-           enddo
+           if (any(isNaN(cmaes_opt%population(:)%trace))) then
+               print *,'trace is NaN'
+               STOP
+           endif
+           !do j=1,3*cmaes_opt%lambda_mo
+           !  if (cmaes_opt%population(j)%trace /= cmaes_opt%population(j)%trace) then
+           !        print *,'trace is NaN yannick'
+           !        STOP
+           !  endif
+           !  if (isNaN(cmaes_opt%population(j)%trace)) then
+           !        print *,'trace is NaN yannick'
+           !        STOP
+           !  endif
+           !enddo
            !open(12,position='append')
            call open_file(file_name="fort.13",unit_number=unit_number1, &
                           file_action='write',file_status='replace')
@@ -362,7 +366,6 @@ MODULE cma_es_utils
              a_k2%penalty    = a_k1%penalty
  END SUBROUTINE
 !========================================================================================================
-     
      SUBROUTINE tool_symmatrix(C,n,triuC)
       IMPLICIT NONE
       
@@ -414,7 +417,7 @@ MODULE cma_es_utils
 
       RETURN
       END SUBROUTINE
-      
+!==============================================================================      
       SUBROUTINE tool_eigendecomp(A,n,eVals,eVecs,info)
       IMPLICIT NONE
       
@@ -425,7 +428,7 @@ MODULE cma_es_utils
       REAL(dp),DIMENSION(n,n),INTENT(in)			:: A
       REAL(dp),DIMENSION(n,n),INTENT(out)			:: eVals
       REAL(dp),DIMENSION(n,n),OPTIONAL,INTENT(out)	:: eVecs
-      INTEGER                                       :: info
+      INTEGER,INTENT(OUT)                           :: info
       !-------------------------------------------------------------------------
       !  Externals
       !-------------------------------------------------------------------------
@@ -438,10 +441,8 @@ MODULE cma_es_utils
       REAL(dp),ALLOCATABLE,DIMENSION(:)			:: work
       INTEGER									:: i
       REAL(dp),DIMENSION(n)						:: eValWork
-      INTEGER                                           :: allocStat
+      INTEGER                                   :: allocStat
      
-      
-      
       !-------------------------------------------------------------------------
       !  Specify job (only compute Eigenvalues('N') or also Eigenvectors('V') )
       !-------------------------------------------------------------------------
@@ -476,10 +477,7 @@ MODULE cma_es_utils
       !-------------------------------------------------------------------------
       !  Error management
       !-------------------------------------------------------------------------
-      IF(info .GT. 0) THEN
-        WRITE(*,*) 'EVD failed to converge'
-        STOP
-      END IF
+      IF(info .GT. 0) WRITE(*,*) 'EVD failed to converge'
       IF(info .LT. 0) WRITE(*,*) 'EVD: Illegal value'
       
       !-------------------------------------------------------------------------
