@@ -102,7 +102,9 @@ MODULE cma_es
                           !if tool_eigendecomp returned Error go to the Restart Loop
                   IF (cmaes_opt%info .NE. 0) THEN
                       print *,'error in a_k',a_k%Id,'eigendecomp failed'
-                      print *,a_k%triuC
+                        DO i=1,cmaes_opt%n
+                         WRITE(*,*) (a_k%triuC(i,j), j=1,cmaes_opt%n)
+                       END DO
                       STOP
                   END IF
                   !-----------------------------------------------------------------------
@@ -256,7 +258,10 @@ MODULE cma_es
     type(individual_type),POINTER                             :: a_k
     TYPE(cp_error_type),POINTER                               :: error
     INTEGER                                                   :: n,k,i
+    real(kind=dp),dimension(:),allocatable                    :: bdz
+
     n = size(a_k%xmean)
+    allocate(bdz(n))
       DO i = 1,n 
         a_k%colVec(i,1) = a_k%pc(i)
         a_k%rowVec(1,i) = a_k%pc(i)
@@ -269,15 +274,24 @@ MODULE cma_es
       !a_k%mutmp = (a_k%arx(:,int(a_k%idxsel(1:a_k%mu))) - a_k%tempMat) 
       a_k%mutmp = (a_k%arx - a_k%tempMat) 
       CALL dgemm('N','T',n,n,1,1.0d0,a_k%colVec,n,a_k%rowVec,n,0.0d0,a_k%multmp_mN,n) 
-      CALL dgemm('N','T',a_k%mu,n,a_k%mu,1.0d0,a_k%weightsMat, &
-                 a_k%mu,a_k%mutmp,n,0.0d0,a_k%multmp_mMU,a_k%mu)
-      CALL dgemm('N','N',n,n,a_k%mu,1.0d0,a_k%mutmp,n,&
-                 a_k%multmp_mMU,a_k%mu,0.0d0,a_k%multmp_mN2,n)
+      !------------calculate BDz and matrix for active covariance control--------------------
+      CALL dgemv('N',n,n,1.0d0,a_k%BD,n,a_k%arz(:,1),1,0.0d0,bdz,1)
+      DO i = 1,n 
+        a_k%colVec(i,1) = bdz(i)
+        a_k%rowVec(1,i) = bdz(i)
+      END DO
+      CALL dgemm('N','T',n,n,1,1.0d0,a_k%colVec,n,a_k%rowVec,n,0.0d0,a_k%multmp_mN2,n) 
+      !---------------------------------------------------------------------------------------
+!      CALL dgemm('N','T',a_k%mu,n,a_k%mu,1.0d0,a_k%weightsMat, &
+!                 a_k%mu,a_k%mutmp,n,0.0d0,a_k%multmp_mMU,a_k%mu)
+!      CALL dgemm('N','N',n,n,a_k%mu,1.0d0,a_k%mutmp,n,&
+!                 a_k%multmp_mMU,a_k%mu,0.0d0,a_k%multmp_mN2,n)
 !      cmaes_opt%C = (1._dp-cmaes_opt%ccov+(1._dp-cmaes_opt%hsig)*cmaes_opt%ccov* &
 !                     cmaes_opt%cc*(2._dp-cmaes_opt%cc)/cmaes_opt%mucov)*cmaes_opt%C & ! old matrix
 !                   + cmaes_opt%ccov*(1._dp/cmaes_opt%mucov)*cmaes_opt%multmp_mN &  ! plus rank one update
 !                   + cmaes_opt%ccov*(1._dp-1._dp/cmaes_opt%mucov) &  ! plus rank mu update
 !                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
+      !--------------update matrix------------------------------------------------------------
       if (a_k%p_succ .lt. a_k%p_tresh) then
       a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
                    + a_k%ccov*(a_k%multmp_mN) ! plus rank one update
@@ -286,16 +300,16 @@ MODULE cma_es
 !                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
 !                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
       ! yannick needs to be tested 
-      !this should be active covariance control
+      !----------------this should be active covariance control---------------------------------
       a_k%C = (1._dp-a_k%ccovm)*a_k%C & ! old matrix
-                   - a_k%ccovm*(a_k%multmp_mN) ! plus rank one update
+                   - a_k%ccovm*(a_k%multmp_mN2) ! plus rank one update
       endif
 
       if(any(isNaN(a_k%C))) then
         print *,'yannick Covariance Matrix is NaN'
         STOP
       endif
-
+      deallocate(bdz)
 
     end subroutine
 !===========================================================================

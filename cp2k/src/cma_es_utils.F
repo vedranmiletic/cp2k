@@ -396,6 +396,10 @@ MODULE cma_es_utils
 	  			ELSE
 	  				mask(i,k) = .FALSE.
 	  			END IF
+                if (isNaN(C(k,i))) then
+                    print *,'matrix has NaN entries'
+                    STOP
+                endif
 	  		END DO
 	  	END DO
 
