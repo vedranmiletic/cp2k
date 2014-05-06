@@ -110,14 +110,18 @@ MODULE cma_es
                   !-----------------------------------------------------------------------
                   !  D contains standard ind_counter now
                   !----------------------ind_counter---------------------------------------
-                  !   !normalize D such that det = 1 
-                  !     ! yannick new e.g. not sure....
-                  !     tmp = 1._dp
-                  !     do i=1,n
-                  !     tmp = tmp*a_k%D(i,i)
-                  !     enddo
-                  !     a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
+                       !normalize D such that det = 1 
+                       ! yannick new e.g. not sure....
+                       tmp = 1._dp
+                       do i=1,n
+                       tmp = tmp*a_k%D(i,i)
+                       enddo
+                       a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
                   !     !---
+                    if (any(a_k%D .lt. 0.)) then
+                        print *,'diagonal matrix wrong'
+                        STOP
+                    endif
                     a_k%D = sqrt(a_k%D)
                   CALL DGEMM('N','N',n,n,n,1.0d0,a_k%B,n,a_k%D,n,0.0d0,a_k%BD,n)
                   !---recover C???-----------
