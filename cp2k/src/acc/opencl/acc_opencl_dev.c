@@ -33,22 +33,21 @@ int acc_get_ndevices (int *n_devices){
     cl_uint plat_count, dev_count;
     cl_platform_id *platforms;
     cl_device_id *devices;
-    cl_uint buf_uint;
-    cl_bitfield buf_bit;
+    cl_uint device_max_compute_units;
+    cl_bitfield device_type;
+    size_t vendor_name_size, device_name_size;
+    char *vendor_name = NULL, *device_name = NULL;
     char dev_type[MAX_DEV_TYPE_LEN];
-    char buf[MAX_NAME_LEN];
   
     // initialization
     nplats_avail = 0;
     ndevs_avail = 0;
     ndevs = 0;
   
-    // get number of platforms
+    // get platforms
     cl_error = clGetPlatformIDs(0, NULL, &nplats_avail);
     if (acc_opencl_error_check(cl_error, __LINE__))
       return -1;
-  
-    // allocate space for platform IDs and get them
     platforms = (cl_platform_id *) malloc(nplats_avail * sizeof(cl_platform_id));
     cl_error = clGetPlatformIDs(nplats_avail, platforms, NULL);
     if (acc_opencl_error_check(cl_error, __LINE__))
@@ -65,7 +64,11 @@ int acc_get_ndevices (int *n_devices){
     // loop over platforms and count devices
     for (i = 0; i < nplats_avail; i++) {
       // get vendor name
-      cl_error = clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, NULL);
+      cl_error = clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &vendor_name_size);
+      if (acc_opencl_error_check(cl_error, __LINE__))
+        return -1;
+      vendor_name = (char *) malloc(vendor_name_size * sizeof(char));
+      cl_error = clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, vendor_name_size, vendor_name, NULL);
       if (acc_opencl_error_check(cl_error, __LINE__))
         return -1;
   
@@ -73,40 +76,40 @@ int acc_get_ndevices (int *n_devices){
       cl_error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &dev_count);
       if (acc_opencl_error_check(cl_error, __LINE__))
         return -1;
-      ndevs_avail += (int) dev_count;
-  
-      // allocate space for device IDs and get them
       devices = (cl_device_id *) malloc(dev_count * sizeof(cl_device_id));
       cl_error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, dev_count, devices, NULL);
       if (acc_opencl_error_check(cl_error, __LINE__))
         return -1;
+      ndevs_avail += (int) dev_count;
   
       // print some informations
       fprintf(stdout, " OPENCL| "); for (j = 0; j < 71; j++) fprintf(stdout, "."); fprintf(stdout, "\n");
-      fprintf(stdout, " OPENCL| Platform [%d] vendor:                 %s\n", i, buf);
+      fprintf(stdout, " OPENCL| Platform [%d] vendor:                 %s\n", i, vendor_name);
       if (dev_count > 1) {
         fprintf(stdout, " OPENCL| Number of devices for platform[%d]:   %d --- IDs: [0-%d]\n", i, dev_count, dev_count-1);
       } else {
         fprintf(stdout, " OPENCL| Number of devices for platform[%d]:   %d --- IDs: [0]\n", i, dev_count);
       }
+
+      // free memory
+      free(vendor_name);
   
       // loop over devices
       for (j = 0; j < dev_count; j++) {
           // get device name 
-          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(buf), buf, NULL);
+          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, 0, NULL, &device_name_size);
           if (acc_opencl_error_check(cl_error, __LINE__))
             return -1;
-  
-          // get device max compute units 
-          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(buf_uint), &buf_uint, NULL);
+          device_name = (char *) malloc(device_name_size * sizeof(char));
+          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, device_name_size, device_name, NULL);
           if (acc_opencl_error_check(cl_error, __LINE__))
             return -1;
-  
+
           // get device type and choose only GPU, CPU and/or ACC
-          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(buf_bit), &buf_bit, NULL);
+          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(device_type), &device_type, NULL);
           if (acc_opencl_error_check(cl_error, __LINE__))
             return -1;
-          switch(buf_bit) {
+          switch(device_type) {
             case(CL_DEVICE_TYPE_DEFAULT):     strcpy(dev_type, "DEF"); break;
             case(CL_DEVICE_TYPE_GPU):         strcpy(dev_type, "GPU"); ndevs += 1; break;
             case(CL_DEVICE_TYPE_CPU):         strcpy(dev_type, "CPU"); ndevs += 1; break;
@@ -114,12 +117,20 @@ int acc_get_ndevices (int *n_devices){
             case(CL_DEVICE_TYPE_ALL):         strcpy(dev_type, "ALL"); break;
             default: fprintf(stderr, "OPENCL Error: Uninplemented device type.\n"); exit(-1);
           }
-  
+
+          // get device max compute units 
+          cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(device_max_compute_units), &device_max_compute_units, NULL);
+          if (acc_opencl_error_check(cl_error, __LINE__))
+            return -1;
+
           // print some informations
-          fprintf(stdout, " OPENCL| Device [%d] name:                     %s\n", j, buf);
+          fprintf(stdout, " OPENCL| Device [%d] name:                     %s\n", j, device_name);
           fprintf(stdout, " OPENCL| Device [%d] type:                     %s\n", j, dev_type);
-          fprintf(stdout, " OPENCL| Device [%d] max compute units:        %d\n", j, buf_uint);
+          fprintf(stdout, " OPENCL| Device [%d] max compute units:        %d\n", j, device_max_compute_units);
           fprintf(stdout, " OPENCL| Unified device number:                %d\n", (ndevs - 1));
+
+          // free memory
+          free(device_name);
       }
       // free memory
       free(devices);
@@ -137,12 +148,10 @@ int acc_get_ndevices (int *n_devices){
     // second loop over platforms
     k = 0;
     for (i = 0; i < nplats_avail; i++) {
-      // get number of devices for this platform and increase overall counter
+      // get number of devices for this platform
       cl_error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &dev_count);
       if (acc_opencl_error_check(cl_error, __LINE__))
         return -1;
-      //
-      // allocate space for device IDs and get them
       devices = (cl_device_id *) malloc(dev_count * sizeof(cl_device_id));
       cl_error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, dev_count, devices, NULL);
       if (acc_opencl_error_check(cl_error, __LINE__))
@@ -151,10 +160,10 @@ int acc_get_ndevices (int *n_devices){
       // loop over devices
       for (j = 0; j < dev_count; j++) {
         // get device type and choose only GPU, CPU and/or ACC
-        cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(buf_bit), &buf_bit, NULL);
+        cl_error = clGetDeviceInfo(devices[j], CL_DEVICE_TYPE, sizeof(device_type), &device_type, NULL);
         if (acc_opencl_error_check(cl_error, __LINE__))
           return -1;
-        switch(buf_bit) {
+        switch(device_type) {
           case(CL_DEVICE_TYPE_GPU):
           case(CL_DEVICE_TYPE_CPU):
           case(CL_DEVICE_TYPE_ACCELERATOR):

@@ -9,7 +9,6 @@
 #if defined (__ACC) || defined (__DBCSR_OPENCL)
 
 // maximum information line lenght
-#define MAX_NAME_LEN 1000
 #define MAX_DEV_TYPE_LEN 3
 
 // struct definitions
