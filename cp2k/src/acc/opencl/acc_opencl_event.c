@@ -82,8 +82,10 @@ int acc_event_record (void* event, void* stream){
   cl_event *clevent = (cl_event *) event;
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
 
-  // ToDo: ????
-//  cudaError_t cErr = cudaEventRecord (*cuevent, *custream);
+  // set a marker 'event' to listen on to queue 'stream' 
+  cl_error = clEnqueueMarker((*clstream).queue, clevent);
+  if (acc_opencl_error_check(cl_error, __LINE__))
+    return -1;
 
   // print event address
   if (verbose_print)
@@ -102,6 +104,10 @@ int acc_event_record (void* event, void* stream){
 extern "C" {
 #endif
 int acc_event_query (void* event, int* has_occured){
+  //declarations
+  char *param_value = NULL;
+  size_t param_value_size;
+
   // local event pointer
   cl_event *clevent = (cl_event *) event;
 
@@ -109,9 +115,26 @@ int acc_event_query (void* event, int* has_occured){
   if (verbose_print)
     printf("acc_event_query called\n");
 
-  // ToDo: ????
-//  cudaError_t cErr = cudaEventQuery(*cuevent);
-//  cl_error = clGetEventInfo(*clevent, ..., &has_occured,...)
+  // get event status
+  cl_error = clGetEventInfo(*clevent, CL_EVENT_COMMAND_EXECUTION_STATUS,
+              0, NULL, &param_value_size); // get size of param_value
+  if (acc_opencl_error_check(cl_error, __LINE__))
+    return -1;
+  param_value = (char *) malloc(param_value_size * sizeof(char));
+  cl_error = clGetEventInfo(*clevent, CL_EVENT_COMMAND_EXECUTION_STATUS,
+              param_value_size, param_value, NULL); // get param_value
+  if (acc_opencl_error_check(cl_error, __LINE__))
+    return -1;
+
+  // check event status
+  if (param_value == CL_COMPLETE){
+    *has_occured = 1;
+  } else {
+    *has_occured = 0;
+  }
+
+  // free memory
+  free(param_value);
 
   // assign return value
   return 0;
@@ -127,7 +150,7 @@ extern "C" {
 #endif
 int acc_stream_wait_event (void* stream, void* event){
   // local event and queue pointers
-  cl_event *clevent = (const cl_event *) event;
+  cl_event *clevent = (cl_event *) event;
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
 
   // print message
@@ -154,7 +177,7 @@ extern "C" {
 #endif
 int acc_event_synchronize (void* event){
   // local event and queue pointers
-  cl_event *clevent = (const cl_event *) event;
+  cl_event *clevent = (cl_event *) event;
 
   // print message
   if (verbose_print) printf("acc_event_synchronize called\n");
