@@ -40,8 +40,8 @@ AR       = ar -r
 DFLAGS   = -D__GFORTRAN \
            -D__parallel \
            -D__BLACS -D__SCALAPACK \
-           -D__FFTSG -D__FFTW3 -D__PW_OPENCL \
-           -D__ACC -D__DBCSR_OPENCL \
+           -D__FFTSG -D__FFTW3 \
+           -D__ACC -D__DBCSR_ACC \
            -D__LIBXC2 \
            -D__LIBINT -D__LIBINT_MAX_AM=6 -D__LIBDERIV_MAX_AM1=5 \
            -D__USE_CP2K_TRACE \

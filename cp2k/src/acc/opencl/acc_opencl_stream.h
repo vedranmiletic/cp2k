@@ -6,7 +6,7 @@
 #ifndef ACC_OPENCL_STREAM_H
 #define ACC_OPENCL_STREAM_H
 
-#if defined (__ACC) || defined (__DBCSR_OPENCL)
+#if defined (__ACC)
 
 // struct definitions
 typedef struct {
