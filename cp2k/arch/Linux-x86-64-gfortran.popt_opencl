@@ -31,7 +31,7 @@ LIBS     = -L${FFTW3_PATH}/lib64 \
 
 # PROG's ###############################################################
 PERL     = perl
-CC       = cc
+CC       = gcc
 FC       = mpif90
 LD       = mpif90
 AR       = ar -r
