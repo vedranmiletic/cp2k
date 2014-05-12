@@ -60,11 +60,9 @@ MODULE dbcsr_api
   USE dbcsr_error_handling,            ONLY: dbcsr_error_set,&
                                              dbcsr_error_stop,&
                                              dbcsr_error_type
-  USE dbcsr_index_operations,          ONLY: dbcsr_index_compact
   USE dbcsr_io,                        ONLY: dbcsr_binary_read,&
                                              dbcsr_binary_write,&
-                                             dbcsr_print,&
-                                             dbcsr_print_block_sum
+                                             dbcsr_print
   USE dbcsr_iterator_operations,       ONLY: dbcsr_iterator_blocks_left,&
                                              dbcsr_iterator_next_block,&
                                              dbcsr_iterator_start,&
@@ -239,7 +237,6 @@ MODULE dbcsr_api
            dbcsr_get_occupation ,&
            dbcsr_get_stored_coordinates ,&
            dbcsr_hadamard_product ,&
-           dbcsr_index_compact ,&
            dbcsr_init ,&
            dbcsr_init_lib ,&
            dbcsr_init_random ,&
@@ -283,7 +280,6 @@ MODULE dbcsr_api
            dbcsr_no_transpose ,&
            dbcsr_obj ,&
            dbcsr_print ,&
-           dbcsr_print_block_sum ,&
            dbcsr_put_block ,&
            dbcsr_release ,&
            dbcsr_repl_full ,&

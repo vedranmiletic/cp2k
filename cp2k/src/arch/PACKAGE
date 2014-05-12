@@ -1,4 +1,0 @@
-{
-"description": "Smart process pinning",
-"requires": ["../common", "../dbcsr", "../machine", ]
-}

@@ -11,17 +11,12 @@ MODULE rt_propagator_init
 
   USE cp_control_types,                ONLY: dft_control_type,&
                                              rtp_control_type
-  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_copy,&
-                                             cp_dbcsr_create,&
-                                             cp_dbcsr_filter,&
-                                             cp_dbcsr_init,&
-                                             cp_dbcsr_multiply,&
-                                             cp_dbcsr_scale
+  USE cp_dbcsr_interface,              ONLY: &
+       cp_dbcsr_copy, cp_dbcsr_create, cp_dbcsr_deallocate_matrix, &
+       cp_dbcsr_filter, cp_dbcsr_init, cp_dbcsr_multiply, cp_dbcsr_p_type, &
+       cp_dbcsr_scale, cp_dbcsr_type
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm,&
-                                             copy_fm_to_dbcsr,&
-                                             cp_dbcsr_deallocate_matrix
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_p_type,&
-                                             cp_dbcsr_type
+                                             copy_fm_to_dbcsr
   USE cp_dbcsr_util,                   ONLY: lanczos_alg_serial
   USE cp_fm_basic_linalg,              ONLY: cp_fm_gemm,&
                                              cp_fm_scale,&
@@ -165,22 +160,19 @@ CONTAINS
           END DO
        ELSEIF(rtp_control%mat_exp==do_bch) THEN
        ELSE
-         IF(rtp%linear_scaling) THEN
-            CALL compute_exponential_sparse(exp_H_new,propagator_matrix,rtp_control,rtp,error=error)
-         ELSE
-            CALL compute_exponential(exp_H_new,propagator_matrix,rtp_control,rtp,error=error)
-         END IF
-         DO imat=1,SIZE(exp_H_new)
-            CALL cp_dbcsr_copy(exp_H_old(imat)%matrix,exp_H_new(imat)%matrix,error=error)
-         END DO
+          IF(rtp%linear_scaling) THEN
+             CALL compute_exponential_sparse(exp_H_new,propagator_matrix,rtp_control,rtp,error=error)
+          ELSE
+             CALL compute_exponential(exp_H_new,propagator_matrix,rtp_control,rtp,error=error)
+          END IF
+          DO imat=1,SIZE(exp_H_new)
+             CALL cp_dbcsr_copy(exp_H_old(imat)%matrix,exp_H_new(imat)%matrix,error=error)
+          END DO
        END IF
     END IF
 
     IF(rtp%linear_scaling) THEN
        CALL get_rtp (rtp=rtp,rho_old=rho_old,error=error)
-       DO i=1,SIZE(rho_old)
-          CALL cp_dbcsr_filter(rho_old(i)%matrix,rtp%filter_eps,error=error)
-       END DO
     ELSE
        CALL get_rtp (rtp=rtp,mos_old=mos_old,error=error)
     ENDIF
@@ -423,7 +415,7 @@ CONTAINS
             error=error)
        !derivativs of the overlap needed for EMD
        CALL calc_S_derivs(qs_env,error)
-       ! a bit hidden, but computs SinvH and SinvB (calc_SinvH for CN,EM and ARNOLDI)
+       ! a bit hidden, but computes SinvH and SinvB (calc_SinvH for CN,EM and ARNOLDI)
        ! make_etrs_exp in case of ETRS in combination with TAYLOR and PADE
        CALL init_propagators(qs_env,error)
    END SUBROUTINE init_emd_propagators
@@ -448,13 +440,12 @@ CONTAINS
                                                 nelectron_spin_real, re
     REAL(KIND=dp)                            :: e_homo, e_lumo, e_mu
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
-      POINTER                                :: matrix_ks, matrix_s, rho_new, &
-                                                rho_old
+      POINTER                                :: matrix_ks, matrix_s, rho_old
     TYPE(cp_dbcsr_type), POINTER             :: S_half, S_minus_half, tmp
     TYPE(qs_rho_type), POINTER               :: rho
 
     CALL get_qs_env(qs_env,rho=rho,matrix_ks=matrix_ks,matrix_s=matrix_s,error=error)
-    CALL get_rtp(rtp=rtp,rho_old=rho_old,rho_new=rho_new,error=error)
+    CALL get_rtp(rtp=rtp,rho_old=rho_old,error=error)
     !The inverse of S will be calculated twice in the first step, but preventing that would make things more complicated
     NULLIFY(S_half)
     ALLOCATE(S_half)
@@ -484,8 +475,8 @@ CONTAINS
        CALL density_matrix_trs4(rho_old(re)%matrix, matrix_ks(ispin)%matrix, S_minus_half, &
             nelectron_spin_real, rtp%filter_eps, e_homo, e_lumo, e_mu, .FALSE., tmp,&
             max_iter_lanczos=rtp%lanzcos_max_iter, eps_lanczos=rtp%lanzcos_threshold, error=error)
-       CALL cp_dbcsr_filter(rho_old(re)%matrix,eps=rtp%filter_eps,error=error)
        IF (SIZE(matrix_ks)==1) CALL cp_dbcsr_scale(rho_old(re)%matrix,2.0_dp,error=error)
+       CALL cp_dbcsr_filter(rho_old(re)%matrix,eps=rtp%filter_eps,error=error)
     END DO
 
 

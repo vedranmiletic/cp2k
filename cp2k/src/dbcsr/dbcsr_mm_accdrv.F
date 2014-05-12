@@ -55,14 +55,9 @@ MODULE dbcsr_mm_accdrv
                                              dbcsr_data_new,&
                                              dbcsr_data_release
   USE dbcsr_error_handling
-  USE dbcsr_kinds,                     ONLY: default_string_length,&
-                                             int_4,&
-                                             int_4_size,&
-                                             int_8
   USE dbcsr_mem_methods,               ONLY: dbcsr_mempool_destruct,&
                                              dbcsr_mempool_ensure_capacity,&
                                              dbcsr_memtype_setup
-  USE dbcsr_message_passing,           ONLY: mp_abort
   USE dbcsr_mm_types,                  ONLY: dbcsr_ps_width,&
                                              stack_descriptor_type
   USE dbcsr_toollib,                   ONLY: sort
@@ -71,6 +66,11 @@ MODULE dbcsr_mm_accdrv
                                              dbcsr_memtype_type,&
                                              dbcsr_type,&
                                              dbcsr_work_type
+  USE kinds,                           ONLY: default_string_length,&
+                                             int_4,&
+                                             int_4_size,&
+                                             int_8
+  USE message_passing,                 ONLY: mp_abort
 
  !$ USE OMP_LIB
 

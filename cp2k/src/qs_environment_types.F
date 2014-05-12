@@ -24,10 +24,11 @@ MODULE qs_environment_types
                                              dft_control_retain,&
                                              dft_control_type,&
                                              tddfpt_control_type
-  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_distribution_release,&
-                                             cp_dbcsr_release_p
-  USE cp_dbcsr_operations,             ONLY: cp_dbcsr_deallocate_matrix_set
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_p_type
+  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_deallocate_matrix_set,&
+                                             cp_dbcsr_distribution_release,&
+                                             cp_dbcsr_p_type,&
+                                             cp_dbcsr_release_p,&
+                                             dbcsr_distribution_obj
   USE cp_ddapc_types,                  ONLY: cp_ddapc_ewald_release,&
                                              cp_ddapc_ewald_type,&
                                              cp_ddapc_release,&
@@ -50,7 +51,6 @@ MODULE qs_environment_types
                                              cp_subsys_release,&
                                              cp_subsys_retain,&
                                              cp_subsys_type
-  USE dbcsr_api,                       ONLY: dbcsr_distribution_obj
   USE distribution_1d_types,           ONLY: distribution_1d_type
   USE distribution_2d_types,           ONLY: distribution_2d_release,&
                                              distribution_2d_retain,&

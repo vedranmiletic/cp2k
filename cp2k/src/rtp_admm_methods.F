@@ -20,17 +20,15 @@ MODULE rtp_admm_methods
   USE cp_dbcsr_cp2k_link,              ONLY: cp_dbcsr_alloc_block_from_nbl
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_add, cp_dbcsr_col_block_sizes, cp_dbcsr_copy, &
-       cp_dbcsr_create, cp_dbcsr_desymmetrize, cp_dbcsr_distribution, &
-       cp_dbcsr_get_data_size, cp_dbcsr_get_data_type, &
+       cp_dbcsr_create, cp_dbcsr_deallocate_matrix, cp_dbcsr_desymmetrize, &
+       cp_dbcsr_distribution, cp_dbcsr_get_data_size, cp_dbcsr_get_data_type, &
        cp_dbcsr_get_matrix_type, cp_dbcsr_get_num_blocks, cp_dbcsr_init, &
-       cp_dbcsr_release, cp_dbcsr_row_block_sizes, cp_dbcsr_set
+       cp_dbcsr_p_type, cp_dbcsr_release, cp_dbcsr_row_block_sizes, &
+       cp_dbcsr_set, cp_dbcsr_type, dbcsr_type_no_symmetry
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm,&
                                              copy_fm_to_dbcsr,&
-                                             cp_dbcsr_deallocate_matrix,&
                                              cp_dbcsr_plus_fm_fm_t,&
                                              cp_dbcsr_sm_fm_multiply
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_p_type,&
-                                             cp_dbcsr_type
   USE cp_fm_basic_linalg,              ONLY: cp_fm_gemm,&
                                              cp_fm_upper_to_full
   USE cp_fm_cholesky,                  ONLY: cp_fm_cholesky_decompose,&
@@ -43,7 +41,6 @@ MODULE rtp_admm_methods
                                              cp_fm_type
   USE cp_fm_vect,                      ONLY: cp_fm_vect_dealloc
   USE cp_para_types,                   ONLY: cp_para_env_type
-  USE dbcsr_api,                       ONLY: dbcsr_type_no_symmetry
   USE input_constants,                 ONLY: do_admm_block_density_matrix,&
                                              do_admm_purify_none,&
                                              use_aux_fit_basis_set,&

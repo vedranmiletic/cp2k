@@ -12,30 +12,35 @@
 ! *****************************************************************************
 MODULE preconditioner
   USE cp_dbcsr_interface,              ONLY: &
+       array_data, array_i1d_obj, block_add_on_diag, block_chol_inv, &
        cp_create_bl_distribution, cp_dbcsr_add, cp_dbcsr_add_on_diag, &
        cp_dbcsr_btriu, cp_dbcsr_checksum, cp_dbcsr_col_block_sizes, &
-       cp_dbcsr_copy, cp_dbcsr_create, cp_dbcsr_distribution, &
-       cp_dbcsr_distribution_release, cp_dbcsr_filter, cp_dbcsr_finalize, &
-       cp_dbcsr_get_block, cp_dbcsr_get_block_p, cp_dbcsr_get_data_size, &
-       cp_dbcsr_get_data_type, cp_dbcsr_get_info, cp_dbcsr_get_matrix_type, &
-       cp_dbcsr_get_num_blocks, cp_dbcsr_get_occupation, &
-       cp_dbcsr_get_stored_coordinates, cp_dbcsr_init, cp_dbcsr_init_p, &
+       cp_dbcsr_copy, cp_dbcsr_create, cp_dbcsr_deallocate_matrix, &
+       cp_dbcsr_distribution, cp_dbcsr_distribution_release, cp_dbcsr_filter, &
+       cp_dbcsr_finalize, cp_dbcsr_get_block, cp_dbcsr_get_block_p, &
+       cp_dbcsr_get_data_size, cp_dbcsr_get_data_type, cp_dbcsr_get_info, &
+       cp_dbcsr_get_matrix_type, cp_dbcsr_get_num_blocks, &
+       cp_dbcsr_get_occupation, cp_dbcsr_get_stored_coordinates, &
+       cp_dbcsr_init, cp_dbcsr_init_p, cp_dbcsr_iterator, &
        cp_dbcsr_iterator_blocks_left, cp_dbcsr_iterator_next_block, &
        cp_dbcsr_iterator_start, cp_dbcsr_iterator_stop, cp_dbcsr_multiply, &
        cp_dbcsr_nblkcols_local, cp_dbcsr_nblkrows_local, &
-       cp_dbcsr_nblkrows_total, cp_dbcsr_norm, cp_dbcsr_print, &
-       cp_dbcsr_put_block, cp_dbcsr_release, cp_dbcsr_release_p, &
-       cp_dbcsr_row_block_sizes, cp_dbcsr_trace, cp_dbcsr_verify_matrix, &
-       cp_dbcsr_work_create
+       cp_dbcsr_nblkrows_total, cp_dbcsr_norm, cp_dbcsr_p_type, &
+       cp_dbcsr_print, cp_dbcsr_put_block, cp_dbcsr_release, &
+       cp_dbcsr_release_p, cp_dbcsr_row_block_sizes, cp_dbcsr_trace, &
+       cp_dbcsr_type, cp_dbcsr_verify_matrix, cp_dbcsr_work_create, &
+       dbcsr_distribution_mp, dbcsr_distribution_new, dbcsr_distribution_obj, &
+       dbcsr_distribution_row_dist, dbcsr_error_type, dbcsr_mp_group, &
+       dbcsr_mp_mynode, dbcsr_mp_mypcol, dbcsr_mp_myprow, dbcsr_mp_npcols, &
+       dbcsr_mp_nprows, dbcsr_mp_numnodes, dbcsr_mp_obj, &
+       dbcsr_norm_frobenius, dbcsr_scale_mat, dbcsr_type_no_symmetry, &
+       dbcsr_type_real_4, dbcsr_type_real_default
   USE cp_dbcsr_operations,             ONLY: &
        copy_dbcsr_to_fm, copy_fm_to_dbcsr, cp_dbcsr_copy_vec, &
-       cp_dbcsr_deallocate_matrix, cp_dbcsr_from_fm, cp_dbcsr_multiply_vec, &
-       cp_dbcsr_pack_vec, cp_dbcsr_sm_fm_multiply, cp_dbcsr_unpack_vec, &
-       packed_vec_bcast, packed_vec_bif_tech2, packed_vec_build_u, &
-       packed_vec_ini, packed_vec_scale
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_iterator,&
-                                             cp_dbcsr_p_type,&
-                                             cp_dbcsr_type
+       cp_dbcsr_from_fm, cp_dbcsr_multiply_vec, cp_dbcsr_pack_vec, &
+       cp_dbcsr_sm_fm_multiply, cp_dbcsr_unpack_vec, packed_vec_bcast, &
+       packed_vec_bif_tech2, packed_vec_build_u, packed_vec_ini, &
+       packed_vec_scale
   USE cp_fm_basic_linalg,              ONLY: cp_fm_column_scale,&
                                              cp_fm_gemm,&
                                              cp_fm_scale_and_add,&
@@ -56,14 +61,6 @@ MODULE preconditioner
                                              cp_fm_set_all,&
                                              cp_fm_to_fm,&
                                              cp_fm_type
-  USE dbcsr_api,                       ONLY: &
-       array_data, array_i1d_obj, block_add_on_diag, block_chol_inv, &
-       dbcsr_distribution_mp, dbcsr_distribution_new, dbcsr_distribution_obj, &
-       dbcsr_distribution_row_dist, dbcsr_error_type, dbcsr_mp_group, &
-       dbcsr_mp_mynode, dbcsr_mp_mypcol, dbcsr_mp_myprow, dbcsr_mp_npcols, &
-       dbcsr_mp_nprows, dbcsr_mp_numnodes, dbcsr_mp_obj, &
-       dbcsr_norm_frobenius, dbcsr_scale_mat, dbcsr_type_no_symmetry, &
-       dbcsr_type_real_4, dbcsr_type_real_default
   USE input_constants,                 ONLY: &
        ot_precond_full_all, ot_precond_full_kinetic, ot_precond_full_single, &
        ot_precond_full_single_inverse, ot_precond_none, ot_precond_s_inverse, &

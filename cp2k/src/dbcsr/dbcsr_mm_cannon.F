@@ -75,23 +75,10 @@ MODULE dbcsr_mm_cannon
                                              dbcsr_iterator_next_block,&
                                              dbcsr_iterator_start,&
                                              dbcsr_iterator_stop
-  USE dbcsr_kinds,                     ONLY: dp,&
-                                             int_8,&
-                                             real_4,&
-                                             real_4_size,&
-                                             real_8,&
-                                             real_8_size,&
-                                             sp
-  USE dbcsr_machine,                   ONLY: default_output_unit,&
-                                             m_flush
   USE dbcsr_mem_methods,               ONLY: dbcsr_mempool_clear,&
                                              dbcsr_mempool_destruct,&
                                              dbcsr_mempool_ensure_capacity,&
                                              dbcsr_memtype_setup
-  USE dbcsr_message_passing,           ONLY: &
-       mp_allgather, mp_alltoall, mp_irecv, mp_isend, mp_request_null, &
-       mp_sum, mp_testany, mp_type_descriptor_type, mp_type_free, &
-       mp_type_make, mp_waitall
   USE dbcsr_methods,                   ONLY: &
        dbcsr_col_block_offsets, dbcsr_col_block_sizes, dbcsr_destroy_array, &
        dbcsr_distribution, dbcsr_distribution_col_dist, &
@@ -158,6 +145,19 @@ MODULE dbcsr_mm_cannon
                                              dbcsr_finalize,&
                                              dbcsr_special_finalize,&
                                              dbcsr_work_create
+  USE kinds,                           ONLY: dp,&
+                                             int_8,&
+                                             real_4,&
+                                             real_4_size,&
+                                             real_8,&
+                                             real_8_size,&
+                                             sp
+  USE machine,                         ONLY: default_output_unit,&
+                                             m_flush
+  USE message_passing,                 ONLY: &
+       mp_allgather, mp_alltoall, mp_irecv, mp_isend, mp_request_null, &
+       mp_sum, mp_testany, mp_type_descriptor_type, mp_type_free, &
+       mp_type_make, mp_waitall
 
   !$ USE OMP_LIB
 

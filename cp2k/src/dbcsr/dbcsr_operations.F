@@ -20,14 +20,6 @@ MODULE dbcsr_operations
   USE dbcsr_data_methods,              ONLY: dbcsr_scalar
   USE dbcsr_dist_operations,           ONLY: create_bl_distribution
   USE dbcsr_error_handling
-  USE dbcsr_kinds,                     ONLY: dp,&
-                                             int_1_size,&
-                                             int_2_size,&
-                                             int_4_size,&
-                                             int_8,&
-                                             int_8_size,&
-                                             real_4,&
-                                             real_8
   USE dbcsr_methods,                   ONLY: &
        dbcsr_distribution, dbcsr_distribution_mp, dbcsr_distribution_new, &
        dbcsr_distribution_release, dbcsr_distribution_row_dist, &
@@ -43,9 +35,9 @@ MODULE dbcsr_operations
        dbcsr_copy_submatrix, dbcsr_filter, dbcsr_frobenius_norm, &
        dbcsr_gershgorin_norm, dbcsr_get_block_diag, dbcsr_get_diag, &
        dbcsr_hadamard_product, dbcsr_init_random, dbcsr_maxabs, dbcsr_norm, &
-       dbcsr_replace_blocks, dbcsr_scale, dbcsr_scale_by_vector, &
-       dbcsr_scale_mat, dbcsr_set, dbcsr_set_diag, dbcsr_sum_replicated, &
-       dbcsr_symmetrize_block_diag, dbcsr_trace, dbcsr_tril, dbcsr_triu
+       dbcsr_scale, dbcsr_scale_by_vector, dbcsr_scale_mat, dbcsr_set, &
+       dbcsr_set_diag, dbcsr_sum_replicated, dbcsr_symmetrize_block_diag, &
+       dbcsr_trace, dbcsr_tril, dbcsr_triu
   USE dbcsr_types,                     ONLY: dbcsr_distribution_obj,&
                                              dbcsr_obj,&
                                              dbcsr_type_no_symmetry,&
@@ -53,6 +45,14 @@ MODULE dbcsr_operations
                                              dbcsr_type_real_8
   USE dbcsr_work_operations,           ONLY: dbcsr_create,&
                                              dbcsr_finalize
+  USE kinds,                           ONLY: dp,&
+                                             int_1_size,&
+                                             int_2_size,&
+                                             int_4_size,&
+                                             int_8,&
+                                             int_8_size,&
+                                             real_4,&
+                                             real_8
 
   !$ USE OMP_LIB
 
@@ -71,7 +71,6 @@ MODULE dbcsr_operations
             dbcsr_get_diag, dbcsr_set_diag, &
             dbcsr_get_block_diag, dbcsr_hadamard_product, &
             dbcsr_filter, dbcsr_scale_by_vector,&
-            dbcsr_replace_blocks, &
             dbcsr_btriu, dbcsr_triu, dbcsr_tril,&
             dbcsr_symmetrize_block_diag, dbcsr_copy_columns,&
             dbcsr_init_random, dbcsr_lanczos, dbcsr_block_in_limits,&

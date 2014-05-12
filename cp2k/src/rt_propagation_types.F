@@ -22,13 +22,13 @@ MODULE rt_propagation_types
                                              cite_reference
   USE cp_control_types,                ONLY: dft_control_type,&
                                              rtp_control_type
-  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_create,&
-                                             cp_dbcsr_init,&
-                                             cp_dbcsr_init_p
-  USE cp_dbcsr_operations,             ONLY: cp_dbcsr_allocate_matrix_set,&
+  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_allocate_matrix_set,&
+                                             cp_dbcsr_create,&
                                              cp_dbcsr_deallocate_matrix,&
-                                             cp_dbcsr_deallocate_matrix_set
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_p_type,&
+                                             cp_dbcsr_deallocate_matrix_set,&
+                                             cp_dbcsr_init,&
+                                             cp_dbcsr_init_p,&
+                                             cp_dbcsr_p_type,&
                                              cp_dbcsr_type
   USE cp_fm_pool_types,                ONLY: cp_fm_pool_p_type,&
                                              fm_pool_get_el_struct

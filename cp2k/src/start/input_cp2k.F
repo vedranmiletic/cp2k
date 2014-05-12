@@ -10,11 +10,11 @@
 !> \author fawzi
 ! *****************************************************************************
 MODULE input_cp2k
-  USE cp_output_handling,              ONLY: cp_print_key_section_create
-  USE dbcsr_api,                       ONLY: dbcsr_type_complex_4,&
+  USE cp_dbcsr_interface,              ONLY: dbcsr_type_complex_4,&
                                              dbcsr_type_complex_8,&
                                              dbcsr_type_real_4,&
                                              dbcsr_type_real_8
+  USE cp_output_handling,              ONLY: cp_print_key_section_create
   USE f77_blas
   USE input_constants
   USE input_cp2k_atom,                 ONLY: create_atom_section
@@ -36,8 +36,7 @@ MODULE input_cp2k
   USE input_val_types,                 ONLY: char_t,&
                                              integer_t,&
                                              lchar_t,&
-                                             logical_t,&
-                                             real_t
+                                             logical_t
   USE kinds,                           ONLY: dp
   USE pw_grids,                        ONLY: do_pw_grid_blocked_false,&
                                              do_pw_grid_blocked_free,&
@@ -787,76 +786,6 @@ CONTAINS
     CALL section_release(print_key,error=error)
 
   END SUBROUTINE create_farming_section
-
-
-! *****************************************************************************
-!> \brief section for the chemical potential difference run
-!> \param section will contain the cpot section
-!> \param error variable to control error logging, stopping,...
-!>        see module cp_error_handling
-!> \author fawzi
-! *****************************************************************************
-  SUBROUTINE create_cpot_section(section,error)
-    TYPE(section_type), POINTER              :: section
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'create_cpot_section', &
-      routineP = moduleN//':'//routineN
-
-    LOGICAL                                  :: failure
-    TYPE(keyword_type), POINTER              :: keyword
-
-    failure=.FALSE.
-
-    NULLIFY(keyword)
-    CPPrecondition(.NOT.ASSOCIATED(section),cp_failure_level,routineP,error,failure)
-    IF (.NOT. failure) THEN
-       CALL section_create(section,name="cpot",&
-            description="controls a cpot (chemical potential) run",&
-            n_keywords=0, n_subsections=5, repeats=.FALSE., required=.TRUE.,&
-            error=error)
-
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword,name="state_1_2_input",&
-            description="the input file for the second box of the first state",&
-            usage="state_1_2_input my_input.inp",&
-            required=.TRUE.,default_lc_val="s-1-2.inp",error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword,name="state_2_1_input",&
-            description="input file for the box 1 of state 2",&
-            usage="state_2_1_input my_input.inp",&
-            required=.TRUE.,default_lc_val="s-1-1.inp",error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword,name="state_2_2_input",&
-            description="the input file for the second box of the second state",&
-            usage="state_2_2_input my_input.inp",&
-            required=.TRUE.,default_lc_val="s-2-2.inp",error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword,name="statistics_after",&
-            description="number of steps after which the collection of statistics begins",&
-            usage="statistics_after 1000",&
-            required=.FALSE.,default_i_val=0,error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword,name="statistics_each",&
-            description="how often statistic is collected",&
-            usage="statistics_each 5",&
-            required=.FALSE.,default_i_val=0,error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-       CALL keyword_create(keyword, name="TEMP",&
-            description="The temperature of the simulation, in Kelvin.",&
-            usage="TEMP {real}",&
-            type_of_var=real_t, required=.TRUE.,unit_str="K", error=error)
-       CALL section_add_keyword(section,keyword,error=error)
-       CALL keyword_release(keyword,error=error)
-    END IF
-  END SUBROUTINE create_cpot_section
-
 
 ! *****************************************************************************
 !> \brief   creates the rs_pw_transfer section for use in the test section

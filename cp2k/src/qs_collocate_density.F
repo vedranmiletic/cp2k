@@ -32,6 +32,7 @@
 !>      Thomas D. Kuehne (04.08.2005)
 ! *****************************************************************************
 MODULE qs_collocate_density
+  USE ao_util,                         ONLY: exp_radius_very_extended
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -41,10 +42,10 @@ MODULE qs_collocate_density
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_copy,&
+                                             cp_dbcsr_deallocate_matrix,&
                                              cp_dbcsr_get_block_p,&
-                                             cp_dbcsr_init
-  USE cp_dbcsr_operations,             ONLY: cp_dbcsr_deallocate_matrix
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_type
+                                             cp_dbcsr_init,&
+                                             cp_dbcsr_type
   USE cp_fm_types,                     ONLY: cp_fm_get_element,&
                                              cp_fm_get_info,&
                                              cp_fm_type
@@ -104,7 +105,6 @@ MODULE qs_collocate_density
                                              pw_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
-  USE qs_interactions,                 ONLY: exp_radius_very_extended
   USE qs_modify_pab_block,             ONLY: &
        FUNC_AB, FUNC_ADBmDAB, FUNC_ARB, FUNC_ARDBmDARB, FUNC_DABpADB, &
        FUNC_DADB, FUNC_DER, FUNC_DX, FUNC_DXDX, FUNC_DXDY, FUNC_DY, &

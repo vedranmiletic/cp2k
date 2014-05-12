@@ -8,6 +8,7 @@
 !>      coming from local atomic densities
 ! *****************************************************************************
 MODULE qs_ks_atom
+  USE ao_util,                         ONLY: trace_r_AxB
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -15,8 +16,8 @@ MODULE qs_ks_atom
                                              gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE cp_array_r_utils,                ONLY: cp_2d_r_p_type
-  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_block_p
-  USE cp_dbcsr_types,                  ONLY: cp_dbcsr_p_type
+  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_block_p,&
+                                             cp_dbcsr_p_type
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: dp,&
                                              dp_size,&
@@ -37,7 +38,6 @@ MODULE qs_ks_atom
   USE qs_rho_atom_types,               ONLY: get_rho_atom,&
                                              rho_atom_coeff,&
                                              rho_atom_type
-  USE qs_util,                         ONLY: trace_r_AxB
   USE sap_kind_types,                  ONLY: alist_post_align_blk,&
                                              alist_pre_align_blk,&
                                              alist_type,&
