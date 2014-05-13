@@ -63,6 +63,7 @@ MODULE cma_es
      !        print *,'k',k,'I_dist',cmaes_opt%a_k(k)%p%I_dist,'kernel_dist',cmaes_opt%a_k(k)%p%kernel_dist
      !    enddo
          do k=1,cmaes_opt%lambda_mo
+
               a_k => cmaes_opt%a_k(k)%p
               a_k_parents => cmaes_opt%a_k_parents(k)%p
               call dominates(a_k,a_k_parents,boolean)
@@ -112,11 +113,11 @@ MODULE cma_es
                   !----------------------ind_counter---------------------------------------
                        !normalize D such that det = 1 
                        ! yannick new e.g. not sure....
-                       tmp = 1._dp
-                       do i=1,n
-                       tmp = tmp*a_k%D(i,i)
-                       enddo
-                       a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
+                       !tmp = 1._dp
+                       !do i=1,n
+                       !tmp = tmp*a_k%D(i,i)
+                       !enddo
+                       !a_k%D=a_k%D*1._dp/tmp**(1._dp/n)
                   !     !---
                     if (any(a_k%D .lt. 0.)) then
                         print *,'diagonal matrix wrong'
@@ -297,22 +298,23 @@ MODULE cma_es
 !                   *cmaes_opt%sigma**(-2) * cmaes_opt%multmp_mN2
       !--------------update matrix------------------------------------------------------------
       if (a_k%p_succ .lt. a_k%p_tresh) then
-      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
+          a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
                    + a_k%ccov*(a_k%multmp_mN) ! plus rank one update
       else
-!      a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
-!                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
-!                   + a_k%ccov*(2._dp-a_k%ccov)*a_k%C)
-      ! yannick needs to be tested 
-      !----------------this should be active covariance control---------------------------------
-      a_k%C = (1._dp-a_k%ccovm)*a_k%C & ! old matrix
-                   - a_k%ccovm*(a_k%multmp_mN2) ! plus rank one update
+          a_k%C = (1._dp-a_k%ccov)*a_k%C & ! old matrix
+                   + a_k%ccov*(a_k%multmp_mN &  ! plus rank one update
+                   + a_k%ccov*(2._dp-a_k%cc)*a_k%cc*a_k%C)
+      !!----------------------------------------------------------------------------------------
+      ! yannick needs to be tested!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+      !!----------------this should be active covariance control---------------------------------
+      !a_k%C = (1._dp-a_k%ccovm)*a_k%C & ! old matrix
+      !             - a_k%ccovm*(a_k%multmp_mN2) ! plus rank one update
       endif
 
-      if(any(isNaN(a_k%C))) then
-        print *,'yannick Covariance Matrix is NaN'
-        STOP
-      endif
+      !if(any(isNaN(a_k%C))) then
+      !  print *,'yannick Covariance Matrix is NaN'
+      !  STOP
+      !endif
       deallocate(bdz)
 
     end subroutine

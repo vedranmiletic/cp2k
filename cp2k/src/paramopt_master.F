@@ -117,7 +117,7 @@ MODULE paramopt_master
     !------------------
     n = this%num_var
     !------------------
-    this%num_obj = 5
+    this%num_obj = 6
     this%multi_obj = .true.
     !-------------------
     this%num_inp = 32 ! now also H2 and O3 in the set!!!
@@ -254,8 +254,9 @@ MODULE paramopt_master
     print *,'this is inital x'
     print *, this%x
     ! in case sigma is not given use sqrt(var(x))
-    ini_sigma = sqrt(variance(this%x))
+    ini_sigma = sqrt(abs(variance(this%x)))
     IF (this%step_size .eq. 0_dp) this%step_size = ini_sigma
+    print *,'this should be ini_sigma',ini_sigma
     print *,'this should be sigma',this%step_size
     !----------------set pointers for bfgs------------------------
     this%eps = this%eps_factor*abs(this%x)
@@ -418,13 +419,13 @@ MODULE paramopt_master
 !    this%input_files(this%num_inp-3) = 'eaip_H2Op.inp'
 !    this%input_files(this%num_inp-2) = 'eaip_H2On.inp'
 !    this%input_files(this%num_inp-1) = 'dipole.inp'
-    this%input_files(this%num_ref+1) = 'H2.inp' 
-    this%charges(this%num_ref+1) = 0._dp
-    this%coord_files(this%num_ref+1) = "WATER27structures/H2.xyz"
-    !---------------------
-    this%input_files(this%num_ref+2) = 'O3.inp' 
+    this%input_files(this%num_ref+2) = 'H2.inp' 
     this%charges(this%num_ref+2) = 0._dp
-    this%coord_files(this%num_ref+2) = "WATER27structures/O3.xyz"
+    this%coord_files(this%num_ref+2) = "WATER27structures/H2.xyz"
+    !---------------------
+    this%input_files(this%num_ref+1) = 'O3.inp' 
+    this%charges(this%num_ref+1) = 0._dp
+    this%coord_files(this%num_ref+1) = "WATER27structures/O3.xyz"
     !---------------------
     call open_file(file_name='WATER27.dat',unit_number=unit_number, &
                           file_action='read')
@@ -536,8 +537,10 @@ MODULE paramopt_master
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
                  a_k%f(4) = (this%rmsd(1,j)) + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
-                 a_k%f(5) = this%rmsd(this%num_ref+1,j) + this%rmsd(this%num_ref+2,j)  + a_k%penalty
+                 a_k%f(5) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(5) = huge(1._dp)
+                 a_k%f(6) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
+                 if (a_k%f(1) == huge(1._dp) ) a_k%f(6) = huge(1._dp)
                  ! here the squaring neeeds to be carried out
                  !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
@@ -754,7 +757,8 @@ MODULE paramopt_master
 !                            report_timings(i)
                           END IF
                     END DO
-                    write(*,*) 'rsmd H2 ',rmsd(this%num_ref+1),'rmsd O3 ',rmsd(this%num_ref+2)
+                    write(*,*) 'rsmd H2 ',rmsd(this%num_ref+2),Conv(this%num_ref+2),'rmsd O3 ', &
+                               rmsd(this%num_ref+1),Conv(this%num_ref+1)
                     write(*,*) '==============================asdfkjalsdkjfl==================='
                     !---yannick use ^2 
                     obj_f = sum(this%res/real(this%ref_num_atoms))

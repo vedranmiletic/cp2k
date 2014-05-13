@@ -353,6 +353,11 @@ MODULE paramopt_worker
                               r_vals_ptr=x,error=this%error)
     !CALL section_vals_val_get(this%root_section,"FORCE_EVAL%DFT%QS%SCPTB%OPTIM_VARS", r_vals=tmp_ptr, error=this%error)
     !print *,'this should be x from worker',tmp_ptr
+    !if (coord_file .eq. 'WATER27structures/H2.xyz') then
+    !                          CALL section_vals_val_set(this%root_section, &
+    !                          "MOTION%GEO_OPT%MAX_ITER", &
+    !                          i_val=100, error = this%error)
+    !endif
     !-------------------create force env------------------------
     CALL create_force_env(this%f_env_id, &
                             input_path=this%input_path, &
@@ -416,14 +421,13 @@ MODULE paramopt_worker
         ALLOCATE(this%g(2,3*this%n_atoms))
         ALLOCATE(dipole(this%n_atoms))
         CALL cp_get_pos(this%f_env_id, this%pos, 3*this%n_atoms, ierr)
-        !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
         CALL cp_geo_opt(this%force_env, this%globenv, eval_opt_geo=.TRUE.,error=this%error)
-
+        CALL get_energy(this%f_env_id,energy,ierr)
         CALL cp_get_pos(this%f_env_id, this%pos2, 3*this%n_atoms, ierr)
         CALL rmsd(this%n_atoms,RESHAPE(this%pos,(/ 3, this%n_atoms /)), &
                                RESHAPE(this%pos2,(/ 3, this%n_atoms /) ), &
                                0, this%U,this%center2,this%center1, this%rmsd,this%calc_g,this%g)
-        !print *,'yannick1',coord_file,'after geoopt',this%force_env%qs_env%converged
+        !print *,'yannick1',coord_file,'after geoopt',this%force_env%qs_env%converged,'Id',this%Id
          !----------------calc energy--------------------
          if (this%force_env%qs_env%converged) then
               this%converged = 1
@@ -432,8 +436,6 @@ MODULE paramopt_worker
               this%dipole_error = huge(1._dp)
               this%rmsd = huge(1._dp)
          endif 
-         !CALL calc_energy_force(this%f_env_id, .FALSE. , ierr)
-         CALL get_energy(this%f_env_id,energy,ierr)
         !------------------------------------------------ 
         if (coord_file .eq. 'WATER27structures/H2O.xyz') then
           !-----------calculate dipole--------------------------

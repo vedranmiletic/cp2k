@@ -55,7 +55,7 @@ MODULE paramopt_utils
   REAL(kind=dp),INTENT(IN),DIMENSION(:)::Array
   X = SUM(Array)/SIZE(Array)
   Variance = SUM((Array-X)**2)/SIZE(Array)
-  Variance = Variance/X
+  Variance = abs(Variance)/X
  END FUNCTION Variance
  ! *****************************************************************************
 ! *****************************************************************************
