@@ -73,15 +73,14 @@ MODULE dbcsr_operations
             dbcsr_multiply,&
             dbcsr_trace, dbcsr_add_on_diag,&
             dbcsr_set, dbcsr_scale, dbcsr_scale_mat, dbcsr_add, dbcsr_copy,&
-            dbcsr_copy_submatrix, dbcsr_copy_into_existing,&
-            dbcsr_get_diag, dbcsr_set_diag, &
-            dbcsr_get_block_diag, dbcsr_hadamard_product, &
+            dbcsr_copy_into_existing,&
+            dbcsr_get_diag, dbcsr_set_diag,&
+            dbcsr_get_block_diag, dbcsr_hadamard_product,&
             dbcsr_filter, dbcsr_scale_by_vector,&
-            dbcsr_btriu, dbcsr_triu, dbcsr_tril,&
-            dbcsr_symmetrize_block_diag, dbcsr_copy_columns,&
-            dbcsr_init_random, dbcsr_lanczos, dbcsr_block_in_limits,&
-            dbcsr_sum_replicated, dbcsr_norm, &
-            dbcsr_gershgorin_norm, dbcsr_maxabs, dbcsr_frobenius_norm, &
+            dbcsr_btriu, dbcsr_triu,&
+            dbcsr_init_random,&
+            dbcsr_sum_replicated, dbcsr_norm,&
+            dbcsr_gershgorin_norm, dbcsr_maxabs, dbcsr_frobenius_norm,&
             dbcsr_clear_mempools
 
   INTERFACE dbcsr_multiply
