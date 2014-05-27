@@ -18,14 +18,16 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_shift_dm', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: displ, handle, ierror, left, &
+    INTEGER                                  :: handle, ierror
+#if defined(__parallel)
+    INTEGER                                  :: displ, left, &
                                                 msglen, myrank, nprocs, &
                                                 right, tag
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierror = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
@@ -54,7 +56,6 @@
 
   END SUBROUTINE mp_shift_dm
 
-
 ! *****************************************************************************
 !> \brief Shift around the data in msg
 !> \par Example
@@ -75,14 +76,16 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_shift_d', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: displ, handle, ierror, left, &
+    INTEGER                                  :: handle, ierror
+#if defined(__parallel)
+    INTEGER                                  :: displ, left, &
                                                 msglen, myrank, nprocs, &
                                                 right, tag
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierror = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
@@ -141,7 +144,12 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d11v', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, i
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen
+#else
+    INTEGER                                  :: i
+#endif
 
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
@@ -183,11 +191,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d22v', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -228,11 +238,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -264,11 +276,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d22', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -300,11 +314,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d33', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -323,7 +339,6 @@
 
   END SUBROUTINE mp_alltoall_d33
 
-
 ! *****************************************************************************
 !> \brief All-to-all data exchange, rank 4 data, equal sizes
 !> \sa mp_alltoall_d
@@ -339,11 +354,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d44', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -378,11 +395,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d45', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -415,11 +434,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d34', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -452,11 +473,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_alltoall_d54', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen, np
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen, np
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -472,7 +495,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
 
   END SUBROUTINE mp_alltoall_d54
-
 
 ! *****************************************************************************
 !> \brief Send one datum to another process
@@ -506,8 +528,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_send_d
 
-
-
 ! *****************************************************************************
 !> \brief Send rank-1 data to another process
 !> \param[in] msg             Rank-1 data to send
@@ -536,7 +556,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_send_dv
 
-
 ! *****************************************************************************
 !> \brief Receive one datum from another process
 !> \par MPI mapping
@@ -555,7 +574,9 @@
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ierr, msglen
+#if defined(__parallel)
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -575,7 +596,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_recv_d
 
-
 ! *****************************************************************************
 !> \brief Receive rank-1 data from another process
 !> \param[in,out] msg         Place receieved data into this rank-1 array
@@ -590,7 +610,9 @@
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ierr, msglen
+#if defined(__parallel)
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -725,7 +747,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_bcast_d3
 
-
 ! *****************************************************************************
 !> \brief Sums a datum from all processes with result left on all processes.
 !> \par MPI mapping
@@ -756,7 +777,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sum_d
 
-
 ! *****************************************************************************
 !> \brief Element-wise sum of a rank-1 array on all processes.
 !> \sa mp_sum_d
@@ -769,7 +789,10 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -787,7 +810,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sum_dv
 
-
 ! *****************************************************************************
 !> \brief Element-wise sum of a rank-2 array on all processes.
 !> \sa mp_sum_d
@@ -800,8 +822,11 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dm', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, msglen, step
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
     INTEGER, PARAMETER :: max_msg=2**25
+    INTEGER                                  :: m1, msglen, step
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -835,17 +860,17 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dm3', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, m3, &
+    INTEGER                                  :: handle, ierr, &
                                                 msglen
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
-    CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
-    IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
+      CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
+      IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     END IF
     t_end = m_walltime ( )
     CALL add_perf(perf_id=3,count=1,time=t_end-t_start,msg_size=msglen*real_8_size)
@@ -865,18 +890,18 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dm4', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, m3, m4, &
+    INTEGER                                  :: handle, ierr, &
                                                 msglen
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
-    CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
-    IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
+      CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
+      IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     END IF
     t_end = m_walltime ( )
     CALL add_perf(perf_id=3,count=1,time=t_end-t_start,msg_size=msglen*real_8_size)
@@ -896,18 +921,18 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dm5', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, m3, m4, m5, &
+    INTEGER                                  :: handle, ierr, &
                                                 msglen
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
-    CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
-    IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
+      CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
+      IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     END IF
     t_end = m_walltime ( )
     CALL add_perf(perf_id=3,count=1,time=t_end-t_start,msg_size=msglen*real_8_size)
@@ -927,25 +952,24 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_dm6', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, m3, m4, m5, m6, &
+    INTEGER                                  :: handle, ierr, &
                                                 msglen
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
-    CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
-    IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
+      CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,gid,ierr)
+      IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     END IF
     t_end = m_walltime ( )
     CALL add_perf(perf_id=3,count=1,time=t_end-t_start,msg_size=msglen*real_8_size)
 #endif
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sum_dm6
-
 
 ! *****************************************************************************
 !> \brief Element-wise sum of data from all processes with result left only on
@@ -963,29 +987,31 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_root_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, msglen, &
-                                                taskid
+    INTEGER                                  :: handle, ierr, msglen
+#if defined(__parallel)
+    INTEGER                                  :: m1, taskid
     REAL(kind=real_8), ALLOCATABLE                     :: res( : )
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
     CALL mpi_comm_rank ( gid, taskid, ierr )
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_comm_rank @ "//routineN )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
-    m1 = SIZE(msg,1)
-    ALLOCATE (res(m1),STAT=ierr)
-    IF ( ierr /= 0 ) CALL mp_abort( "allocate @ "//routineN )
-    CALL mpi_reduce(msg,res,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,&
-         root,gid,ierr)
-    IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_reduce @ "//routineN )
-    IF ( taskid == root ) THEN
-       msg = res
-    END IF
-    DEALLOCATE (res)
+      m1 = SIZE(msg,1)
+      ALLOCATE (res(m1),STAT=ierr)
+      IF ( ierr /= 0 ) CALL mp_abort( "allocate @ "//routineN )
+      CALL mpi_reduce(msg,res,msglen,MPI_DOUBLE_PRECISION,MPI_SUM,&
+           root,gid,ierr)
+      IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_reduce @ "//routineN )
+      IF ( taskid == root ) THEN
+        msg = res
+      END IF
+      DEALLOCATE (res)
     END IF
     t_end = m_walltime ( )
     CALL add_perf(perf_id=3,count=1,time=t_end-t_start,msg_size=msglen*real_8_size)
@@ -1007,18 +1033,20 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sum_root_rm', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, m1, m2, msglen, &
-                                                taskid
+    INTEGER                                  :: handle, ierr, msglen
+#if defined(__parallel)
+    INTEGER                                  :: m1, m2, taskid
     REAL(kind=real_8), ALLOCATABLE                     :: res( :, : )
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
     CALL mpi_comm_rank ( gid, taskid, ierr )
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_comm_rank @ "//routineN )
-    msglen = SIZE(msg)
     IF (msglen>0) THEN
     m1 = SIZE(msg,1)
     m2 = SIZE(msg,2)
@@ -1036,7 +1064,6 @@
 #endif
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sum_root_dm
-
 
 ! *****************************************************************************
 !> \brief Finds the maximum of a datum with the result left on all processes.
@@ -1058,9 +1085,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = 1
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = 1
     CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_MAX,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     t_end = m_walltime ( )
@@ -1088,9 +1115,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_MAX,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     t_end = m_walltime ( )
@@ -1098,7 +1125,6 @@
 #endif
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_max_dv
-
 
 ! *****************************************************************************
 !> \brief Finds the minimum of a datum with the result left on all processes.
@@ -1120,9 +1146,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = 1
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = 1
     CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_MIN,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
     t_end = m_walltime ( )
@@ -1152,9 +1178,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     IF ( ierr /= 0 ) CALL mp_abort( "allocate @ "//routineN )
     CALL mpi_allreduce(MPI_IN_PLACE,msg,msglen,MPI_DOUBLE_PRECISION,MPI_MIN,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_allreduce @ "//routineN )
@@ -1187,9 +1213,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     CALL mpi_scatter(msg_scatter,msglen,MPI_DOUBLE_PRECISION,msg,&
          msglen,MPI_DOUBLE_PRECISION,root,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_scatter @ "//routineN )
@@ -1223,9 +1249,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = 1
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = 1
     CALL mpi_gather(msg,msglen,MPI_DOUBLE_PRECISION,msg_gather,&
          msglen,MPI_DOUBLE_PRECISION,root,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_gather @ "//routineN )
@@ -1259,9 +1285,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     CALL mpi_gather(msg,msglen,MPI_DOUBLE_PRECISION,msg_gather,&
          msglen,MPI_DOUBLE_PRECISION,root,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_gather @ "//routineN )
@@ -1295,9 +1321,9 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    msglen = SIZE(msg)
 #if defined(__parallel)
     t_start = m_walltime ( )
-    msglen = SIZE(msg)
     CALL mpi_gather(msg,msglen,MPI_DOUBLE_PRECISION,msg_gather,&
          msglen,MPI_DOUBLE_PRECISION,root,gid,ierr)
     IF ( ierr /= 0 ) CALL mp_stop( ierr, "mpi_gather @ "//routineN )
@@ -1334,14 +1360,17 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_gatherv_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, sendcount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: sendcount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
-    sendcount = SIZE(sendbuf)
 #if defined(__parallel)
     t_start = m_walltime()
+    sendcount = SIZE(sendbuf)
     CALL mpi_gatherv(sendbuf,sendcount,MPI_DOUBLE_PRECISION,&
          recvbuf,recvcounts,displs,MPI_DOUBLE_PRECISION,&
          root,comm,ierr)
@@ -1377,11 +1406,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allgather_d', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, rcount, scount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: rcount, scount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     scount = 1
@@ -1417,11 +1448,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allgather_d12', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, rcount, scount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: rcount, scount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     scount = SIZE (msgout(:))
@@ -1450,11 +1483,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allgather_d23', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, rcount, scount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: rcount, scount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     scount = SIZE (msgout(:,:))
@@ -1483,11 +1518,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allgather_d34', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, rcount, scount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: rcount, scount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     scount = SIZE (msgout(:,:,:))
@@ -1527,11 +1564,13 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allgatherv_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, scount
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: scount
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     scount = SIZE ( msgout )
@@ -1543,7 +1582,6 @@
 #endif
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_allgatherv_dv
-
 
 ! *****************************************************************************
 !> \brief Sums a vector and partitions the result among processes
@@ -1566,7 +1604,6 @@
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
-
 #if defined(__parallel)
     t_start = m_walltime ( )
     CALL MPI_REDUCE_SCATTER(msgout, msgin, rcount, MPI_DOUBLE_PRECISION, MPI_SUM, &
@@ -1581,7 +1618,6 @@
 #endif
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sum_scatter_dv
-
 
 ! *****************************************************************************
 !> \brief Sends and receives vector data
@@ -1600,9 +1636,12 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sendrecv_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen_in, &
-                                                msglen_out, recv_tag, send_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen_in, msglen_out, &
+                                                recv_tag, send_tag
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -1628,7 +1667,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sendrecv_dv
 
-
 ! *****************************************************************************
 !> \brief Sends and receives matrix data
 !> \sa mp_sendrecv_dv
@@ -1642,9 +1680,12 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sendrecv_dm2', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen_in, &
-                                                msglen_out, recv_tag, send_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen_in, msglen_out, &
+                                                recv_tag, send_tag
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -1670,7 +1711,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_sendrecv_dm2
 
-
 ! *****************************************************************************
 !> \brief Sends and receives rank-3 data
 !> \sa mp_sendrecv_dv
@@ -1684,9 +1724,12 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_sendrecv_dm3', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, msglen_in, &
-                                                msglen_out, recv_tag, send_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: msglen_in, msglen_out, &
+                                                recv_tag, send_tag
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: status
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -1742,9 +1785,11 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_isendrecv_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, msglen, &
-                                                my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, msglen, my_tag
     REAL(kind=real_8)                                  :: foo
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
@@ -1787,7 +1832,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_isendrecv_dv
 
-
 ! *****************************************************************************
 !> \brief Non-blocking send and receieve of a matrix
 !> \note
@@ -1809,13 +1853,14 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_isendrecv_dm2', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, lower2, &
-                                                msglen, my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, lower2, msglen, my_tag
     REAL(kind=real_8)                                  :: foo
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -1857,8 +1902,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_isendrecv_dm2
 
-
-
 ! *****************************************************************************
 !> \brief Non-blocking send of vector data
 !> \note
@@ -1877,13 +1920,14 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_isend_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, msglen, &
-                                                my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -1910,7 +1954,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_isend_dv
 
-
 ! *****************************************************************************
 !> \brief Non-blocking send of matrix data
 !> \note
@@ -1931,13 +1974,14 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_isend_dm2', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, lower2, &
-                                                msglen, my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, lower2, msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -1965,7 +2009,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_isend_dm2
 
-
 ! *****************************************************************************
 !> \brief Non-blocking send of rank-3 data
 !> \note
@@ -1973,7 +2016,8 @@
 !>      temporaries. They must point to contiguous memory.
 !> \author fawzi
 !> \par History
-!>      9.2008 added _rm3 subroutine [Iain Bethune] (c) The Numerical Algorithms Group (NAG) Ltd, 2008 on behalf of the HECToR project
+!>      9.2008 added _rm3 subroutine [Iain Bethune]
+!>     (c) The Numerical Algorithms Group (NAG) Ltd, 2008 on behalf of the HECToR project
 !>      2009-11-25 [UB] Made type-generic for templates
 !> \sa mp_isendrecv_dv
 !> \sa mp_isend_dv
@@ -1988,13 +2032,15 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_isend_dm3', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, lower2, &
-                                                lower3, msglen, my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, lower2, lower3, &
+                                                msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -2023,7 +2069,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_isend_dm3
 
-
 ! *****************************************************************************
 !> \brief Non-blocking receive of vector data
 !> \note
@@ -2043,13 +2088,14 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_irecv_dv', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, msglen, &
-                                                my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -2075,7 +2121,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_irecv_dv
 
-
 ! *****************************************************************************
 !> \brief Non-blocking receive of matrix data
 !> \note
@@ -2096,13 +2141,14 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_irecv_dm2', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, lower2, &
-                                                msglen, my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, lower2, msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -2152,13 +2198,15 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_irecv_dm3', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ierr, lower1, lower2, &
-                                                lower3, msglen, my_tag
+    INTEGER                                  :: handle, ierr
+#if defined(__parallel)
+    INTEGER                                  :: lower1, lower2, lower3, &
+                                                msglen, my_tag
     REAL(kind=real_8)                                  :: foo(1)
+#endif
 
     ierr = 0
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
 
 #if defined(__parallel)
     t_start = m_walltime ( )
@@ -2187,138 +2235,6 @@
   END SUBROUTINE mp_irecv_dm3
 
 ! *****************************************************************************
-!> \brief Creates an MPI RMA window.
-!> \author UB
-!> \param[out] window      created window id
-!> \param[in] range        window contents
-!> \param[in] len          (optional) window size
-!> \param[in] gid          message passing environment identifier
-! *****************************************************************************
-  SUBROUTINE mp_win_create_d(window, range, len, gid)
-    TYPE(mp_window_type), INTENT(OUT)    :: window
-    REAL(kind=real_8), DIMENSION(:), POINTER       :: range
-    INTEGER, INTENT(IN)                  :: gid
-    INTEGER, INTENT(IN), OPTIONAL        :: len
-    CHARACTER(len=*), PARAMETER :: routineN = 'mp_win_create_d', &
-         routineP = moduleN//':'//routineN
-    INTEGER                              :: ierr, handle
-    INTEGER                              :: data_type_size
-#if defined(__parallel)
-    ! requires that your MPI installation matches your Fortran compiler... be aware
-    ! e.g. on a 64 bit machine, NAG will require MPI_ADDRESS_KIND=4, and gfortran MPI_ADDRESS_KIND=8
-    INTEGER(KIND=MPI_ADDRESS_KIND)       :: winsize
-#endif
-!   ---------------------------------------------------------------------------
-    IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
-#if defined(__parallel)
-    t_start = m_walltime()
-    ierr = 0
-    IF (PRESENT (len)) THEN
-       winsize = len
-    ELSE
-       winsize = SIZE (range)
-    ENDIF
-    CALL MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION, data_type_size, ierr)
-    IF (ierr /= 0) CALL mp_stop(ierr, "mpi_type_size @ "//routineN)
-    winsize = winsize*data_type_size
-    CALL MPI_WIN_CREATE(range, winsize, data_type_size,&
-      MPI_INFO_NULL, gid, window%id, ierr)
-    IF (ierr /= 0) CALL mp_stop(ierr, "mpi_win_create @ "//routineN)
-    t_end = m_walltime()
-    CALL add_perf(perf_id=20, time=t_end-t_start)
-#else
-    NULLIFY(window%src_r, window%src_d)
-    NULLIFY(window%src_c, window%src_z)
-    NULLIFY(window%src_i, window%src_l)
-    window%src_d => range
-#endif
-    IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
-
-  END SUBROUTINE mp_win_create_d
-
-
-! *****************************************************************************
-!> \brief Fetch access using RMA
-!> \author UB
-!> \param[in] window       RMA access window
-!> \param[in] remote       remote process
-!> \param[in] offset       offset in remote window (starting at 0)
-!> \param[in] len          amount of data to fetch
-!> \param[out] storage     integer storage of fetched data
-! *****************************************************************************
-  SUBROUTINE mp_rma_get_d(window, remote, offset, len, storage)
-    TYPE(mp_window_type), INTENT(IN) :: window
-    INTEGER, INTENT(IN)              :: remote
-    INTEGER, INTENT(IN)              :: offset
-    REAL(kind=real_8), DIMENSION(:), POINTER   :: storage
-    INTEGER, INTENT(IN)              :: len
-    CHARACTER(len=*), PARAMETER :: routineN = 'mp_rma_get_d', &
-         routineP = moduleN//':'//routineN
-    INTEGER                   :: ierr, handle
-!   ---------------------------------------------------------------------------
-    IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
-#if defined(__parallel)
-    t_start = m_walltime()
-    ierr = 0
-    CALL MPI_GET(storage, len, MPI_DOUBLE_PRECISION, remote,&
-         INT (offset, MPI_ADDRESS_KIND), len, MPI_DOUBLE_PRECISION, window%id, ierr)
-    IF (ierr /= 0) CALL mp_stop(ierr, "mpi_get @ "//routineN)
-    t_end = m_walltime()
-    CALL add_perf(perf_id=17, count=1, time=t_end-t_start,&
-         msg_size=len*real_8_size)
-#else
-    storage(LBOUND(storage,1):LBOUND(storage,1)+len-1) &
-         = window%src_d(LBOUND(window%src_i,1)+offset&
-         : LBOUND(window%src_i,1)+offset+len-1)
-#endif
-    IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
-  END SUBROUTINE mp_rma_get_d
-
-
-! *****************************************************************************
-!> \brief Store access using RMA
-!> \author UB
-!> \param[in] window       RMA access window
-!> \param[in] storage      integer data to store
-!> \param[in] len          amount of data to store
-!> \param[in] remote       remote process
-!> \param[in] offset       offset in remote window (starting at 0)
-! *****************************************************************************
-  SUBROUTINE mp_rma_put_d(window, storage, len, remote, offset)
-    TYPE(mp_window_type), INTENT(IN) :: window
-    INTEGER, INTENT(IN)              :: remote
-    INTEGER, INTENT(IN)              :: offset
-    REAL(kind=real_8), DIMENSION(:), POINTER   :: storage
-    INTEGER, INTENT(IN)              :: len
-    CHARACTER(len=*), PARAMETER :: routineN = 'mp_rma_put_d', &
-         routineP = moduleN//':'//routineN
-    INTEGER                        :: ierr, handle
-    REAL(kind=real_8), DIMENSION(:), POINTER :: win_data
-!   ---------------------------------------------------------------------------
-    IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
-
-#if defined(__parallel)
-    t_start = m_walltime()
-    ierr = 0
-    CALL MPI_PUT(storage, len, MPI_DOUBLE_PRECISION, remote,&
-         INT (offset, MPI_ADDRESS_KIND), len, MPI_DOUBLE_PRECISION, window, ierr)
-    IF (ierr /= 0) CALL mp_stop(ierr, "mpi_put @ "//routineN)
-    t_end = m_walltime()
-    CALL add_perf(perf_id=16, count=1, time=t_end-t_start,&
-         msg_size=real_8_size*len)
-#else
-    win_data => window%src_d
-    win_data(LBOUND(window%src_i,1)+offset &
-         : LBOUND(window%src_i,1)+offset+len-1) =&
-    storage(LBOUND(storage,1):LBOUND(storage,1)+len-1)
-#endif
-    IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
-  END SUBROUTINE mp_rma_put_d
-
-
-! *****************************************************************************
 !> \brief Allocates special parallel memory
 !> \author UB
 !> \param[in]  data      pointer to integer array to allocate
@@ -2329,15 +2245,17 @@
     REAL(kind=real_8), DIMENSION(:), POINTER      :: DATA
     INTEGER, INTENT(IN)                 :: len
     INTEGER, INTENT(OUT), OPTIONAL      :: stat
-    INTEGER                   :: ierr, handle
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_allocate_d', &
          routineP = moduleN//':'//routineN
-!   ---------------------------------------------------------------------------
+
+    INTEGER                             :: ierr, handle
+
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    ierr = 0
 #if defined(__parallel)
     t_start = m_walltime()
-    ierr = 0
     NULLIFY(DATA)
     CALL mp_alloc_mem(DATA, len, stat=ierr)
     IF (PRESENT (stat)) THEN
@@ -2358,7 +2276,6 @@
     IF (ASSOCIATED(mp_external_timestop)) CALL mp_external_timestop(handle)
   END SUBROUTINE mp_allocate_d
 
-
 ! *****************************************************************************
 !> \brief Deallocates special parallel memory
 !> \author UB
@@ -2367,15 +2284,17 @@
   SUBROUTINE mp_deallocate_d(DATA, stat)
     REAL(kind=real_8), DIMENSION(:), POINTER      :: DATA
     INTEGER, INTENT(OUT), OPTIONAL      :: stat
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_deallocate_d', &
          routineP = moduleN//':'//routineN
-    INTEGER                   :: ierr, handle
-!   ---------------------------------------------------------------------------
+
+    INTEGER                             :: ierr, handle
+
     IF (ASSOCIATED(mp_external_timeset)) CALL mp_external_timeset(routineN,handle)
 
+    ierr = 0
 #if defined(__parallel)
     t_start = m_walltime()
-    ierr = 0
     CALL mp_free_mem(DATA, ierr)
     IF (PRESENT (stat)) THEN
        stat = ierr
@@ -2411,12 +2330,17 @@
     REAL(kind=real_8), INTENT(IN)                      :: msg(:)
     INTEGER, INTENT(IN)                        :: fh
     INTEGER, INTENT(IN), OPTIONAL              :: msglen
-    INTEGER                                    :: ierr, msg_len
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_write_at_dv', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr, msg_len
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
     msg_len = SIZE(msg)
     IF (PRESENT(msglen)) msg_len = msglen
 #if defined(__parallel)
@@ -2432,12 +2356,17 @@
   SUBROUTINE mp_file_write_at_d(fh, offset, msg)
     REAL(kind=real_8), INTENT(IN)               :: msg
     INTEGER, INTENT(IN)                        :: fh
-    INTEGER                                    :: ierr
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_write_at_d', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
     CALL MPI_FILE_WRITE_AT(fh, offset, msg, 1, MPI_DOUBLE_PRECISION, status, ierr)
@@ -2458,12 +2387,18 @@
     REAL(kind=real_8), INTENT(IN)                      :: msg(:)
     INTEGER, INTENT(IN)                        :: fh
     INTEGER, INTENT(IN), OPTIONAL              :: msglen
-    INTEGER                                    :: ierr, msg_len
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER                                    :: msg_len
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_write_at_all_dv', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
     msg_len = SIZE(msg)
     IF (PRESENT(msglen)) msg_len = msglen
 #if defined(__parallel)
@@ -2479,12 +2414,17 @@
   SUBROUTINE mp_file_write_at_all_d(fh, offset, msg)
     REAL(kind=real_8), INTENT(IN)               :: msg
     INTEGER, INTENT(IN)                        :: fh
-    INTEGER                                    :: ierr
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_write_at_all_d', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
     CALL MPI_FILE_WRITE_AT_ALL(fh, offset, msg, 1, MPI_DOUBLE_PRECISION, status, ierr)
@@ -2494,7 +2434,6 @@
     WRITE(UNIT=fh, POS=offset+1) msg
 #endif
   END SUBROUTINE mp_file_write_at_all_d
-
 
 ! *****************************************************************************
 !> \brief (parallel) Blocking individual file read using explicit offsets
@@ -2510,12 +2449,18 @@
     REAL(kind=real_8), INTENT(OUT)                     :: msg(:)
     INTEGER, INTENT(IN)                        :: fh
     INTEGER, INTENT(IN), OPTIONAL              :: msglen
-    INTEGER                                    :: ierr, msg_len
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER                                    :: msg_len
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_read_at_dv', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
     msg_len = SIZE(msg)
     IF (PRESENT(msglen)) msg_len = msglen
 #if defined(__parallel)
@@ -2531,12 +2476,18 @@
   SUBROUTINE mp_file_read_at_d(fh, offset, msg)
     REAL(kind=real_8), INTENT(OUT)               :: msg
     INTEGER, INTENT(IN)                        :: fh
-    INTEGER                                    :: ierr
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_read_at_d', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
     CALL MPI_FILE_READ_AT(fh, offset, msg, 1, MPI_DOUBLE_PRECISION, status, ierr)
@@ -2557,12 +2508,17 @@
     REAL(kind=real_8), INTENT(OUT)                     :: msg(:)
     INTEGER, INTENT(IN)                        :: fh
     INTEGER, INTENT(IN), OPTIONAL              :: msglen
-    INTEGER                                    :: ierr, msg_len
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_read_at_all_dv', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr, msg_len
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
     msg_len = SIZE(msg)
     IF (PRESENT(msglen)) msg_len = msglen
 #if defined(__parallel)
@@ -2578,12 +2534,17 @@
   SUBROUTINE mp_file_read_at_all_d(fh, offset, msg)
     REAL(kind=real_8), INTENT(OUT)               :: msg
     INTEGER, INTENT(IN)                        :: fh
-    INTEGER                                    :: ierr
-    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
-    INTEGER(kind=file_offset), INTENT(IN)        :: offset
+    INTEGER(kind=file_offset), INTENT(IN)      :: offset
+
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_file_read_at_all_d', &
                                    routineP = moduleN//':'//routineN
 
+    INTEGER                                    :: ierr
+#if defined(__parallel)
+    INTEGER, ALLOCATABLE, DIMENSION(:)         :: status
+#endif
+
+    ierr = 0
 #if defined(__parallel)
     ALLOCATE(status(MPI_STATUS_SIZE))
     CALL MPI_FILE_READ_AT_ALL(fh, offset, msg, 1, MPI_DOUBLE_PRECISION, status, ierr)
@@ -2604,8 +2565,10 @@
 
     CHARACTER(len=*), PARAMETER :: routineN = 'mp_make_type_d', &
          routineP = moduleN//':'//routineN
+
     INTEGER :: ierr
-!   ---------------------------------------------------------------------------
+
+    ierr = 0
     NULLIFY (type_descriptor%subtype)
     type_descriptor%length = SIZE (ptr)
 #if defined(__parallel)
@@ -2623,4 +2586,62 @@
     ENDIF
   END FUNCTION mp_type_make_d
 
+! *****************************************************************************
+!> \brief Allocates an array, using MPI_ALLOC_MEM ... this is hackish
+!>        as the Fortran version returns an integer, which we take to be a C_PTR
+!> \param data           data array to allocate
+!> \param[in] len        length (in data elements) of data array allocation
+!> \param[out] stat      (optional) allocation status result
+! *****************************************************************************
+  SUBROUTINE mp_alloc_mem_d(DATA, len, stat)
+    REAL(kind=real_8), DIMENSION(:), POINTER           :: DATA
+    INTEGER, INTENT(IN)                      :: len
+    INTEGER, INTENT(OUT), OPTIONAL           :: stat
 
+#if defined(__parallel)
+    INTEGER                                  :: size, ierr, length, &
+                                                mp_info, mp_res
+    INTEGER(KIND=MPI_ADDRESS_KIND)           :: mp_size
+    TYPE(C_PTR)                              :: mp_baseptr
+
+     length = MAX(len,1)
+     CALL MPI_TYPE_SIZE(MPI_DOUBLE_PRECISION, size, ierr)
+     mp_size = length * size
+     mp_info = MPI_INFO_NULL
+     CALL MPI_ALLOC_MEM(mp_size, mp_info, mp_baseptr, mp_res)
+     CALL C_F_POINTER(mp_baseptr, DATA, (/length/))
+     IF (PRESENT (stat)) stat = mp_res
+#else
+     INTEGER                                 :: length
+     length = MAX(len,1)
+     IF (PRESENT (stat)) THEN
+        ALLOCATE(DATA(length), stat=stat)
+     ELSE
+        ALLOCATE(DATA(length))
+     ENDIF
+#endif
+   END SUBROUTINE mp_alloc_mem_d
+
+! *****************************************************************************
+!> \brief Deallocates am array, ... this is hackish 
+!>        as the Fortran version takes an integer, which we hope to get by reference
+!> \param data           data array to allocate
+!> \param[out] stat      (optional) allocation status result
+! *****************************************************************************
+   SUBROUTINE mp_free_mem_d(DATA, stat)
+    REAL(kind=real_8), DIMENSION(:), &
+      POINTER                                :: DATA
+    INTEGER, INTENT(OUT), OPTIONAL           :: stat
+
+#if defined(__parallel)
+    INTEGER                                  :: mp_res
+    CALL MPI_FREE_MEM(DATA, mp_res)
+    IF (PRESENT (stat)) stat = mp_res
+#else
+     IF (PRESENT (stat)) THEN
+        DEALLOCATE(DATA, stat=stat)
+     ELSE
+        DEALLOCATE(DATA)
+     ENDIF
+#endif
+   END SUBROUTINE mp_free_mem_d

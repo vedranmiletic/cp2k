@@ -16,7 +16,8 @@
 MODULE realspace_grid_types
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
   USE kahan_sum,                       ONLY: accurate_sum
-  USE kinds,                           ONLY: dp, int_8
+  USE kinds,                           ONLY: dp,&
+                                             int_8
   USE mathlib,                         ONLY: det_3x3
   USE message_passing,                 ONLY: &
        mp_comm_dup, mp_comm_free, mp_environ, mp_irecv, mp_isend, &
@@ -35,12 +36,6 @@ MODULE realspace_grid_types
                                              timestop
   USE util,                            ONLY: get_limit
 #include "../common/cp_common_uses.f90"
-
-#if defined(__HAS_NO_OMP_3)
-#define __COLLAPSE3
-#else
-#define __COLLAPSE3 collapse(3)
-#endif
 
   IMPLICIT NONE
 
@@ -187,7 +182,8 @@ CONTAINS
 !>        creation of a descriptor and the actual grid itself (see rs_grid_create)
 !> \par History
 !>      JGH (08-Jun-2003) : nsmax <= 0 indicates fully replicated grid
-!>      Iain Bethune (05-Sep-2008) : modified cut heuristic (c) The Numerical Algorithms Group (NAG) Ltd, 2008 on behalf of the HECToR project
+!>      Iain Bethune (05-Sep-2008) : modified cut heuristic
+!>      (c) The Numerical Algorithms Group (NAG) Ltd, 2008 on behalf of the HECToR project
 !> \author JGH (18-Mar-2001)
 ! *****************************************************************************
   SUBROUTINE rs_grid_create_descriptor ( desc, pw_grid, input_settings, error)
@@ -557,7 +553,7 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
-    desc%real2virtual = real2virtual
+    desc%real2virtual(:) = real2virtual
 
     DO i=0, desc % group_size - 1
       desc % virtual2real(desc % real2virtual(i)) = i
@@ -1899,7 +1895,7 @@ CONTAINS
     CALL timeset(routineN,handle)
     l(1) = LBOUND( rs % r, 1 );l(2) = LBOUND( rs % r, 2 );l(3) = LBOUND( rs % r, 3 )
     u(1) = UBOUND( rs % r, 1 );u(2) = UBOUND( rs % r, 2 );u(3) = UBOUND( rs % r, 3 )
-!$omp parallel do default(none) __COLLAPSE3 &
+!$omp parallel do default(none) collapse(3) &
 !$omp             private(i,j,k) &
 !$omp             shared(rs,l,u)
     DO k = l(3),u(3)
@@ -1936,7 +1932,7 @@ SUBROUTINE rs_grid_mult_and_add ( rs1 ,rs2, rs3, scalar )
    IF(scalar.NE.0.0_dp) THEN
       l(1) = LBOUND( rs1 % r, 1 );l(2) = LBOUND( rs1 % r, 2 );l(3) = LBOUND( rs1 % r, 3 )
       u(1) = UBOUND( rs1 % r, 1 );u(2) = UBOUND( rs1 % r, 2 );u(3) = UBOUND( rs1 % r, 3 )
-!$omp parallel do default(none) __COLLAPSE3 &
+!$omp parallel do default(none) collapse(3) &
 !$omp             private(i,j,k) &
 !$omp             shared(rs1,rs2,rs3,scalar,l,u)
       DO k = l(3),u(3)

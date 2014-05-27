@@ -23,12 +23,22 @@ MODULE input_cp2k_global
        dbcsr_get_conf_combtypes, dbcsr_get_conf_max_ele_block, &
        dbcsr_get_conf_mm_driver, dbcsr_get_conf_mpi_mem, &
        dbcsr_get_conf_subcomm, dbcsr_get_conf_use_comm_thread, mm_driver_acc, &
-       mm_driver_blas, mm_driver_matmul, mm_driver_plasma, mm_driver_smm, &
-       mm_name_acc, mm_name_blas, mm_name_matmul, mm_name_plasma, &
-       mm_name_smm, multrec_limit
+       mm_driver_blas, mm_driver_matmul, mm_driver_smm, mm_name_acc, &
+       mm_name_blas, mm_name_matmul, mm_name_smm, multrec_limit
   USE cp_output_handling,              ONLY: cp_print_key_section_create
   USE f77_blas
-  USE input_constants
+  USE input_constants,                 ONLY: &
+       add_last_numeric, bsse_run, callgraph_all, callgraph_master, &
+       callgraph_none, cell_opt_run, debug_print_level, debug_run, do_atom, &
+       do_band, do_cp2k, do_dbcsr, do_diag_elpa, do_diag_sl, do_diag_sl2, &
+       do_farming, do_fft_fftw3, do_fft_sg, do_opt_basis, do_optimize_input, &
+       do_pdgemm, do_swarm, do_tamc, do_test, do_tree_mc, do_tree_mc_ana, &
+       driver_run, ehrenfest, electronic_spectra_run, energy_force_run, &
+       energy_run, fftw_plan_estimate, fftw_plan_exhaustive, &
+       fftw_plan_measure, fftw_plan_patient, gaussian, geo_opt_run, &
+       high_print_level, linear_response_run, low_print_level, &
+       medium_print_level, mol_dyn_run, mon_car_run, none_run, pint_run, &
+       real_time_propagation, silent_print_level, tree_mc_run, vib_anal
   USE input_keyword_types,             ONLY: keyword_create,&
                                              keyword_release,&
                                              keyword_type
@@ -471,6 +481,10 @@ CONTAINS
     CALL section_add_subsection(section,print_key,error=error)
     CALL section_release(print_key,error=error)
     NULLIFY(sub_section)
+    ! FM section
+    CALL create_fm_section(sub_section,error)
+    CALL section_add_subsection(section,sub_section,error=error)
+    CALL section_release(sub_section,error=error)
     ! Machine arch
     CALL create_march_section(sub_section,error)
     CALL section_add_subsection(section,sub_section,error=error)
@@ -680,14 +694,13 @@ CONTAINS
          usage="mm_driver blas",&
          default_i_val=dbcsr_get_conf_mm_driver(),&
          enum_c_vals=s2a(mm_name_blas,mm_name_matmul,mm_name_smm,&
-                         mm_name_plasma,mm_name_acc),&
+                         mm_name_acc),&
          enum_i_vals=(/mm_driver_blas,mm_driver_matmul,mm_driver_smm,&
-                       mm_driver_plasma,mm_driver_acc/),&
+                       mm_driver_acc/),&
          enum_desc=s2a("BLAS (requires the BLAS library at link time)",&
                        "Fortran MATMUL",&
                        "Library optimised for Small Matrix Multiplies "//&
                        "(requires the SMM library at link time)",&
-                       "PLASMA (requires the PLASMA library at link time)",&
                        "ACC (requires an accelerator backend)"),&
          error=error)
     CALL section_add_keyword(section,keyword,error=error)
@@ -814,6 +827,70 @@ CONTAINS
     CALL section_release(subsection, error=error)
     !
   END SUBROUTINE create_dbcsr_section
+
+! *****************************************************************************
+!> \brief   Creates the dbcsr section for configuring FM
+!> \author  Florian Schiffmann
+!> \date    2011-04-05
+! *****************************************************************************
+  SUBROUTINE create_fm_section(section,error)
+    TYPE(section_type), POINTER              :: section
+    TYPE(cp_error_type), INTENT(inout)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'create_fm_section', &
+      routineP = moduleN//':'//routineN
+
+    LOGICAL                                  :: failure
+    TYPE(keyword_type), POINTER              :: keyword
+
+    CPPrecondition(.NOT.ASSOCIATED(section),cp_failure_level,routineP,error,failure)
+    CALL section_create(section,name="FM",&
+         description="Configuration options for the full matrices.",&
+         n_keywords=1, n_subsections=0, repeats=.FALSE., required=.FALSE.,&
+         error=error)
+
+    NULLIFY (keyword)
+
+    CALL keyword_create(keyword, name="NROW_BLOCKS",&
+         description="Defines the number of rows per scalapack block in "//&
+         "the creation of block cyclic dense matrices ",&
+         default_i_val=32,error=error)
+    CALL section_add_keyword(section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+
+    CALL keyword_create(keyword, name="NCOL_BLOCKS",&
+         description="Defines the number of columns per scalapack block in "//&
+         "the creation of vlock cyclic dense matrices ",&
+         default_i_val=32,error=error)
+    CALL section_add_keyword(section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+
+    CALL keyword_create(keyword, name="FORCE_BLOCK_SIZE",&
+         description="Ensure for small matrices that the layout is compatible "//&
+                     "with bigger ones, i.e. no subdivision is performed (can break LAPACK!!!).",&
+         usage="FORCE_BLOCK_SIZE",&
+         default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
+    CALL section_add_keyword(section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+
+    CALL keyword_create(keyword, name="TYPE_OF_MATRIX_MULTIPLICATION",&
+         description="Allows to switch between scalapack pdgemm and dbcsr_multiply. "//&
+                     "On normal systems pdgemm is recommended on system with GPU "//&
+                     "is optimized and can give better performance. NOTE: if DBCSR is employed "//&
+                     "FORCE_BLOCK_SIZE should be set. The perfomance on GPU's dependes "//&
+                     "crucially on the BLOCK_SIZES. Make sure optimized kernels are available.",&
+         usage="TYPE_OF_MATRIX_MULTIPLICATION ELPA",&
+         default_i_val=do_pdgemm, &
+         enum_i_vals=(/do_pdgemm,do_dbcsr/),&
+         enum_c_vals=s2a("PDGEMM","DBCSR_MM"),&
+         enum_desc=s2a("Standard scalapack: pdgemm",&
+                       "DBCSR_MM is employed. This needs local transformation of the matrices"),&
+         supported_feature=.TRUE.,error=error)
+    CALL section_add_keyword(section,keyword,error=error)
+    CALL keyword_release(keyword,error=error)
+
+    !
+  END SUBROUTINE create_fm_section
 
 
 END MODULE input_cp2k_global

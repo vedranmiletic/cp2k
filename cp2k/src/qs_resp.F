@@ -15,7 +15,7 @@ MODULE qs_resp
   USE atomic_charges,                  ONLY: print_atomic_charges
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_output_handling,              ONLY: cp_p_file,&
                                              cp_print_key_finished_output,&
@@ -90,8 +90,7 @@ MODULE qs_resp
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'qs_resp'
 
-  PUBLIC :: resp_fit,&
-            resp_type
+  PUBLIC :: resp_fit
 
   TYPE resp_type
    LOGICAL                                :: equal_charges, itc,& 

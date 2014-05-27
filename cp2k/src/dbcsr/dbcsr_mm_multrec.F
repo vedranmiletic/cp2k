@@ -21,7 +21,13 @@ MODULE dbcsr_mm_multrec
   USE array_types,                     ONLY: array_data,&
                                              array_equality
   USE dbcsr_config,                    ONLY: multrec_limit
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: dbcsr_assert,&
+                                             dbcsr_error_set,&
+                                             dbcsr_error_stop,&
+                                             dbcsr_error_type,&
+                                             dbcsr_fatal_level,&
+                                             dbcsr_internal_error,&
+                                             dbcsr_wrong_args_error
   USE dbcsr_methods,                   ONLY: dbcsr_distribution_col_dist,&
                                              dbcsr_distribution_has_threads,&
                                              dbcsr_distribution_local_cols,&
@@ -187,8 +193,9 @@ MODULE dbcsr_mm_multrec
     INTEGER                                  :: c_nblkcols_local, &
                                                 c_nblkrows_local, &
                                                 error_handler, i, ithread
-    INTEGER, DIMENSION(:), POINTER           :: c_local_cols, c_local_rows, &
-                                                product_thread_dist
+    INTEGER, DIMENSION(:), POINTER           :: c_local_cols, c_local_rows
+
+!$  INTEGER, DIMENSION(:), POINTER           :: product_thread_dist
 
 !   ---------------------------------------------------------------------------
 
@@ -738,26 +745,6 @@ MODULE dbcsr_mm_multrec
        col_i(i) = local_cols(col_i(i))
     END FORALL
   END SUBROUTINE remap_local2global
-
-  !> \brief Maps between locally-indexed arrays with different local indexing.
-  PURE SUBROUTINE remap_local2local(n_local_src, local_remap, local_src, &
-       n_globals, global_dst)
-    INTEGER, INTENT(IN)                      :: n_local_src
-    INTEGER, DIMENSION(1:n_local_src), &
-      INTENT(OUT)                            :: local_remap
-    INTEGER, DIMENSION(1:n_local_src), &
-      INTENT(IN)                             :: local_src
-    INTEGER, INTENT(IN)                      :: n_globals
-    INTEGER, DIMENSION(1:n_globals), &
-      INTENT(IN)                             :: global_dst
-
-    INTEGER                                  :: i
-
-    FORALL (i = 1 : n_local_src)
-       local_remap(i) = global_dst (local_src (i))
-    END FORALL
-  END SUBROUTINE remap_local2local
-
 
 ! *****************************************************************************
 !> \brief Gathers the local elements from all data (full_data)

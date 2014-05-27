@@ -11,16 +11,16 @@ MODULE bfgs_optimizer
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: get_atomic_kind,&
                                              get_atomic_kind_set
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE constraint_fxd,                  ONLY: fix_atom_control
   USE cp_blacs_env,                    ONLY: cp_blacs_env_create,&
-                                             cp_blacs_env_release
+                                             cp_blacs_env_release,&
+                                             cp_blacs_env_type
   USE cp_external_control,             ONLY: external_control
   USE cp_files,                        ONLY: close_file,&
                                              open_file
   USE cp_fm_basic_linalg,              ONLY: cp_fm_column_scale,&
-                                             cp_fm_gemm,&
                                              cp_fm_transpose
   USE cp_fm_diag,                      ONLY: choose_eigv_solver
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
@@ -34,13 +34,13 @@ MODULE bfgs_optimizer
                                              cp_fm_to_fm,&
                                              cp_fm_type,&
                                              cp_fm_write_unformatted
+  USE cp_gemm_interface,               ONLY: cp_gemm
   USE cp_output_handling,              ONLY: cp_iterate,&
                                              cp_p_file,&
                                              cp_print_key_finished_output,&
                                              cp_print_key_should_output,&
                                              cp_print_key_unit_nr
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_subsys_types,                 ONLY: cp_subsys_get,&
                                              cp_subsys_type
   USE force_env_types,                 ONLY: force_env_get,&
@@ -204,7 +204,7 @@ CONTAINS
           END DO
           CALL cp_fm_to_fm(eigvec_mat,hess_tmp,error)
           CALL cp_fm_column_scale(eigvec_mat,eigval)
-          CALL cp_fm_gemm("N","T",ndf,ndf,ndf,one,hess_tmp,eigvec_mat,zero,hess_mat,error=error)
+          CALL cp_gemm("N","T",ndf,ndf,ndf,one,hess_tmp,eigvec_mat,zero,hess_mat,error=error)
        ENDIF
     ELSE
        CALL cp_fm_set_all(hess_mat,alpha=zero,beta=one,error=error)
@@ -287,8 +287,8 @@ CONTAINS
        END IF
 
        ! Setting the present positions & gradients as old
-       xold = x0
-       gold = g
+       xold(:) = x0
+       gold(:) = g
 
        ! Copying hessian hes to (ndf x ndf) matrix hes_mat for diagonalization
        CALL cp_fm_to_fm(hess_mat,hess_tmp,error)
@@ -306,7 +306,7 @@ CONTAINS
 
        IF(use_rfo)THEN
           CALL set_hes_eig(ndf,eigval,work)
-          dx = eigval
+          dx(:) = eigval
           CALL rat_fun_opt(ndf,dg,eigval,work,eigvec_mat,g,para_env,error)
        END IF
        CALL geoopt_get_step(ndf,eigval,eigvec_mat,hess_tmp,dr,g,para_env,use_rfo,error)
@@ -686,7 +686,7 @@ CONTAINS
     CALL cp_fm_get_info(eigvec_mat,matrix_struct=matrix_struct,error=error)
     CALL cp_fm_create(tmp, matrix_struct ,name="tmp",error=error)
 
-    CALL cp_fm_gemm("N","T",ndf,ndf,ndf,one,hess_tmp,eigvec_mat,zero,tmp,error=error)
+    CALL cp_gemm("N","T",ndf,ndf,ndf,one,hess_tmp,eigvec_mat,zero,tmp,error=error)
 
     CALL cp_fm_transpose(tmp,hess_tmp,error)
     CALL cp_fm_release(tmp,error)

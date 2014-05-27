@@ -3,7 +3,7 @@
 !   Copyright (C) 2000 - 2014  CP2K developers group                          !
 !-----------------------------------------------------------------------------!
 MODULE optimize_input
-  USE cell_types,                      ONLY: parse_cell_line
+  USE cell_methods,                    ONLY: parse_cell_line
   USE cp_external_control,             ONLY: external_control
   USE cp_output_handling,              ONLY: cp_add_iter_level,&
                                              cp_iterate,&
@@ -523,7 +523,7 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'read_reference_data', &
       routineP = moduleN//':'//routineN
 
-    CHARACTER(len=default_path_length)       :: filename, title
+    CHARACTER(len=default_path_length)       :: filename
     CHARACTER(len=default_string_length)     :: AA
     INTEGER                                  :: cell_itimes, handle, i, &
                                                 iframe, n_frames, &
@@ -532,7 +532,6 @@ CONTAINS
     LOGICAL                                  :: at_end, test_ok
     REAL(KIND=dp)                            :: cell_time, trj_epot, &
                                                 trj_time, vec(3), vol
-    REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: force
     TYPE(cp_parser_type), POINTER            :: local_parser
 
     CALL timeset(routineN,handle)
@@ -643,7 +642,7 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'parse_input', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, ivar, method, n_var
+    INTEGER                                  :: handle, ivar, n_var
     LOGICAL                                  :: explicit, failure
     TYPE(section_vals_type), POINTER         :: fm_section, oi_section, &
                                                 variable_section

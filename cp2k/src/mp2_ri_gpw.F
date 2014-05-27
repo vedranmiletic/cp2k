@@ -14,10 +14,11 @@ MODULE mp2_ri_gpw
   USE basis_set_types,                 ONLY: gto_basis_set_type
   USE bibliography,                    ONLY: DelBen2013,&
                                              cite_reference
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_blacs_env,                    ONLY: cp_blacs_env_create,&
-                                             cp_blacs_env_release
+                                             cp_blacs_env_release,&
+                                             cp_blacs_env_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: &
        array_i1d_obj, array_release, cp_create_bl_distribution, &
@@ -28,7 +29,6 @@ MODULE mp2_ri_gpw
        dbcsr_mp_nprows, dbcsr_type_no_symmetry, dbcsr_type_real_default
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm
   USE cp_fm_basic_linalg,              ONLY: cp_fm_triangular_invert
-! USE f77_blas
   USE cp_fm_cholesky,                  ONLY: cp_fm_cholesky_decompose
   USE cp_fm_diag,                      ONLY: cp_fm_syevx
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
@@ -42,8 +42,7 @@ MODULE mp2_ri_gpw
                                              cp_fm_type
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE gaussian_gridlevels,             ONLY: gaussian_gridlevel
   USE input_constants,                 ONLY: use_orb_basis_set,&
@@ -57,7 +56,8 @@ MODULE mp2_ri_gpw
                                              mp_max,&
                                              mp_min,&
                                              mp_sendrecv,&
-                                             mp_sum
+                                             mp_sum,&
+                                             mp_sync
   USE molecule_kind_types,             ONLY: molecule_kind_type
   USE molecule_types_new,              ONLY: molecule_type
   USE mp2_ri_grad_util,                ONLY: complete_gamma
@@ -99,8 +99,7 @@ MODULE mp2_ri_gpw
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'mp2_ri_gpw'
 
   PUBLIC :: mp2_ri_gpw_compute_in,&
-            mp2_ri_gpw_compute_en,&
-            replicate_iaK_2intgroup
+            mp2_ri_gpw_compute_en
 
 
   CONTAINS
@@ -162,13 +161,12 @@ MODULE mp2_ri_gpw
     CHARACTER(LEN=*), PARAMETER :: routineN = 'mp2_ri_gpw_compute_in', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: a, handle, handle2, handle3, i, i_counter, iproc, itmp(2), &
-      LLL, max_row_col_local, max_row_col_local_beta, my_B_size, &
-      my_B_size_beta, my_B_virtual_end, my_B_virtual_end_beta, &
-      my_B_virtual_start, my_B_virtual_start_beta, my_group_L_end, &
-      my_group_L_size, my_group_L_start, ncol_local, nfullcols_total, &
-      nfullrows_total, ngroup, nrow_local, num_small_eigen, stat, virtual, &
-      virtual_beta
+    INTEGER :: handle, handle2, handle3, i, i_counter, iproc, itmp(2), LLL, &
+      max_row_col_local, max_row_col_local_beta, my_B_size, my_B_size_beta, &
+      my_B_virtual_end, my_B_virtual_end_beta, my_B_virtual_start, &
+      my_B_virtual_start_beta, my_group_L_end, my_group_L_size, &
+      my_group_L_start, ncol_local, nfullcols_total, nfullrows_total, ngroup, &
+      nrow_local, num_small_eigen, stat, virtual, virtual_beta
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: sub_proc_map
     INTEGER, ALLOCATABLE, DIMENSION(:, :)    :: local_col_row_info, &
                                                 local_col_row_info_beta
@@ -422,6 +420,8 @@ MODULE mp2_ri_gpw
 
     IF (unit_nr>0) THEN
       WRITE (UNIT=unit_nr,FMT="(T3,A,T75,i6)")&
+               "RI_INFO| Occupied  basis set size:", homo,&
+               "RI_INFO| Virtual   basis set size:", virtual,&
                "RI_INFO| Auxiliary basis set size:", dimen_RI 
 
       mem_for_iaK=dimen_RI*REAL(homo,KIND=dp)*virtual*8.0_dp/(1024_dp**2)
@@ -433,6 +433,8 @@ MODULE mp2_ri_gpw
       CALL m_flush(unit_nr)
     ENDIF
 
+    CALL timeset(routineN//"_alloc",handle2)
+    CALL mp_sync(para_env%group) ! sync to see memory output
 
     ! array that will store the (ia|K) integrals
     ALLOCATE(BIb_C(my_group_L_size,my_B_size,homo),STAT=stat)
@@ -444,6 +446,8 @@ MODULE mp2_ri_gpw
       CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
       BIb_C_beta=0.0_dp
     END IF
+
+    CALL timestop(handle2)
 
     CALL timeset(routineN//"_loop",handle2)
     i_counter=0
@@ -576,8 +580,7 @@ MODULE mp2_ri_gpw
                                                 sub_sizes_array, &
                                                 sub_starts_array
     INTEGER, DIMENSION(:), POINTER           :: col_indices, la_max, la_min, &
-                                                lb_max, lb_min, npgfa, nsgfa, &
-                                                row_indices
+                                                npgfa, nsgfa, row_indices
     INTEGER, DIMENSION(:, :), POINTER        :: first_sgfa
     LOGICAL                                  :: failure, map_it_here
     REAL(KIND=dp)                            :: min_mem_for_QK, pair_energy, &
@@ -588,8 +591,7 @@ MODULE mp2_ri_gpw
                                                 L_local_col
     REAL(KIND=dp), DIMENSION(3)              :: ra, rab
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a
-    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, rpgfa, sphi_a, zeta, &
-                                                zetb
+    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, rpgfa, sphi_a, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -930,7 +932,7 @@ MODULE mp2_ri_gpw
       DEALLOCATE(L_local_col)
       ALLOCATE(L_local_col(dimen_RI,rec_L_size),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-      L_local_col=L_external_col
+      L_local_col(:,:)=L_external_col
 
       DEALLOCATE(L_external_col)
 
@@ -1146,7 +1148,7 @@ MODULE mp2_ri_gpw
         END IF
       END DO
 
-      local_col_row_info=rec_col_row_info
+      local_col_row_info(:,:)=rec_col_row_info
       DEALLOCATE(local_L)
       ALLOCATE(local_L(nrow_rec,ncol_rec),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -1200,7 +1202,7 @@ MODULE mp2_ri_gpw
     ALLOCATE(rec_col_row_info(0:max_row_col_local,2),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
 
-    rec_col_row_info=local_col_row_info
+    rec_col_row_info(:,:)=local_col_row_info
 
     nrow_rec=rec_col_row_info(0,1)
     ncol_rec=rec_col_row_info(0,2)
@@ -1520,7 +1522,7 @@ MODULE mp2_ri_gpw
       iiB=SIZE(sizes_array)
       ALLOCATE(sizes_array_orig(0:iiB-1),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-      sizes_array_orig=sizes_array
+      sizes_array_orig(:)=sizes_array
     END IF  
  
     my_group_L_size_orig=my_group_L_size
@@ -1537,7 +1539,7 @@ MODULE mp2_ri_gpw
 
     ALLOCATE(sizes_array(0:integ_group_size-1),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-    sizes_array=new_sizes_array
+    sizes_array(:)=new_sizes_array
       
     DEALLOCATE(new_sizes_array)
 
@@ -2031,7 +2033,7 @@ MODULE mp2_ri_gpw
                                     external_ab,proc_receive,&
                                     para_env_sub%group)
 
-                  mp2_env%ri_grad%P_ab=mp2_env%ri_grad%P_ab+external_ab
+                  mp2_env%ri_grad%P_ab(:,:)=mp2_env%ri_grad%P_ab+external_ab
 
                   DEALLOCATE(external_ab)
                   DEALLOCATE(send_ab)
@@ -2807,7 +2809,7 @@ MODULE mp2_ri_gpw
       iiB=SIZE(sizes_array_orig)
       ALLOCATE(sizes_array(0:iiB-1),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-      sizes_array=sizes_array_orig
+      sizes_array(:)=sizes_array_orig
       DEALLOCATE(sizes_array_orig)
 
       ! make a copy of the original integrals (ia|Q)
@@ -2841,11 +2843,11 @@ MODULE mp2_ri_gpw
                                     mp2_env%ri_grad%Gamma_P_ia(1:homo,1:my_B_size,1:my_group_L_size)+BIb_C
 
       END DO
-      BIb_C=mp2_env%ri_grad%Gamma_P_ia(1:homo,1:my_B_size,1:my_group_L_size)
+      BIb_C(:,:,:)=mp2_env%ri_grad%Gamma_P_ia(1:homo,1:my_B_size,1:my_group_L_size)
       DEALLOCATE(mp2_env%ri_grad%Gamma_P_ia)
       ALLOCATE(mp2_env%ri_grad%Gamma_P_ia(homo,my_B_size,my_group_L_size),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-      mp2_env%ri_grad%Gamma_P_ia=BIb_C
+      mp2_env%ri_grad%Gamma_P_ia(:,:,:)=BIb_C
       DEALLOCATE(BIb_C)
 
       CALL complete_gamma(mp2_env,B_ia_Q,dimen_RI,homo,virtual,para_env,para_env_sub,ngroup,color_sub,&
@@ -3016,7 +3018,7 @@ MODULE mp2_ri_gpw
       ! replication scheme using mp_sendrecv
       ALLOCATE(BIb_C_copy(my_group_L_size,my_B_size,homo),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-      BIb_C_copy=BIb_C
+      BIb_C_copy(:,:,:)=BIb_C
 
       DEALLOCATE(BIb_C)
 

@@ -12,7 +12,7 @@ MODULE scptb_ks_matrix
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type,&
@@ -796,7 +796,7 @@ CONTAINS
     ALLOCATE(charges(natom),stat=istat)
     CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
     dqv = 1._dp/SQRT(4._dp*pi)
-    charges = mcharge*dqv
+    charges(:) = mcharge*dqv
     scptb_control => dft_control%qs_control%scptb_control
 
     NULLIFY(cvec,cpol,cself,cp,cw)

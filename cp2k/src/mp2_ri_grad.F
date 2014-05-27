@@ -9,11 +9,13 @@
 !>      10.2013 created [Mauro Del Ben]
 ! *****************************************************************************
 MODULE mp2_ri_grad
+! USE f77_blas
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_add, cp_dbcsr_copy, cp_dbcsr_copy_into_existing, &
@@ -21,8 +23,6 @@ MODULE mp2_ri_grad
        cp_dbcsr_release, cp_dbcsr_set, cp_dbcsr_transposed, cp_dbcsr_type, &
        dbcsr_type_no_symmetry, dbcsr_type_symmetric
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm
-  USE cp_fm_basic_linalg,              ONLY: cp_fm_gemm
-! USE f77_blas
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
                                              cp_fm_struct_release,&
                                              cp_fm_struct_type
@@ -34,10 +34,10 @@ MODULE mp2_ri_grad
                                              cp_fm_release,&
                                              cp_fm_set_all,&
                                              cp_fm_type
+  USE cp_gemm_interface,               ONLY: cp_gemm
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE gaussian_gridlevels,             ONLY: gaussian_gridlevel
   USE input_constants,                 ONLY: use_orb_basis_set,&
@@ -149,8 +149,7 @@ MODULE mp2_ri_grad
       natom, ncoa, nkind, nseta, offset, sgfa, stat, tp(3), ub(3), virtual
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: atom_of_kind, kind_of
     INTEGER, DIMENSION(3)                    :: comp
-    INTEGER, DIMENSION(:), POINTER           :: la_max, la_min, lb_max, &
-                                                lb_min, npgfa, nsgfa
+    INTEGER, DIMENSION(:), POINTER           :: la_max, la_min, npgfa, nsgfa
     INTEGER, DIMENSION(:, :), POINTER        :: first_sgfa
     LOGICAL                                  :: failure, map_it_here, &
                                                 skip_shell, use_virial
@@ -164,7 +163,7 @@ MODULE mp2_ri_grad
                                                 my_virial_b
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, pab, rpgfa, sphi_a, &
-                                                zeta, zetb
+                                                zeta
     TYPE(cp_dbcsr_p_type)                    :: Lag_mu_i_1, Lag_nu_a_2, &
                                                 matrix_P_inu, matrix_P_munu, &
                                                 matrix_P_munu_nosym
@@ -552,7 +551,7 @@ MODULE mp2_ri_grad
         ! hartree potential derivatives
         CALL timeset(routineN//"_Virial",handle3)
         wf_vector=0.0_dp
-        wf_vector=-2.0_dp*G_PQ_local(:,L_counter)
+        wf_vector(:)=-2.0_dp*G_PQ_local(:,L_counter)
         CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
                                     atomic_kind_set,cell,dft_control,particle_set, &
                                     pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
@@ -1451,7 +1450,7 @@ MODULE mp2_ri_grad
     CALL cp_fm_struct_release(fm_struct_tmp,error=error)
     CALL cp_fm_set_all(fm_P_ij, 0.0_dp,error=error)
 
-    CALL cp_fm_gemm('T','N',homo,homo,dimen,1.0_dp,&
+    CALL cp_gemm('T','N',homo,homo,dimen,1.0_dp,&
                     mo_coeff,L_mu_q,0.0_dp,fm_P_ij,&
                     error=error,&
                     a_first_row=1,&
@@ -1461,7 +1460,7 @@ MODULE mp2_ri_grad
                     c_first_row=1)
     ! don't know if it is better to transpose (for communication reasons)
     ! or just recompute the transposed matrix
-    CALL cp_fm_gemm('T','N',homo,homo,dimen,-2.0_dp,&
+    CALL cp_gemm('T','N',homo,homo,dimen,-2.0_dp,&
                     L_mu_q,mo_coeff,2.0_dp,fm_P_ij,&
                     error=error,&
                     a_first_row=1,&
@@ -1613,7 +1612,7 @@ MODULE mp2_ri_grad
     CALL cp_fm_struct_release(fm_struct_tmp,error=error)
 
     ! all block
-    CALL cp_fm_gemm('T','N',dimen,dimen,dimen,2.0_dp,&
+    CALL cp_gemm('T','N',dimen,dimen,dimen,2.0_dp,&
                     L_mu_q,mo_coeff,0.0_dp,mp2_env%ri_grad%W_mo,&
                     error=error,&
                     a_first_row=1,&
@@ -1623,7 +1622,7 @@ MODULE mp2_ri_grad
                     c_first_row=1)
 
     ! occ-occ block
-    CALL cp_fm_gemm('T','N',homo,homo,dimen,-2.0_dp,&
+    CALL cp_gemm('T','N',homo,homo,dimen,-2.0_dp,&
                     L_mu_q,mo_coeff,0.0_dp,mp2_env%ri_grad%W_mo,&
                     error=error,&
                     a_first_row=1,&
@@ -1633,7 +1632,7 @@ MODULE mp2_ri_grad
                     c_first_row=1)
 
     ! occ-virt block
-    CALL cp_fm_gemm('T','N',homo,virtual,dimen,2.0_dp,&
+    CALL cp_gemm('T','N',homo,virtual,dimen,2.0_dp,&
                     mo_coeff,L_mu_q,0.0_dp,mp2_env%ri_grad%W_mo,&
                     error=error,&
                     a_first_row=1,&
@@ -1655,7 +1654,7 @@ MODULE mp2_ri_grad
     CALL cp_fm_set_all(mp2_env%ri_grad%L_jb, 0.0_dp,error=error)
  
     ! first Virtual
-    CALL cp_fm_gemm('T','N',homo,virtual,dimen,1.0_dp,&
+    CALL cp_gemm('T','N',homo,virtual,dimen,1.0_dp,&
                     L_mu_q,mo_coeff,0.0_dp,mp2_env%ri_grad%L_jb,&
                     error=error,&
                     a_first_row=1,&
@@ -1664,7 +1663,7 @@ MODULE mp2_ri_grad
                     c_first_col=1,&
                     c_first_row=1)
     ! then occupied
-    CALL cp_fm_gemm('T','N',homo,virtual,dimen,2.0_dp,&
+    CALL cp_gemm('T','N',homo,virtual,dimen,2.0_dp,&
                     mo_coeff,L_mu_q,2.0_dp,mp2_env%ri_grad%L_jb,&
                     error=error,&
                     a_first_row=1,&

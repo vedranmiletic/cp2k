@@ -18,7 +18,7 @@ MODULE se_fock_matrix_coulomb_ga
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type,&
                                              semi_empirical_control_type
@@ -181,6 +181,10 @@ CONTAINS
 
     failure=.FALSE.
     CALL timeset(routineN,handle)
+
+#ifndef _USE_GA
+    STOP "use _USE_GA "
+#endif
 
     IF ( .NOT. failure ) THEN
        NULLIFY(dft_control,cell,force,particle_set,&
@@ -634,6 +638,10 @@ CONTAINS
     failure=.FALSE.
     CALL timeset(routineN,handle)
 
+#ifndef _USE_GA
+    STOP "use _USE_GA "
+#endif
+
     IF ( .NOT. failure ) THEN
        NULLIFY(dft_control, cell, force,particle_set,local_particles,&
             se_control, ewald_env, ewald_pw, se_nddo_mpole, se_nonbond_env, se_section, mpole,&
@@ -1046,6 +1054,9 @@ CONTAINS
 
     failure=.FALSE.
     CALL timeset(routineN,handle)
+#ifndef _USE_GA
+    STOP "use _USE_GA "
+#endif
     IF ( .NOT. failure ) THEN
        NULLIFY(dft_control, cell, force, particle_set, se_control, se_taper, &
             efield0, efield1, efield2,ga_env)
@@ -1467,6 +1478,9 @@ CONTAINS
 
       failure=.FALSE.
     CALL timeset(routineN,handle)
+#ifndef _USE_GA
+    STOP "use _USE_GA "
+#endif
 
     CALL get_qs_env(qs_env=qs_env, error=error)!sm->dbcsr
 

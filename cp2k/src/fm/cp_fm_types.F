@@ -17,6 +17,7 @@ MODULE cp_fm_types
                                              cp_blacs_gridexit,&
                                              cp_blacs_gridinfo,&
                                              cp_blacs_gridinit
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_files,                        ONLY: close_file,&
                                              open_file
   USE cp_fm_struct,                    ONLY: cp_fm_struct_equivalent,&
@@ -25,8 +26,7 @@ MODULE cp_fm_types
                                              cp_fm_struct_retain,&
                                              cp_fm_struct_type,&
                                              cp_fm_struct_write
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: default_path_length,&
                                              dp,&
                                              sp
@@ -56,34 +56,36 @@ MODULE cp_fm_types
   LOGICAL, PARAMETER          :: debug_this_module = .TRUE.
 
   INTEGER, SAVE :: last_fm_id_nr = 0
+  INTEGER, PRIVATE :: mm_type=1
 
-  PUBLIC :: cp_fm_type, &
+  PUBLIC :: cp_fm_type,&
             cp_fm_p_type
 
   PUBLIC :: cp_fm_add_to_element,&
             cp_fm_create,&
             cp_fm_retain,&
             cp_fm_release,&
-            cp_fm_get_info, &
-            cp_fm_set_element, &
-            cp_fm_get_element, &
-            cp_fm_get_diag, &          ! get diagonal
-            cp_fm_set_diag, &          ! set diagonal
-            cp_fm_set_all, &           ! set all elements and diagonal
-            cp_fm_set_submatrix, &     ! set a submatrix to given values
-            cp_fm_get_submatrix, &     ! get a submatrix of given values
-            cp_fm_init_random, &
-            cp_fm_maxabsval, &         ! find the maximum absolute value
-            cp_fm_maxabsrownorm, &     ! find the maximum of the sum of the abs of the elements of a row
-            cp_fm_write, &             ! writes lots of information and data (might need further development)
-            cp_fm_to_fm,&              ! copy (parts of) a fm to a fm
-            cp_fm_vectorsnorm,&          ! compute the norm of the column-vectors
-            cp_fm_to_fm_submat,&          ! copy (parts of) a fm to a fm
-            cp_fm_write_unformatted,&   ! writes a full matrix to an open unit
-            cp_fm_read_unformatted      ! reads a full matrix from an open unit
+            cp_fm_get_info,&
+            cp_fm_set_element,&
+            cp_fm_get_element,&
+            cp_fm_get_diag,&  ! get diagonal
+            cp_fm_set_all,&  ! set all elements and diagonal
+            cp_fm_set_submatrix,&  ! set a submatrix to given values
+            cp_fm_get_submatrix,&  ! get a submatrix of given values
+            cp_fm_init_random,&
+            cp_fm_maxabsval,&  ! find the maximum absolute value
+            cp_fm_maxabsrownorm,&  ! find the maximum of the sum of the abs of the elements of a row
+            cp_fm_write,&  ! writes lots of information and data (might need further development)
+            cp_fm_to_fm,&  ! copy (parts of) a fm to a fm
+            cp_fm_vectorsnorm,&  ! compute the norm of the column-vectors
+            cp_fm_to_fm_submat,&  ! copy (parts of) a fm to a fm
+            cp_fm_write_unformatted,&  ! writes a full matrix to an open unit
+            cp_fm_read_unformatted,&  ! reads a full matrix from an open unit
+            cp_fm_setup,&  ! allows to set flags for fms
+            cp_fm_get_mm_type
 
-  PUBLIC :: cp_fm_indxg2p, &
-            cp_fm_indxg2l, &
+  PUBLIC :: cp_fm_indxg2p,&
+            cp_fm_indxg2l,&
             cp_fm_indxl2g
 
   INTERFACE cp_fm_to_fm
@@ -981,9 +983,6 @@ CPSourceFileRef,&
 
     CHARACTER(len=*), PARAMETER :: routineN='cp_fm_get_info',&
          routineP=moduleN//':'//routineN
-    INTEGER i,nprow,npcol,myprow,mypcol, stat
-    TYPE(cp_blacs_env_type), POINTER :: ctxt
-    LOGICAL :: failure
 #if defined(__SCALAPACK)
     INTEGER , EXTERNAL :: indxl2g
 #endif
@@ -1004,7 +1003,7 @@ CPSourceFileRef,&
        nrow_locals => matrix%matrix_struct%nrow_locals
     END IF
     IF (PRESENT(ncol_locals)) THEN
-       nrow_locals => matrix%matrix_struct%ncol_locals
+       ncol_locals => matrix%matrix_struct%ncol_locals
     END IF
 
     CALL cp_fm_struct_get(matrix%matrix_struct, nrow_local=nrow_local,&
@@ -1934,5 +1933,17 @@ CPSourceFileRef,&
 #endif
 
  END FUNCTION  cp_fm_indxl2g
+
+ SUBROUTINE cp_fm_setup(mult_type)
+    INTEGER                                  :: mult_type
+
+   mm_type=mult_type
+ END SUBROUTINE cp_fm_setup
+
+ FUNCTION cp_fm_get_mm_type()  RESULT(res)
+    INTEGER                                  :: res
+
+   res=mm_type
+ END FUNCTION
 
 END MODULE cp_fm_types

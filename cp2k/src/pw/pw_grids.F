@@ -63,7 +63,7 @@ MODULE pw_grids
 
   PRIVATE
   PUBLIC :: pw_grid_create, pw_grid_retain, pw_grid_release
-  PUBLIC :: get_pw_grid_info, set_pw_grid_info, pw_grid_compare
+  PUBLIC :: get_pw_grid_info, pw_grid_compare
   PUBLIC :: pw_grid_setup
   PUBLIC :: pw_grid_change
 
@@ -1219,12 +1219,14 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'order_mask', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: i, i1, i2, icount, ierr, j, &
-                                                j1, j2
-    INTEGER, ALLOCATABLE, DIMENSION(:)       :: cindex, icol, irow, rindex
-    LOGICAL                                  :: failure
+    INTEGER                                  :: i1, i2, icount
 !NB load balance
     INTEGER                                  :: im, ic, jc, ii, jj
+#ifdef ORIGINAL_RAY_DISTRIBUTION
+    INTEGER                                  :: i, ierr, j, j1, j2
+    LOGICAL                                  :: failure
+    INTEGER, ALLOCATABLE, DIMENSION(:)       :: cindex, icol, irow, rindex
+#endif
 
 !------------------------------------------------------------------------------
 
@@ -1759,9 +1761,9 @@ CONTAINS
     nmaps = 1
     IF (pw_grid%grid_span == HALFSPACE) nmaps = 2
 #if defined ( __PW_CUDA ) && !defined ( __PW_CUDA_NO_HOSTALLOC )
-    length = INT(int_size * ng * nmaps, KIND=C_SIZE_T)
+    length = INT(int_size * MAX(ng,1) * MAX(nmaps,1), KIND=C_SIZE_T)
     allocstat = cudaHostAlloc(cptr_g_hatmap, length, cudaHostAllocDefault)
-    CALL c_f_pointer(cptr_g_hatmap, pw_grid%g_hatmap, (/ng, nmaps/))
+    CALL c_f_pointer(cptr_g_hatmap, pw_grid%g_hatmap, (/MAX(ng,1), MAX(nmaps,1)/))
 #elif defined ( __PW_CUDA ) && defined ( __PW_CUDA_NO_HOSTALLOC )
     ALLOCATE(pw_grid%g_hatmap(ng, nmaps), STAT = allocstat)
 #else

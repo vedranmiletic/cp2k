@@ -14,7 +14,7 @@ MODULE eip_environment_types
                                              atomic_kind_list_release,&
                                              atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE cell_types,                      ONLY: cell_release,&
+  USE cell_methods,                    ONLY: cell_release,&
                                              cell_retain,&
                                              cell_type
   USE cp_subsys_types,                 ONLY: cp_subsys_get,&
@@ -51,15 +51,13 @@ MODULE eip_environment_types
   INTEGER, PRIVATE, SAVE :: last_eip_id=0
 
   ! *** Public data types ***
-  PUBLIC :: eip_environment_type, &
-            eip_environment_p_type
+  PUBLIC :: eip_environment_type
 
   ! *** Public subroutines ***
-  PUBLIC :: eip_env_retain, &
-            eip_env_release, &
+  PUBLIC :: eip_env_retain,&
+            eip_env_release,&
             eip_env_set,&
-            eip_env_get, &
-            eip_env_clear, &
+            eip_env_get,&
             eip_env_create
 
 ! *****************************************************************************

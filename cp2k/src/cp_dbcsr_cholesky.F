@@ -25,8 +25,7 @@ MODULE cp_dbcsr_cholesky
   USE cp_fm_types,                     ONLY: cp_fm_create,&
                                              cp_fm_release,&
                                              cp_fm_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: dp,&
                                              sp
   USE timings,                         ONLY: timeset,&
@@ -38,7 +37,7 @@ MODULE cp_dbcsr_cholesky
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cp_dbcsr_cholesky'
 
   PUBLIC :: cp_dbcsr_cholesky_decompose, cp_dbcsr_cholesky_invert,&
-       cp_dbcsr_cholesky_reduce, cp_dbcsr_cholesky_restore
+            cp_dbcsr_cholesky_restore
 
   PRIVATE
 
@@ -71,7 +70,7 @@ CONTAINS
                                                 nfullcols_total, &
                                                 nfullrows_total
     INTEGER, DIMENSION(9)                    :: desca
-    LOGICAL                                  :: failure, ionode
+    LOGICAL                                  :: failure
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a
     REAL(KIND=sp), DIMENSION(:, :), POINTER  :: a_sp
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
@@ -246,7 +245,6 @@ CONTAINS
     REAL(KIND = dp), DIMENSION(:,:), POINTER  :: a,b
     INTEGER                                   :: info,itype,handle
     INTEGER                                   :: n, nfullrows_total, nfullcols_total
-    INTEGER                                   :: nprow,npcol,myprow,mypcol
     INTEGER, DIMENSION(9)                     :: desca,descb
     REAL(KIND = dp)                           :: scale
     LOGICAL                                   :: failure
@@ -331,9 +329,9 @@ CPSourceFileRef,&
 
     REAL(KIND = dp), DIMENSION(:,:), POINTER  :: a,b,out
     REAL(KIND = sp), DIMENSION(:,:), POINTER  :: a_sp,b_sp,out_sp
-    INTEGER                                   :: info,itype,handle
+    INTEGER                                   :: itype,handle
     INTEGER                                   :: n
-    LOGICAL                                   :: ionode, failure
+    LOGICAL                                   :: failure
     REAL(KIND = dp)                           :: alpha
     INTEGER                                   :: myprow, mypcol, i, nfullrows_total, &
          nfullcols_total

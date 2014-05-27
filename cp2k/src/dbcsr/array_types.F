@@ -1,4 +1,4 @@
-!-----------------------------------------------------------------------------!
+!r-----------------------------------------------------------------------------!
 !   CP2K: A general program to perform molecular dynamics simulations         !
 !   Copyright (C) 2000 - 2014  CP2K developers group                          !
 !-----------------------------------------------------------------------------!
@@ -19,14 +19,7 @@ MODULE array_types
 
   INTEGER, PARAMETER :: dp = KIND(0.0d0)
 
-  PUBLIC :: array_i1d_obj,&
-            array_i2d_obj,&
-            array_d1d_obj,&
-            array_d2d_obj
-  PUBLIC :: array_i1d_type,&
-            array_i2d_type,&
-            array_d1d_type,&
-            array_d2d_type
+  PUBLIC :: array_i1d_obj
   PUBLIC :: array_new,&
             array_hold,&
             array_release,&
@@ -528,13 +521,6 @@ CONTAINS
 
     value = array%low%data(index1)
   END FUNCTION array_get_i1d
-  PURE FUNCTION array_get_i2d(array, index1, index2) RESULT (value)
-    TYPE(array_i2d_obj), INTENT(IN)          :: array
-    INTEGER, INTENT(IN)                      :: index1, index2
-    INTEGER                                  :: value
-
-    value = array%low%data(index1, index2)
-  END FUNCTION array_get_i2d
   PURE FUNCTION array_get_d1d(array, index1) RESULT (value)
     TYPE(array_d1d_obj), INTENT(IN)          :: array
     INTEGER, INTENT(IN)                      :: index1
@@ -542,13 +528,5 @@ CONTAINS
 
     value = array%low%data(index1)
   END FUNCTION array_get_d1d
-  PURE FUNCTION array_get_d2d(array, index1, index2) RESULT (value)
-    TYPE(array_d2d_obj), INTENT(IN)          :: array
-    INTEGER, INTENT(IN)                      :: index1, index2
-    REAL(KIND=dp)                            :: value
-
-    value = array%low%data(index1, index2)
-  END FUNCTION array_get_d2d
-
 
 END MODULE array_types

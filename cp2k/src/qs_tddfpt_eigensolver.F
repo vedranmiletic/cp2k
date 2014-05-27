@@ -41,7 +41,7 @@ MODULE qs_tddfpt_eigensolver
                                              p_postortho,&
                                              p_preortho
   USE qs_p_env_types,                  ONLY: qs_p_env_type
-  USE qs_tddfpt_types
+  USE qs_tddfpt_types,                 ONLY: tddfpt_env_type
   USE qs_tddfpt_utils,                 ONLY: co_initial_guess,&
                                              normalize,&
                                              reorthogonalize
@@ -56,7 +56,7 @@ MODULE qs_tddfpt_eigensolver
 
   PRIVATE
 
-  PUBLIC :: apply_op, eigensolver
+  PUBLIC :: eigensolver
 
 CONTAINS
 
@@ -422,7 +422,7 @@ CONTAINS
        evals_difference =  1.0_dp
        IF (iter/=1) THEN
 
-          evals_difference = ABS((evals(1:n_ev,iter-1)-evals(1:n_ev,iter)))
+          evals_difference(:) = ABS((evals(1:n_ev,iter-1)-evals(1:n_ev,iter)))
           ! For debugging
           IF (output_unit>0) THEN
              WRITE (output_unit,*)

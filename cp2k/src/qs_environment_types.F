@@ -15,11 +15,12 @@ MODULE qs_environment_types
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
   USE atprop_types,                    ONLY: atprop_type
-  USE cell_types,                      ONLY: cell_release,&
+  USE cell_methods,                    ONLY: cell_release,&
                                              cell_retain,&
                                              cell_type
   USE cp_blacs_env,                    ONLY: cp_blacs_env_create,&
-                                             cp_blacs_env_release
+                                             cp_blacs_env_release,&
+                                             cp_blacs_env_type
   USE cp_control_types,                ONLY: dft_control_release,&
                                              dft_control_retain,&
                                              dft_control_type,&
@@ -41,8 +42,7 @@ MODULE qs_environment_types
                                              cp_fm_type
   USE cp_para_env,                     ONLY: cp_para_env_release,&
                                              cp_para_env_retain
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_result_types,                 ONLY: cp_result_create,&
                                              cp_result_release,&
                                              cp_result_type
@@ -205,13 +205,11 @@ MODULE qs_environment_types
 
 ! *** Public data types ***
 
-  PUBLIC :: qs_environment_p_type,&
-            qs_environment_type
+  PUBLIC :: qs_environment_type
 
 ! *** Public subroutines ***
 
   PUBLIC :: get_qs_env,&
-            init_qs_env,&
             qs_env_create,&
             qs_env_release,&
             qs_env_reorthogonalize_vectors,&

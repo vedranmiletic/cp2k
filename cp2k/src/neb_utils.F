@@ -40,7 +40,8 @@ MODULE neb_utils
                                              f_env_type,&
                                              get_energy,&
                                              get_force,&
-                                             get_pos
+                                             get_pos,&
+                                             set_pos
   USE force_env_methods,               ONLY: force_env_calc_energy_force
   USE force_env_types,                 ONLY: force_env_get
   USE geo_opt,                         ONLY: cp_geo_opt
@@ -65,8 +66,8 @@ MODULE neb_utils
                                              neb_var_type
   USE particle_types,                  ONLY: particle_type
   USE physcon,                         ONLY: bohr
-  USE replica_types,                   ONLY: rep_env_calc_e_f,&
-                                             rep_env_sync,&
+  USE replica_methods,                 ONLY: rep_env_calc_e_f
+  USE replica_types,                   ONLY: rep_env_sync,&
                                              replica_env_type
   USE rmsd,                            ONLY: rmsd3
   USE timings,                         ONLY: timeset,&
@@ -80,8 +81,6 @@ MODULE neb_utils
 
   PUBLIC :: build_replica_coords,&
             neb_calc_energy_forces,&
-            get_tangent,&
-            get_neb_force,&
             reorient_images,&
             reparametrize_images,&
             check_convergence
@@ -482,8 +481,8 @@ CPSourceFileRef,&
              CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
              ALLOCATE(tmp_b(SIZE(forces%wrk,1)),stat=stat)
              CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-             tmp_a = forces%wrk(:,1)
-             tmp_b = forces%wrk(:,SIZE(forces%wrk,2))
+             tmp_a(:) = forces%wrk(:,1)
+             tmp_b(:) = forces%wrk(:,SIZE(forces%wrk,2))
           END IF
           DO i = 2, neb_env%number_of_replica
              CALL get_tangent(neb_env,coords,i,tangent,energies,output_unit,error)
@@ -547,7 +546,7 @@ CPSourceFileRef,&
        n_el = 3*rep_env%nparticle
        Mmatrix = 0.0_dp
        ! Syncronize position on the replica procs
-       CALL cp_set_pos_int(rep_env%f_env_id,rep_env%r(:,j+1),n_el,ierr)
+       CALL set_pos(rep_env%f_env_id,rep_env%r(:,j+1),n_el,ierr)
        CPAssert(ierr==0,cp_failure_level,routineP,error,failure)
        !
        IF (irep+j <= n_rep_neb) THEN
@@ -625,7 +624,7 @@ CPSourceFileRef,&
        n_el = 3*rep_env%nparticle
        Mmatrix = 0.0_dp
        ! Syncronize position on the replica procs
-       CALL cp_set_pos_int(rep_env%f_env_id,rep_env%r(:,j+1),n_el,ierr)
+       CALL set_pos(rep_env%f_env_id,rep_env%r(:,j+1),n_el,ierr)
        CPAssert(ierr==0,cp_failure_level,routineP,error,failure)
        IF (irep+j <= n_rep_neb) THEN
           logger%iter_info%iteration(2)=irep+j
@@ -790,13 +789,13 @@ CPSourceFileRef,&
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
        ! derivatives of the spring
        tmp   = distance1-neb_env%avg_distance
-       dtmp1 = 1.0_dp/distance1 * (coords%wrk(:,i)-coords%wrk(:,i-1))
-       wrk   = neb_env%k*tmp*dtmp1
+       dtmp1(:) = 1.0_dp/distance1 * (coords%wrk(:,i)-coords%wrk(:,i-1))
+       wrk(:)   = neb_env%k*tmp*dtmp1
        forces%wrk(:,i  ) = forces%wrk(:,i  ) - wrk
        forces%wrk(:,i-1) = forces%wrk(:,i-1) + wrk
        ! derivatives due to the average length of the spring
        fac = 1.0_dp/(neb_env%avg_distance*REAL(neb_env%number_of_replica-1,KIND=dp))
-       wrk = neb_env%k*fac*(coords%wrk(:,i)-coords%wrk(:,i-1))
+       wrk(:) = neb_env%k*fac*(coords%wrk(:,i)-coords%wrk(:,i-1))
        tmp = 0.0_dp
        DO j = 2, neb_env%number_of_replica
           CALL neb_replica_distance(coords=coords,i0=j-1,i=j,distance=distance1,iw=iw,&
@@ -810,9 +809,9 @@ CPSourceFileRef,&
     CASE(do_b_neb)
        ! Bisection NEB
        CALL cite_reference(Jonsson1998)
-       wrk = (coords%wrk(:,i+1)-2.0_dp*coords%wrk(:,i)+coords%wrk(:,i-1))
+       wrk(:) = (coords%wrk(:,i+1)-2.0_dp*coords%wrk(:,i)+coords%wrk(:,i-1))
        tmp = neb_env%k * DOT_PRODUCT(wrk,tangent)
-       wrk = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
+       wrk(:) = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
        forces%wrk(:,i) = wrk + tmp * tangent
     CASE(do_it_neb)
        ! Improved tangent NEB
@@ -822,7 +821,7 @@ CPSourceFileRef,&
        CALL neb_replica_distance(coords=coords,i0=i-1,i=i,distance=distance2,iw=iw,&
             rotate=.FALSE.,error=error)
        tmp = neb_env%k * (distance1-distance2)
-       wrk = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
+       wrk(:) = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
        forces%wrk(:,i) = wrk + tmp * tangent
     CASE(do_ci_neb)
        ! Climbing Image NEB
@@ -830,7 +829,7 @@ CPSourceFileRef,&
        IF (neb_env%istep<=neb_env%nsteps_it.OR.i/=neb_env%nr_HE_image) THEN
           CALL get_neb_force(neb_env, tangent, coords, i, forces, do_it_neb, Mmatrix, iw, error)
        ELSE
-          wrk = forces%wrk(:,i)
+          wrk(:) = forces%wrk(:,i)
           tmp = -2.0_dp*dot_product_band(neb_env,wrk,tangent,Mmatrix,error=error)
           forces%wrk(:,i) = wrk + tmp * tangent
        END IF
@@ -839,13 +838,13 @@ CPSourceFileRef,&
        CALL cite_reference(Wales2004)
        ALLOCATE(dtmp1(nsize_wrk),stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-       dtmp1       = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
+       dtmp1(:)        = forces%wrk(:,i)-dot_product_band(neb_env,forces%wrk(:,i),tangent,Mmatrix,error)*tangent
        forces%wrk(:,i) = dtmp1
        dtmp1 = dtmp1 / SQRT(DOT_PRODUCT(dtmp1,dtmp1))
        ! Project out only the spring component interfering with the
        ! orthogonal gradient of the band
-       wrk   = (coords%wrk(:,i+1)-2.0_dp*coords%wrk(:,i)+coords%wrk(:,i-1))
-       dtmp1 = neb_env%k * (wrk - DOT_PRODUCT(wrk,dtmp1)*dtmp1)
+       wrk(:)   = (coords%wrk(:,i+1)-2.0_dp*coords%wrk(:,i)+coords%wrk(:,i-1))
+       dtmp1(:) = neb_env%k * (wrk - DOT_PRODUCT(wrk,dtmp1)*dtmp1)
        forces%wrk(:,i) = forces%wrk(:,i) + dtmp1
        DEALLOCATE(dtmp1,stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -970,14 +969,14 @@ CPSourceFileRef,&
     IF (reparametrize_frames) THEN
        ALLOCATE(tmp_coords(SIZE(coords,1),SIZE(coords,2)),stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-       tmp_coords = coords
+       tmp_coords(:,:) = coords
        ! Smoothing
        DO i = 2, SIZE(coords,2)-1
           coords(:,i) = tmp_coords(:,i)*(1.0_dp-2.0_dp*smoothing) + &
                tmp_coords(:,i-1)*smoothing + tmp_coords(:,i+1)*smoothing
        END DO
        sline = coords - tmp_coords + sline
-       tmp_coords =  coords
+       tmp_coords(:,:) =  coords
        ! Reparametrization
        SELECT CASE(spline_order)
        CASE(1)

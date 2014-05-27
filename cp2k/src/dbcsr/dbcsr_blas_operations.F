@@ -16,7 +16,11 @@ MODULE dbcsr_blas_operations
 
   USE dbcsr_data_methods,              ONLY: dbcsr_data_clear_2d_pointer,&
                                              dbcsr_data_set_2d_pointer
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: dbcsr_assert,&
+                                             dbcsr_error_set,&
+                                             dbcsr_error_type,&
+                                             dbcsr_fatal_level,&
+                                             dbcsr_wrong_args_error
   USE dbcsr_types,                     ONLY: dbcsr_data_obj,&
                                              dbcsr_scalar_type,&
                                              dbcsr_type_complex_4,&
@@ -31,7 +35,7 @@ MODULE dbcsr_blas_operations
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'dbcsr_blas_operations'
 
   ! BLAS routines
-  PUBLIC :: dbcsr_blas_copy, dbcsr_blas_gemm, dbcsr_blas_scal
+  PUBLIC :: dbcsr_blas_copy, dbcsr_blas_gemm
 
   ! LAPACK routine
   PUBLIC :: dbcsr_lapack_larnv

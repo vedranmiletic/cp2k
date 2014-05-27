@@ -79,8 +79,8 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     CHARACTER(LEN=default_string_length)     :: inp_kind_name
-    INTEGER                                  :: i, i_rep, i_rep_val, i_tmp, &
-                                                ind, n_items, n_NMC_items, &
+    INTEGER                                  :: i, i_rep, i_tmp, ind, &
+                                                n_items, n_NMC_items, &
                                                 n_rep_val, nmc_steps
     LOGICAL                                  :: explicit, flag
     REAL(KIND=dp) :: delta_x, init_acc_prob, mv_prob, mv_prob_sum, &
@@ -138,7 +138,7 @@ CONTAINS
       CALL cp_assert(nmc_init_acc_prob.GT.0.0_dp,&
                      cp_failure_level,cp_assertion_failed,routineP,&
                      "Please select a valid initial acceptance probability (>0.0) "//&
-                     "for the move type "//inp_kind_name,&
+                     "for INIT_ACC_PROB",&
                      error)
 
       move_type_section => section_vals_get_subs_vals(nmc_section,"MOVE_TYPE",error=error)

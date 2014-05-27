@@ -15,6 +15,7 @@
 ! *****************************************************************************
 MODULE qs_localization_methods
   USE cell_types,                      ONLY: cell_type
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_cfm_basic_linalg,             ONLY: cp_cfm_column_scale,&
                                              cp_cfm_gemm,&
                                              cp_cfm_schur_product
@@ -29,7 +30,6 @@ MODULE qs_localization_methods
                                              cp_cfm_type
   USE cp_external_control,             ONLY: external_control
   USE cp_fm_basic_linalg,              ONLY: cp_fm_frobenius_norm,&
-                                             cp_fm_gemm,&
                                              cp_fm_scale,&
                                              cp_fm_scale_and_add,&
                                              cp_fm_trace,&
@@ -43,8 +43,8 @@ MODULE qs_localization_methods
        cp_fm_create, cp_fm_get_element, cp_fm_get_info, cp_fm_get_submatrix, &
        cp_fm_maxabsrownorm, cp_fm_maxabsval, cp_fm_p_type, cp_fm_release, &
        cp_fm_set_all, cp_fm_set_submatrix, cp_fm_to_fm, cp_fm_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_gemm_interface,               ONLY: cp_gemm
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: dp
   USE machine,                         ONLY: m_flush,&
                                              m_walltime
@@ -162,7 +162,7 @@ CONTAINS
              CTmp%local_data(i,p) = C%local_data(i,p) / SQRT( C%local_data(i,p)**2 + f2_eps )
           ENDDO
        ENDDO
-       CALL cp_fm_gemm('T','N',k,k,n,1.0_dp,CTmp,C,0.0_dp,G,error=error)
+       CALL cp_gemm('T','N',k,k,n,1.0_dp,CTmp,C,0.0_dp,G,error=error)
        ! antisymmetrize
        CALL cp_fm_transpose(G,U,error=error)
        CALL cp_fm_scale_and_add(-0.5_dp,G,0.5_dp,U,error=error)
@@ -188,7 +188,7 @@ CONTAINS
           CALL cp_fm_to_fm(G,Gp1,error=error)
           DO i = 2,taylor_order
              ! new power of G
-             CALL cp_fm_gemm('N','N',k,k,k,1.0_dp,G,Gp1,0.0_dp,Gp2,error=error)
+             CALL cp_gemm('N','N',k,k,k,1.0_dp,G,Gp1,0.0_dp,Gp2,error=error)
              CALL cp_fm_to_fm(Gp2,Gp1,error=error)
              ! add to the taylor expansion so far
              expfactor = expfactor / REAL(i,KIND=dp)
@@ -200,7 +200,7 @@ CONTAINS
        ENDIF
        !
        ! incrementaly rotate the MOs
-       CALL cp_fm_gemm('N','N',n,k,k,1.0_dp,C,U,0.0_dp,CTmp,error=error)
+       CALL cp_gemm('N','N',n,k,k,1.0_dp,C,U,0.0_dp,CTmp,error=error)
        CALL cp_fm_to_fm(CTmp,C,error=error)
        !
        ! printing
@@ -411,10 +411,12 @@ CONTAINS
     REAL ( KIND = dp ), INTENT ( IN ) :: st, ct
 ! Locals
     TYPE ( cp_error_type ) :: error
-    INTEGER :: idim, nstate, stride
+    INTEGER :: idim, nstate
     COMPLEX ( KIND = dp ) :: st_cmplx
 #if defined(__SCALAPACK)
     INTEGER, DIMENSION(9) :: desc
+#else
+    INTEGER :: stride
 #endif
 
     st_cmplx = CMPLX ( st, 0.0_dp, dp )
@@ -537,7 +539,7 @@ CONTAINS
     NULLIFY ( wf )
     CALL cp_fm_create ( wf, vectors % matrix_struct, error = error  )
     CALL cp_fm_get_info ( vectors, nrow_global = n, ncol_global=k ,error=error)
-    CALL cp_fm_gemm("N", "N", n, k, k, 1.0_dp, vectors, rmat, 0.0_dp, wf ,error=error)
+    CALL cp_gemm("N", "N", n, k, k, 1.0_dp, vectors, rmat, 0.0_dp, wf ,error=error)
     CALL cp_fm_to_fm ( wf, vectors ,error=error)
     CALL cp_fm_release ( wf ,error=error)
   END SUBROUTINE rotate_orbitals
@@ -754,13 +756,13 @@ CONTAINS
     CALL cp_fm_syevd(mat_t,mat_U,evals,error=error)
     DO idim=1,dim2
        ! rotate z's
-       CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(1,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
-       CALL cp_fm_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(1,idim)%matrix,error=error)
-       CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(2,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
-       CALL cp_fm_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(2,idim)%matrix,error=error)
+       CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(1,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
+       CALL cp_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(1,idim)%matrix,error=error)
+       CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(2,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
+       CALL cp_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(2,idim)%matrix,error=error)
     ENDDO
     ! collect rotation matrix
-    CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_R,mat_U,0.0_dp,mat_t,error=error)
+    CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_R,mat_U,0.0_dp,mat_t,error=error)
     CALL cp_fm_to_fm(mat_t,mat_R,error=error)
 
     unit_nr=-1
@@ -834,13 +836,13 @@ CONTAINS
 
       DO idim=1,dim2
          ! rotate z's
-         CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(1,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
-         CALL cp_fm_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(1,idim)%matrix,error=error)
-         CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(2,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
-         CALL cp_fm_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(2,idim)%matrix,error=error)
+         CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(1,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
+         CALL cp_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(1,idim)%matrix,error=error)
+         CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,zij(2,idim)%matrix,mat_U,0.0_dp,mat_t,error=error)
+         CALL cp_gemm('T','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_U,mat_t,0.0_dp,zij(2,idim)%matrix,error=error)
       ENDDO
       ! collect rotation matrix
-      CALL cp_fm_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_R,mat_U,0.0_dp,mat_t,error=error)
+      CALL cp_gemm('N','N',nrow_global,nrow_global,nrow_global,1.0_dp,mat_R,mat_U,0.0_dp,mat_t,error=error)
       CALL cp_fm_to_fm(mat_t,mat_R,error=error)
 
       CALL check_tolerance_new ( weights, zij, tolerance, value ,error=error)
@@ -1003,7 +1005,7 @@ CONTAINS
             ENDDO
             ! collect rotation matrix
             matrix_H%local_data=REAL(cmat_U%local_data,KIND=dp)
-            CALL cp_fm_gemm('N','N',n,n,n,1.0_dp,matrix_R,matrix_H,0.0_dp,matrix_T,error=error)
+            CALL cp_gemm('N','N',n,n,n,1.0_dp,matrix_R,matrix_H,0.0_dp,matrix_T,error=error)
             CALL cp_fm_to_fm(matrix_T,matrix_R,error=error)
 
             CALL cp_cfm_set_all(cmat_U,czero,cone,error=error)
@@ -1253,7 +1255,7 @@ CONTAINS
 
     ! collect rotation matrix
     matrix_H%local_data=REAL(cmat_U%local_data,KIND=dp)
-    CALL cp_fm_gemm('N','N',n,n,n,1.0_dp,matrix_R,matrix_H,0.0_dp,matrix_T,error=error)
+    CALL cp_gemm('N','N',n,n,n,1.0_dp,matrix_R,matrix_H,0.0_dp,matrix_T,error=error)
     CALL cp_fm_to_fm(matrix_T,matrix_R,error=error)
     CALL rotate_orbitals(matrix_R,vectors)
     CALL cp_fm_release  ( matrix_R,error=error)
@@ -1670,7 +1672,7 @@ CONTAINS
         DO ip = 0,para_env%num_pe-1
 
           ip_recv_from=MOD(para_env%mepos-IP+para_env%num_pe,para_env%num_pe)
-          rmat_recv=rmat_recv_all(:,:,ip_recv_from)
+          rmat_recv(:,:)=rmat_recv_all(:,:,ip_recv_from)
 
           ns_recv_from = ns_bound(ip_recv_from,2)-ns_bound(ip_recv_from,1)+1
 

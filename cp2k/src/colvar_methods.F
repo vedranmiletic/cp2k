@@ -12,7 +12,7 @@
 !> \author Alessandro Laio,Fawzi Mohamed
 ! *****************************************************************************
 MODULE colvar_methods
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE colvar_types,                    ONLY: &
        HBP_colvar_id, Wc_colvar_id, angle_colvar_id, colvar_check_points, &
@@ -3744,7 +3744,7 @@ CPSourceFileRef,&
     lambda=colvar%reaction_path_param%lambda
     ALLOCATE(f_vals(ncolv,istart:iend),stat=stat)
     CPPostcondition(stat == 0,cp_failure_level,routinep,error,failure)
-    f_vals=colvar%reaction_path_param%f_vals
+    f_vals(:,:)=colvar%reaction_path_param%f_vals
     ALLOCATE(ss_vals(ncolv),stat=stat)
     CPPostcondition(stat == 0,cp_failure_level,routinep,error,failure)
 
@@ -4172,7 +4172,7 @@ CPSourceFileRef,&
     lambda=colvar%reaction_path_param%lambda
     ALLOCATE(f_vals(ncolv,istart:iend),stat=stat)
     CPPostcondition(stat == 0,cp_failure_level,routinep,error,failure)
-    f_vals=colvar%reaction_path_param%f_vals
+    f_vals(:,:)=colvar%reaction_path_param%f_vals
     ALLOCATE(ss_vals(ncolv),stat=stat)
     CPPostcondition(stat == 0,cp_failure_level,routinep,error,failure)
 
@@ -4771,7 +4771,7 @@ CPSourceFileRef,&
       r(ii+2) = my_particles(i)%r(2)
       r(ii+3) = my_particles(i)%r(3)
     END DO
-    r0 = colvar%rmsd_param%r_ref
+    r0(:,:) = colvar%rmsd_param%r_ref
     rmsd = 0.0_dp
 
     CALL rmsd3(my_particles,r,r0(:,1),output_unit=-1,weights=weights,my_val=rmsd(1),rotate=.FALSE.,drmsd3=drmsd(:,:,1),error=error)
@@ -5182,8 +5182,8 @@ CPSourceFileRef,&
     INTEGER                                  :: Od, H, Oa
     LOGICAL                                  :: failure
     REAL(dp)                                 :: rOd(3), rOa(3), rH(3), &
-                                                x,y,s(3),xv(3),dmin,amin,aux
-    INTEGER                                  :: idmin, iamin,i,j,ai
+                                                x,y,s(3),xv(3),dmin,amin
+    INTEGER                                  :: idmin, iamin,i,j
     TYPE(particle_list_type), POINTER        :: particles_i
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: my_particles
@@ -5293,8 +5293,8 @@ CPSourceFileRef,&
     INTEGER                                  :: Od, H, Oa
     LOGICAL                                  :: failure
     REAL(dp)                                 :: rOd(3), rOa(3), rH(3), &
-                                                x,y,s(3),xv(3),dmin,amin,aux
-    INTEGER                                  :: idmin, iamin,i,j,ai,il,output_unit
+                                                x,y,s(3),xv(3),dmin,amin
+    INTEGER                                  :: idmin, iamin,i,j,il,output_unit
     TYPE(particle_list_type), POINTER        :: particles_i
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: my_particles

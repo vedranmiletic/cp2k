@@ -29,20 +29,12 @@ MODULE dbcsr_methods
                                              btree_new_s => btree_new
   USE btree_I8_k_zp2d_v,               ONLY: btree_destroy_z => btree_delete,&
                                              btree_new_z => btree_new
-  USE dbcsr_block_buffers,             ONLY: dbcsr_buffers_2d_needed,&
-                                             dbcsr_buffers_flush,&
-                                             dbcsr_buffers_init,&
-                                             dbcsr_buffers_new,&
-                                             dbcsr_buffers_release
   USE dbcsr_config,                    ONLY: comm_thread_load,&
                                              use_subcommunicators
-  USE dbcsr_data_methods,              ONLY: dbcsr_data_get_size,&
-                                             dbcsr_data_get_size_referenced,&
-                                             dbcsr_data_get_type,&
+  USE dbcsr_data_methods,              ONLY: dbcsr_data_get_size_referenced,&
                                              dbcsr_data_hold,&
                                              dbcsr_data_init,&
-                                             dbcsr_data_release,&
-                                             dbcsr_data_set_size_referenced
+                                             dbcsr_data_release
   USE dbcsr_error_handling,            ONLY: &
        dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
        dbcsr_error_type, dbcsr_failure_level, dbcsr_fatal_level, &
@@ -51,14 +43,13 @@ MODULE dbcsr_methods
   USE dbcsr_toollib,                   ONLY: sort
   USE dbcsr_types,                     ONLY: &
        dbcsr_1d_array_obj, dbcsr_2d_array_obj, dbcsr_2d_array_type, &
-       dbcsr_array_type, dbcsr_block_buffer_obj, dbcsr_data_obj, &
-       dbcsr_distribution_obj, dbcsr_imagedistribution_obj, &
-       dbcsr_imagedistribution_type, dbcsr_memtype_type, dbcsr_mp_obj, &
-       dbcsr_mutable_obj, dbcsr_obj, dbcsr_type, dbcsr_type_antihermitian, &
-       dbcsr_type_antisymmetric, dbcsr_type_complex_4, dbcsr_type_complex_8, &
-       dbcsr_type_hermitian, dbcsr_type_invalid, dbcsr_type_no_symmetry, &
-       dbcsr_type_real_4, dbcsr_type_real_8, dbcsr_type_symmetric, &
-       dbcsr_work_type
+       dbcsr_array_type, dbcsr_data_obj, dbcsr_distribution_obj, &
+       dbcsr_imagedistribution_obj, dbcsr_imagedistribution_type, &
+       dbcsr_memtype_type, dbcsr_mp_obj, dbcsr_mutable_obj, dbcsr_obj, &
+       dbcsr_type, dbcsr_type_antihermitian, dbcsr_type_antisymmetric, &
+       dbcsr_type_complex_4, dbcsr_type_complex_8, dbcsr_type_hermitian, &
+       dbcsr_type_invalid, dbcsr_type_no_symmetry, dbcsr_type_real_4, &
+       dbcsr_type_real_8, dbcsr_type_symmetric, dbcsr_work_type
   USE kinds,                           ONLY: default_string_length,&
                                              int_8,&
                                              real_8,&
@@ -83,18 +74,18 @@ MODULE dbcsr_methods
 
   INTEGER, PUBLIC, SAVE :: dbcsr_matrix_counter = 111111
 
-  PUBLIC :: dbcsr_init, dbcsr_init_p
-  PUBLIC :: dbcsr_hold, dbcsr_release, dbcsr_release_p, dbcsr_destroy
+  PUBLIC :: dbcsr_init
+  PUBLIC :: dbcsr_release
   PUBLIC :: dbcsr_valid_index, dbcsr_is_initialized
   PUBLIC :: dbcsr_mp_new, dbcsr_mp_hold, dbcsr_mp_release
   PUBLIC :: dbcsr_mp_pgrid, dbcsr_mp_numnodes, dbcsr_mp_mynode, dbcsr_mp_group,&
             dbcsr_mp_new_transposed, dbcsr_mp_nprows, dbcsr_mp_npcols,&
-            dbcsr_mp_myprow, dbcsr_mp_mypcol, dbcsr_mp_pgrid_equal,&
+            dbcsr_mp_myprow, dbcsr_mp_mypcol,&
             dbcsr_mp_get_coordinates,&
             dbcsr_mp_my_row_group, dbcsr_mp_my_col_group,&
             dbcsr_mp_has_subgroups, dbcsr_mp_get_process,&
             dbcsr_mp_grid_setup, dbcsr_mp_grid_remove,&
-            dbcsr_mp_init, dbcsr_mp_exists, dbcsr_mp_active
+            dbcsr_mp_init, dbcsr_mp_active
   PUBLIC :: dbcsr_distribution_new, dbcsr_distribution_hold,&
             dbcsr_distribution_release, dbcsr_distribution_init
   PUBLIC :: dbcsr_distribution_mp, dbcsr_distribution_processor,&
@@ -105,44 +96,33 @@ MODULE dbcsr_methods
   PUBLIC :: dbcsr_distribution_thread_dist, dbcsr_distribution_has_threads,&
             dbcsr_distribution_make_threads, dbcsr_distribution_no_threads,&
             dbcsr_distribution_num_threads
-  PUBLIC :: dbcsr_distribution_add_row_map, dbcsr_distribution_add_col_map,&
-            dbcsr_distribution_del_row_map, dbcsr_distribution_del_col_map
-  PUBLIC :: dbcsr_release_locals, dbcsr_dist_release_locals
+  PUBLIC :: dbcsr_release_locals
   PUBLIC :: dbcsr_get_info, dbcsr_distribution,&
             dbcsr_get_matrix_type, dbcsr_get_data_type, dbcsr_get_replication_type,&
             dbcsr_row_block_sizes, dbcsr_col_block_sizes,&
             dbcsr_nblkrows_total, dbcsr_nblkcols_total, dbcsr_nfullrows_total,&
             dbcsr_nfullcols_total, dbcsr_nblkcols_local, dbcsr_nblkrows_local,&
-            dbcsr_nfullrows_local, dbcsr_nfullcols_local,&
             dbcsr_max_row_size, dbcsr_max_col_size,&
             dbcsr_get_occupation,&
-            dbcsr_get_index_memory_type, dbcsr_get_data_memory_type, &
-            dbcsr_is_real, dbcsr_is_complex,&
+            dbcsr_get_index_memory_type, dbcsr_get_data_memory_type,&
             dbcsr_name, dbcsr_may_be_dense,&
             dbcsr_use_mutable, dbcsr_wm_use_mutable, dbcsr_has_symmetry,&
             dbcsr_get_data_size
   PUBLIC :: dbcsr_get_data_size_used, dbcsr_get_data_size_referenced
   PUBLIC :: dbcsr_col_block_offsets, dbcsr_row_block_offsets
   PUBLIC :: dbcsr_data_area, dbcsr_switch_data_area
-  PUBLIC :: dbcsr_get_num_blocks, dbcsr_get_nze
+  PUBLIC :: dbcsr_get_num_blocks
 
 
   PUBLIC :: dbcsr_blk_row_size, dbcsr_blk_column_size,&
             dbcsr_blk_row_offset, dbcsr_blk_col_offset
 
-  PUBLIC :: dbcsr_allocate_matrix_array, dbcsr_array_new, dbcsr_array_put,&
-            dbcsr_array_get, dbcsr_array_destroy, dbcsr_array_hold,&
-            dbcsr_array_release
   PUBLIC :: dbcsr_destroy_array
   PUBLIC :: dbcsr_image_dist_init, dbcsr_image_dist_hold, dbcsr_image_dist_release
 
   PUBLIC :: dbcsr_mutable_init, dbcsr_mutable_new, dbcsr_mutable_destroy,&
-            dbcsr_mutable_release, dbcsr_mutable_hold,&
+            dbcsr_mutable_release,&
             dbcsr_mutable_instantiated
-
-  PUBLIC :: dbcsr_modify_lock, dbcsr_modify_unlock
-
-
 
   INTERFACE dbcsr_init
      MODULE PROCEDURE dbcsr_init_type, dbcsr_init_obj
@@ -165,22 +145,18 @@ MODULE dbcsr_methods
   !END INTERFACE
 
   INTERFACE dbcsr_get_data_size
-     !MODULE PROCEDURE get_data_size_area, get_data_size_matrix
      MODULE PROCEDURE get_data_size_matrix
   END INTERFACE
 
   INTERFACE dbcsr_get_data_size_used
-     !MODULE PROCEDURE get_data_size_ref_area
      MODULE PROCEDURE dbcsr_get_data_size_used
   END INTERFACE
 
   INTERFACE dbcsr_get_data_size_referenced
-     !MODULE PROCEDURE get_data_size_ref_area, get_data_size_ref_matrix
      MODULE PROCEDURE get_data_size_ref_matrix
   END INTERFACE
 
   INTERFACE dbcsr_get_data_type
-     !MODULE PROCEDURE dbcsr_get_data_type_obj, data_get_data_type
      MODULE PROCEDURE dbcsr_get_data_type_obj
   END INTERFACE
 
@@ -483,10 +459,6 @@ CONTAINS
        IF (force_all .OR. matrix%m%refcount .EQ. 0) THEN
           CALL dbcsr_assert (.NOT. ASSOCIATED (matrix%m%wms), dbcsr_warning_level,&
                dbcsr_caller_error, routineN, "Destroying unfinalized matrix",__LINE__,error)
-          IF (dbcsr_buffers_2d_needed) THEN
-             CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
-             CALL dbcsr_buffers_release (matrix%m%buffers, error=error)
-          ENDIF
           CALL memory_deallocate(matrix%m%index, matrix%m%index_memory_type,&
                error=error)
           CALL dbcsr_data_release (matrix%m%data_area)
@@ -511,7 +483,6 @@ CONTAINS
           ENDIF
           CALL dbcsr_release_locals (matrix, error)
           matrix%m%valid = .FALSE.
-!$        CALL OMP_DESTROY_LOCK (matrix%m%modification_lock)
           CALL dbcsr_init (matrix%m)
        ENDIF
     ENDIF
@@ -720,48 +691,6 @@ CONTAINS
        CALL mp_comm_free (mp_env%mp%pcol_group)
     ENDIF
   END SUBROUTINE dbcsr_mp_grid_remove
-
-! *****************************************************************************
-!> \brief Locks the DBCSR data structure for modification.
-!> \param[in,out] matrix      the matrix to lock
-! *****************************************************************************
-  SUBROUTINE dbcsr_modify_lock (matrix)
-    TYPE(dbcsr_obj), INTENT(INOUT)           :: matrix
-
-    !$ CALL OMP_SET_LOCK (matrix%m%modification_lock)
-  END SUBROUTINE dbcsr_modify_lock
-
-
-! *****************************************************************************
-!> \brief Releases the modification lock on a DBCSR data structure.
-!> \param[in,out] matrix      the matrix to lock
-! *****************************************************************************
-  SUBROUTINE dbcsr_modify_unlock (matrix)
-    TYPE(dbcsr_obj), INTENT(INOUT)           :: matrix
-
-    !$ CALL OMP_UNSET_LOCK (matrix%m%modification_lock)
-  END SUBROUTINE dbcsr_modify_unlock
-
-! *****************************************************************************
-!> \brief Locks the DBCSR data structure for reading.
-!> \param[in,out] matrix      the matrix to lock
-! *****************************************************************************
-  SUBROUTINE dbcsr_read_lock (matrix)
-    TYPE(dbcsr_obj), INTENT(INOUT)           :: matrix
-
-    !$ CALL OMP_SET_LOCK (matrix%m%modification_lock)
-  END SUBROUTINE dbcsr_read_lock
-
-! *****************************************************************************
-!> \brief Releases the reading lock on a DBCSR data structure.
-!> \param[in,out] matrix      the matrix to lock
-! *****************************************************************************
-  SUBROUTINE dbcsr_read_unlock (matrix)
-    TYPE(dbcsr_obj), INTENT(INOUT)           :: matrix
-
-    !$ CALL OMP_UNSET_LOCK (matrix%m%modification_lock)
-  END SUBROUTINE dbcsr_read_unlock
-
 
 ! *****************************************************************************
 !> \brief Marks another use of the mp_env
@@ -1301,17 +1230,18 @@ CONTAINS
     INTEGER, DIMENSION(:), POINTER           :: lrows, td
     LOGICAL                                  :: assigned, found, heap_error
     REAL(kind=sp)                            :: load_fraction, rn, soft_thr
-    TYPE(dbcsr_error_type)                   :: error
+
+!$  TYPE(dbcsr_error_type)                   :: error
     TYPE(heap_t)                             :: t_heap
 
 !   ---------------------------------------------------------------------------
 
     nthreads = 1
-    !$ nthreads = OMP_GET_NUM_THREADS () ;
+!$  nthreads = OMP_GET_NUM_THREADS () ;
 
-    !$  CALL dbcsr_assert (dist%d%num_threads, "EQ", nthreads,&
-    !$     dbcsr_fatal_level, dbcsr_internal_error, routineN,&
-    !$     "Thread number has changed", __LINE__, error=error)
+!$  CALL dbcsr_assert (dist%d%num_threads, "EQ", nthreads,&
+!$                     dbcsr_fatal_level, dbcsr_internal_error, routineN,&
+!$                     "Thread number has changed", __LINE__, error=error)
     nrows = dbcsr_distribution_nrows (dist)
     nlrows = dbcsr_distribution_nlocal_rows (dist)
     lrows => array_data (dbcsr_distribution_local_rows (dist))
@@ -1781,19 +1711,10 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: error_handler
-    TYPE(dbcsr_block_buffer_obj)             :: buffers
 
 !   ---------------------------------------------------------------------------
 
     CALL dbcsr_error_set (routineN, error_handler, error)
-    IF (dbcsr_buffers_2d_needed) THEN
-       buffers = matrix%m%buffers
-       CALL dbcsr_buffers_flush (buffers, error=error)
-       CALL dbcsr_buffers_release (buffers, error=error)
-       CALL dbcsr_buffers_init (buffers)
-       CALL dbcsr_buffers_new (buffers, data_area, error=error)
-       matrix%m%buffers = buffers
-    ENDIF
     IF (PRESENT (previous_data_area)) THEN
        previous_data_area = matrix%m%data_area
     ELSE
@@ -1880,19 +1801,6 @@ CONTAINS
 
     data_type = matrix%m%data_type
   END FUNCTION dbcsr_get_data_type_obj
-
-! *****************************************************************************
-!> \brief Returns data type of a data area
-!> \param[in] area         data area
-!> \result data_type       data type of the data area
-! *****************************************************************************
-  PURE FUNCTION data_get_data_type (area) RESULT (data_type)
-    TYPE(dbcsr_data_obj), INTENT(IN)         :: area
-    INTEGER                                  :: data_type
-
-    data_type = dbcsr_data_get_type (area)
-  END FUNCTION data_get_data_type
-
 
 ! *****************************************************************************
 !> \brief Returns true if the data type of the matrix is real
@@ -1991,34 +1899,6 @@ CONTAINS
 !
 
 ! *****************************************************************************
-!> \brief Returns the allocated data size
-!> \param[in] area       data area
-!> \retval data_size      size of data
-! *****************************************************************************
-  FUNCTION get_data_size_area (area) RESULT (data_size)
-    TYPE(dbcsr_data_obj), INTENT(IN)         :: area
-    INTEGER                                  :: data_size
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'get_data_size_area', &
-      routineP = moduleN//':'//routineN
-
-    data_size = dbcsr_data_get_size (area)
-  END FUNCTION get_data_size_area
-
-! *****************************************************************************
-!> \brief Returns data type of a data area
-!> \param[in] area         data area
-!> \result data_type       data type of the data area
-! *****************************************************************************
-  PURE FUNCTION data_data_get_type (area) RESULT (data_type)
-    TYPE(dbcsr_data_obj), INTENT(IN)         :: area
-    INTEGER                                  :: data_type
-
-    data_type = dbcsr_data_get_type (area)
-  END FUNCTION data_data_get_type
-
-
-! *****************************************************************************
 !> \brief Returns the allocated data size of a DBCSR matrix
 !> \param[in] matrix      matrix
 !> \retval data_size      size of data
@@ -2069,31 +1949,6 @@ CONTAINS
 
     data_size_referenced = dbcsr_data_get_size_referenced (matrix%m%data_area)
   END FUNCTION get_data_size_ref_matrix
-
-! *****************************************************************************
-!> \brief Get actual data storage used for matrix
-!> \param[in] area            Count data of this matrix
-!> \result data_size          Data size used by matrix
-! *****************************************************************************
-  PURE FUNCTION get_data_size_ref_area (area) RESULT (data_size_referenced)
-    TYPE(dbcsr_data_obj), INTENT(IN)         :: area
-    INTEGER                                  :: data_size_referenced
-
-    data_size_referenced = dbcsr_data_get_size_referenced (area)
-  END FUNCTION get_data_size_ref_area
-
-! *****************************************************************************
-!> \brief Sets the referenced size of the data area
-!> \param[in,out] data_area  area for which to set referenced data size
-!> \param[in]                set referenced data size to this value
-! *****************************************************************************
-  PURE SUBROUTINE set_data_size_ref_area (data_area, referenced_size)
-    TYPE(dbcsr_data_obj), INTENT(INOUT)      :: data_area
-    INTEGER, INTENT(IN)                      :: referenced_size
-
-    CALL dbcsr_data_set_size_referenced (data_area, referenced_size)
-  END SUBROUTINE set_data_size_ref_area
-
 
 ! *****************************************************************************
 !> \brief Count actual data storage used for matrix data.

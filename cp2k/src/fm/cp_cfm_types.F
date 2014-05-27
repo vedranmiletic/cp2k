@@ -11,12 +11,12 @@ MODULE cp_cfm_types
 
   USE cp_blacs_calls,                  ONLY: cp_blacs_zgebr2d,&
                                              cp_blacs_zgebs2d
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_fm_struct,                    ONLY: cp_fm_struct_equivalent,&
                                              cp_fm_struct_release,&
                                              cp_fm_struct_retain,&
                                              cp_fm_struct_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: dp
   USE message_passing,                 ONLY: cp2k_is_parallel
   USE timings,                         ONLY: timeset,&
@@ -32,9 +32,9 @@ MODULE cp_cfm_types
   INTEGER,SAVE,PRIVATE :: last_cfm_id_nr=0
 
   PUBLIC :: cp_cfm_type, cp_cfm_p_type
-  PUBLIC :: cp_cfm_create, cp_cfm_retain, cp_cfm_release,&
-       cp_cfm_init_random, cp_cfm_set_element, cp_cfm_set_all,&
-       cp_cfm_get_info, cp_cfm_get_element, cp_cfm_to_cfm
+  PUBLIC :: cp_cfm_create, cp_cfm_release,&
+            cp_cfm_set_all,&
+            cp_cfm_get_info, cp_cfm_get_element, cp_cfm_to_cfm
 !***
 
 ! *****************************************************************************

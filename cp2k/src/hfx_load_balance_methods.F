@@ -24,7 +24,6 @@ MODULE hfx_load_balance_methods
                                              hfx_do_eval_forces
   USE kinds,                           ONLY: dp,&
                                              int_8
-  USE mathconstants
   USE message_passing,                 ONLY: mp_allgather,&
                                              mp_gatherv,&
                                              mp_isendrecv,&
@@ -32,7 +31,6 @@ MODULE hfx_load_balance_methods
                                              mp_sum,&
                                              mp_sync,&
                                              mp_waitall
-  USE orbital_pointers
   USE parallel_rng_types,              ONLY: UNIFORM,&
                                              create_rng_stream,&
                                              delete_rng_stream,&
@@ -1045,8 +1043,8 @@ SUBROUTINE hfx_recursive_load_balance( n_processes, my_process_id, nblocks, &
     ALLOCATE(p_atom_blocks(sizeP))
     ALLOCATE(q_atom_blocks(sizeQ))
 
-    p_atom_blocks = permute( (sumP+1):(sumP+sizeP) )
-    q_atom_blocks = permute( (sumQ+1):(sumQ+sizeQ) )
+    p_atom_blocks(:) = permute( (sumP+1):(sumP+sizeP) )
+    q_atom_blocks(:) = permute( (sumQ+1):(sumQ+sizeQ) )
 
     ! from here on, we are actually finished, each process has been
     ! assigned a (p_atom_blocks,q_atom_blocks) pair list.

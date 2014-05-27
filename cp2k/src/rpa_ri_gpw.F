@@ -11,9 +11,9 @@
 MODULE rpa_ri_gpw
 ! USE f77_blas
   USE cp_blacs_env,                    ONLY: cp_blacs_env_create,&
-                                             cp_blacs_env_release
-  USE cp_fm_basic_linalg,              ONLY: cp_fm_gemm,&
-                                             cp_fm_scale_and_add,&
+                                             cp_blacs_env_release,&
+                                             cp_blacs_env_type
+  USE cp_fm_basic_linalg,              ONLY: cp_fm_scale_and_add,&
                                              cp_fm_syrk
   USE cp_fm_cholesky,                  ONLY: cp_fm_cholesky_decompose
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
@@ -26,10 +26,10 @@ MODULE rpa_ri_gpw
                                              cp_fm_release,&
                                              cp_fm_set_all,&
                                              cp_fm_type
+  USE cp_gemm_interface,               ONLY: cp_gemm
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE input_constants,                 ONLY: wfc_mm_style_gemm,&
                                              wfc_mm_style_syrk
   USE kinds,                           ONLY: dp
@@ -95,16 +95,16 @@ MODULE rpa_ri_gpw
       routineP = moduleN//':'//routineN
     INTEGER, PARAMETER                       :: occ_chunk = 128
 
-    INTEGER :: a, best_integ_group_size, best_num_integ_point, &
-      color_rpa_group, dimen_ia, dimen_ia_beta, handle, handle2, i, &
-      ia_global, ierr, iiB, input_integ_group_size, integ_group_size, iproc, &
-      itmp(2), jjB, min_integ_group_size, my_B_size, my_B_size_beta, &
-      my_B_virtual_end, my_B_virtual_end_beta, my_B_virtual_start, &
-      my_B_virtual_start_beta, my_group_L_end, my_group_L_size, &
-      my_group_L_start, my_homo_beta, my_ia_end, my_ia_end_beta, my_ia_size, &
-      my_ia_size_beta, my_ia_start, my_ia_start_beta, ngroup, &
-      num_integ_group, num_integ_points, occ_high, occ_low, pos_integ_group, &
-      proc_receive, proc_send, proc_shift, rec_B_size
+    INTEGER :: best_integ_group_size, best_num_integ_point, color_rpa_group, &
+      dimen_ia, dimen_ia_beta, handle, handle2, i, ia_global, ierr, iiB, &
+      input_integ_group_size, integ_group_size, iproc, itmp(2), jjB, &
+      min_integ_group_size, my_B_size, my_B_size_beta, my_B_virtual_end, &
+      my_B_virtual_end_beta, my_B_virtual_start, my_B_virtual_start_beta, &
+      my_group_L_end, my_group_L_size, my_group_L_start, my_homo_beta, &
+      my_ia_end, my_ia_end_beta, my_ia_size, my_ia_size_beta, my_ia_start, &
+      my_ia_start_beta, ngroup, num_integ_group, num_integ_points, occ_high, &
+      occ_low, pos_integ_group, proc_receive, proc_send, proc_shift, &
+      rec_B_size
     INTEGER :: rec_B_virtual_end, rec_B_virtual_start, stat, virtual, &
       virtual_beta
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: ends_ia, ends_ia_beta, &
@@ -1192,7 +1192,7 @@ MODULE rpa_ri_gpw
         DEALLOCATE(BIb_C_2D)
         ALLOCATE(BIb_C_2D(rec_ia_size,rec_L_size),STAT=stat)
         CPPostcondition(stat==0,cp_failure_level,routineP,error_sub,failure)
-        BIb_C_2D=BIb_C_rec
+        BIb_C_2D(:,:)=BIb_C_rec
 
         DEALLOCATE(BIb_C_rec)
       END DO
@@ -1444,7 +1444,7 @@ MODULE rpa_ri_gpw
       SELECT CASE(mm_style)
       CASE(wfc_mm_style_gemm)
          ! waste-fully computes the full symmetrix matrix, but maybe faster than cp_fm_syrk for optimized cp_fm_gemm
-         CALL cp_fm_gemm(transa="T",transb="N",m=dimen_RI,n=dimen_RI,k=dimen_ia,alpha=alpha,&
+         CALL cp_gemm(transa="T",transb="N",m=dimen_RI,n=dimen_RI,k=dimen_ia,alpha=alpha,&
                          matrix_a=fm_mat_S,matrix_b=fm_mat_S,beta=0.0_dp,&
                          matrix_c=fm_mat_Q_gemm,error=error)
       CASE(wfc_mm_style_syrk)
@@ -1529,7 +1529,7 @@ MODULE rpa_ri_gpw
         t_start=m_walltime()
         SELECT CASE(mm_style)
         CASE(wfc_mm_style_gemm)
-           CALL cp_fm_gemm(transa="T",transb="N",m=dimen_RI,n=dimen_RI,k=dimen_ia_beta,alpha=alpha,&
+           CALL cp_gemm(transa="T",transb="N",m=dimen_RI,n=dimen_RI,k=dimen_ia_beta,alpha=alpha,&
                            matrix_a=fm_mat_S_beta,matrix_b=fm_mat_S_beta,beta=0.0_dp,&
                            matrix_c=fm_mat_Q_gemm_beta,error=error)
         CASE(wfc_mm_style_syrk)

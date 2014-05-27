@@ -22,7 +22,12 @@ MODULE dbcsr_io
                                              dbcsr_data_init,&
                                              dbcsr_data_new,&
                                              dbcsr_get_data
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: dbcsr_assert,&
+                                             dbcsr_caller_error,&
+                                             dbcsr_error_set,&
+                                             dbcsr_error_stop,&
+                                             dbcsr_error_type,&
+                                             dbcsr_warning_level
   USE dbcsr_methods,                   ONLY: &
        dbcsr_data_area, dbcsr_distribution, dbcsr_distribution_mp, &
        dbcsr_get_data_size, dbcsr_get_data_size_referenced, &
@@ -63,24 +68,21 @@ MODULE dbcsr_io
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'dbcsr_io'
 
 
-  INTERFACE dbcsr_printmat
-     MODULE PROCEDURE printmat_s, printmat_d, printmat_c, printmat_z
-     MODULE PROCEDURE printmat_s_2d, printmat_d_2d, printmat_c_2d, printmat_z_2d
-  END INTERFACE
-
   ! Main
   PUBLIC :: dbcsr_print
   ! Low-level printing
 ! PUBLIC :: dbcsr_printmat, dbcsr_print2dmat
   ! Utility printing
-  PUBLIC :: all_print
   PUBLIC :: dbcsr_binary_write
   PUBLIC :: dbcsr_binary_read
-  PUBLIC :: dbcsr_print_block_sum
 
   LOGICAL, PARAMETER :: bcsr_debug =   .TRUE.
   LOGICAL, PARAMETER :: bcsr_info =    .FALSE.
   LOGICAL, PARAMETER :: bcsr_verbose = .FALSE.
+
+  INTERFACE dbcsr_printmat
+     MODULE PROCEDURE printmat_s, printmat_d, printmat_c, printmat_z
+  END INTERFACE
 
 CONTAINS
 
@@ -508,20 +510,6 @@ CONTAINS
     ENDDO
   END SUBROUTINE printmat_s
 
-  SUBROUTINE printmat_s_2d(matrix, title, iunit, tr)
-    REAL(KIND=real_4), DIMENSION(:, :), &
-      INTENT(IN)                             :: matrix
-    CHARACTER(*), INTENT(IN), OPTIONAL       :: title
-    INTEGER                                  :: iunit
-    LOGICAL, INTENT(IN), OPTIONAL            :: tr
-
-!   ---------------------------------------------------------------------------
-
-    CALL dbcsr_printmat(RESHAPE(matrix, (/ SIZE(matrix) /)),&
-         SIZE(matrix, 1), SIZE(matrix, 2), iunit=iunit, title=title, tr=tr)
-  END SUBROUTINE printmat_s_2d
-
-
   SUBROUTINE printmat_d(matrix, rows, cols, iunit, title, tr)
     REAL(KIND=real_8), DIMENSION(:), &
       INTENT(IN)                             :: matrix
@@ -543,20 +531,6 @@ CONTAINS
        ENDIF
     ENDIF
   END SUBROUTINE printmat_d
-
-  SUBROUTINE printmat_d_2d(matrix, title, iunit, tr)
-    REAL(KIND=real_8), DIMENSION(:, :), &
-      INTENT(IN)                             :: matrix
-    CHARACTER(*), INTENT(IN), OPTIONAL       :: title
-    INTEGER                                  :: iunit
-    LOGICAL, INTENT(IN), OPTIONAL            :: tr
-
-!   ---------------------------------------------------------------------------
-
-    CALL dbcsr_printmat(RESHAPE(matrix, (/ SIZE(matrix) /)),&
-         SIZE(matrix, 1), SIZE(matrix, 2), iunit=iunit, title=title, tr=tr)
-  END SUBROUTINE printmat_d_2d
-
 
   SUBROUTINE printmat_c(matrix, rows, cols, iunit, title, tr)
     COMPLEX(KIND=real_4), DIMENSION(:), &
@@ -580,19 +554,6 @@ CONTAINS
     ENDIF
   END SUBROUTINE printmat_c
 
-  SUBROUTINE printmat_c_2d(matrix, title, iunit, tr)
-    COMPLEX(KIND=real_4), DIMENSION(:, :), &
-      INTENT(IN)                             :: matrix
-    CHARACTER(*), INTENT(IN), OPTIONAL       :: title
-    INTEGER                                  :: iunit
-    LOGICAL, INTENT(IN), OPTIONAL            :: tr
-
-!   ---------------------------------------------------------------------------
-
-    CALL dbcsr_printmat(RESHAPE(matrix, (/ SIZE(matrix) /)),&
-         SIZE(matrix, 1), SIZE(matrix, 2), iunit=iunit, title=title, tr=tr)
-  END SUBROUTINE printmat_c_2d
-
   SUBROUTINE printmat_z(matrix, rows, cols, iunit, title, tr)
     COMPLEX(KIND=real_8), DIMENSION(:), &
       INTENT(IN)                             :: matrix
@@ -614,68 +575,6 @@ CONTAINS
        ENDIF
     ENDIF
   END SUBROUTINE printmat_z
-
-  SUBROUTINE printmat_z_2d(matrix, title, iunit, tr)
-    COMPLEX(KIND=real_8), DIMENSION(:, :), &
-      INTENT(IN)                             :: matrix
-    CHARACTER(*), INTENT(IN), OPTIONAL       :: title
-    INTEGER                                  :: iunit
-    LOGICAL, INTENT(IN), OPTIONAL            :: tr
-
-!   ---------------------------------------------------------------------------
-
-    CALL dbcsr_printmat(RESHAPE(matrix, (/ SIZE(matrix) /)),&
-         SIZE(matrix, 1), SIZE(matrix, 2), iunit=iunit, title=title, tr=tr)
-  END SUBROUTINE printmat_z_2d
-
-
-! *****************************************************************************
-!> \brief Prints the elements of a matrix.
-!> rows and columns is the matrix size. tr specifies whether
-!> the elements are stored transposed
-! *****************************************************************************
-  SUBROUTINE dbcsr_print2dmat(matrix, title, iunit, tr)
-    REAL(KIND=real_8), DIMENSION(:, :), &
-      INTENT(IN)                             :: matrix
-    CHARACTER(*), INTENT(IN), OPTIONAL       :: title
-    INTEGER                                  :: iunit
-    LOGICAL, INTENT(IN), OPTIONAL            :: tr
-
-    CHARACTER(30)                            :: f
-    INTEGER                                  :: cols, m, n, r, rows
-    LOGICAL                                  :: t
-
-!   ---------------------------------------------------------------------------
-
-    rows = SIZE(matrix,1)
-    cols = SIZE(matrix,2)
-    m = rows
-    n = cols
-    t = .FALSE.
-    IF(PRESENT(title)) WRITE(iunit,*)title
-    IF(PRESENT(tr)) THEN
-       IF(tr) THEN
-          t = .TRUE.
-          m = cols
-          n = rows
-       ENDIF
-    ENDIF
-    WRITE(iunit,*)'Print Matrix 2D:',rows,cols,t,'range',&
-         LBOUND(matrix),':',UBOUND(matrix)
-    IF(m.GT.10000) m=0
-    IF(n.GT.10000) n=0
-    IF(m*n.LT.1 .OR. m*n.GT.SIZE(matrix)) RETURN
-    WRITE(f,FMT="('(',I4,'(F9.4))')")cols
-    DO r = 1, rows
-       !WRITE(iunit,FMT=f)matrix(r,1:(n-1)*m+r:n)
-       IF(.NOT.t) THEN
-          WRITE(iunit,FMT=f)matrix(r,:)
-       ELSE
-          WRITE(iunit,FMT=f)matrix(:,r)
-       ENDIF
-    ENDDO
-  END SUBROUTINE dbcsr_print2dmat
-
 
 ! *****************************************************************************
 !> \brief Prints the values from all processors
@@ -798,7 +697,7 @@ CONTAINS
              subh2_disps(numnodes), subh2_offsets(numnodes),&
              subh3_disps(numnodes), subh3_offsets(numnodes),&
              bdata_disps(numnodes), bdata_offsets(numnodes))
-    subh2_disps = (/((i-1)*2,i=1,numnodes)/)
+    subh2_disps(:) = (/((i-1)*2,i=1,numnodes)/)
     subh3_disps = BOF
     bdata_disps = BOF
     linfo_sizes = BOF
@@ -813,14 +712,14 @@ CONTAINS
     sendbuf = linfo_size
     CALL mp_allgather(sendbuf,linfo_sizes,mp_group)
     CALL cumsum_l(INT(linfo_sizes,kind=file_offset),subh3_disps)
-    subh3_disps = CSHIFT(subh3_disps,shift=-1)+ginfo_size+2*numnodes
+    subh3_disps(:) = CSHIFT(subh3_disps,shift=-1)+ginfo_size+2*numnodes
     subh3_disps(1)=ginfo_size+2*numnodes
 
     data_area_size = dbcsr_get_data_size_referenced(matrix)
     sendbuf = data_area_size
     CALL mp_allgather(sendbuf,da_sizes,mp_group) 
     CALL cumsum_l(INT(da_sizes,kind=file_offset),bdata_disps)
-    bdata_disps = CSHIFT(bdata_disps,shift=-1)+SUM(INT(linfo_sizes,KIND=file_offset))+&
+    bdata_disps(:) = CSHIFT(bdata_disps,shift=-1)+SUM(INT(linfo_sizes,KIND=file_offset))+&
                     ginfo_size+numnodes*2
     bdata_disps(1)=SUM(INT(linfo_sizes,KIND=file_offset))+ginfo_size+numnodes*2
 
@@ -838,17 +737,17 @@ CONTAINS
     END IF
 !> write sub-header2 
     subh2_disps = subh2_disps+ginfo_size
-    subh2_offsets = BOF + (subh2_disps-char_count)*mpi_integer_size +&
+    subh2_offsets(:) = BOF + (subh2_disps-char_count)*mpi_integer_size +&
                     char_count*mpi_character_size
     CALL mp_file_write_at_all(thefile, subh2_offsets(mynode+1), (/nblks, data_area_size/))
 !> write sub-header3 
-    subh3_offsets = BOF + (subh3_disps-char_count)*mpi_integer_size +&
+    subh3_offsets(:) = BOF + (subh3_disps-char_count)*mpi_integer_size +&
                     char_count*mpi_character_size
     CALL mp_file_write_at_all(thefile, subh3_offsets(mynode+1), (/row_p, col_i, blk_p/))
 !> write block data 
     mp_type = dbcsr_mp_type_from_anytype(data_area)
     CALL mp_type_size(mp_type,type_size)
-    bdata_offsets = BOF + (/((bdata_disps(i)-bdata_disps(1))*type_size,i=1,numnodes)/)+&
+    bdata_offsets(:) = BOF + (/((bdata_disps(i)-bdata_disps(1))*type_size,i=1,numnodes)/)+&
                      (bdata_disps(1)-char_count)*mpi_integer_size+ &
                      char_count*mpi_character_size
     SELECT CASE (data_type)
@@ -933,7 +832,6 @@ CONTAINS
 
     INTEGER, DIMENSION(:), POINTER        :: row_p, col_i, blk_p, ginfo,&
                                              proc_nblks, proc_darea_sizes
-    INTEGER, DIMENSION(:,:), POINTER      :: pgrid
     INTEGER, DIMENSION(4)                 :: values
     INTEGER, ALLOCATABLE, DIMENSION(:)    :: linfo_lens, bdata_lens
     INTEGER, ALLOCATABLE, DIMENSION(:), TARGET     :: ginfo_vec, linfo_vec, &
@@ -1050,9 +948,9 @@ CONTAINS
     END DO
     CALL mp_sum(linfo_lens,group_id)
     CALL cumsum_l(INT(linfo_lens,kind=file_offset),subh3_disps)
-    subh3_disps = CSHIFT(subh3_disps,shift=-1)
+    subh3_disps(:) = CSHIFT(subh3_disps,shift=-1)
     subh3_disps(1) = BOF
-    subh3_offsets = subh3_start+subh3_disps*mpi_integer_size
+    subh3_offsets(:) = subh3_start+subh3_disps*mpi_integer_size
 
     sum_nblks = INT(nblks,kind=file_offset)  
     CALL mp_sum(sum_nblks,group_id)
@@ -1102,7 +1000,7 @@ CONTAINS
     END DO
     CALL mp_sum(bdata_lens,group_id)
     CALL cumsum_l(INT(bdata_lens,kind=file_offset),bdata_disps)
-    bdata_disps = CSHIFT(bdata_disps,shift=-1)
+    bdata_disps(:) = CSHIFT(bdata_disps,shift=-1)
     bdata_disps(1) = BOF
 
     bdata_start = subh3_start+subh3_length*mpi_integer_size
@@ -1116,7 +1014,7 @@ CONTAINS
     CASE (dbcsr_type_complex_8)
          type_size = 2*real_8_size
     END SELECT
-    bdata_offsets = bdata_start+bdata_disps*type_size  
+    bdata_offsets(:) = bdata_start+bdata_disps*type_size  
 
     SELECT CASE (data_type)
     CASE (dbcsr_type_real_4)

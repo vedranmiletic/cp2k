@@ -19,7 +19,10 @@ MODULE dbcsr_util
                                              array_i1d_obj
   USE dbcsr_data_methods,              ONLY: dbcsr_data_get_size,&
                                              dbcsr_get_data
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: &
+       dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
+       dbcsr_error_type, dbcsr_failure_level, dbcsr_fatal_level, &
+       dbcsr_internal_error, dbcsr_wrong_args_error
   USE dbcsr_methods,                   ONLY: &
        dbcsr_blk_col_offset, dbcsr_blk_row_offset, &
        dbcsr_distribution_local_cols, dbcsr_distribution_local_rows, &
@@ -58,8 +61,7 @@ MODULE dbcsr_util
   PUBLIC :: dbcsr_checksum, dbcsr_verify_matrix,&
             dbcsr_pack_meta, dbcsr_unpack_meta, meta_from_dist
   ! Block sizes and arrays
-  PUBLIC :: dbcsr_copy_block_sizes,&
-            convert_sizes_to_offsets, convert_offsets_to_sizes,&
+  PUBLIC :: convert_sizes_to_offsets, convert_offsets_to_sizes,&
             global_offsets_to_local,&
             nfull_elements,&
             dbcsr_calc_block_sizes,&
@@ -231,28 +233,6 @@ CONTAINS
        ENDIF
     ENDIF
   END SUBROUTINE convert_offsets_to_sizes
-
-
-! *****************************************************************************
-!> \brief Determines the correct transposed type of a DBCSR matrix.
-!> \param[out] new_type       new matrix type
-!> \param[in] old_type        current matrix_type
-! *****************************************************************************
-  ELEMENTAL SUBROUTINE dbcsr_transposed_type (new_type, old_type)
-    CHARACTER, INTENT(OUT)                   :: new_type
-    CHARACTER, INTENT(IN)                    :: old_type
-
-    SELECT CASE (old_type)
-    CASE ('N')
-       new_type = 'T'
-    CASE ('T')
-       new_type = 'N'
-    CASE DEFAULT
-       new_type = old_type
-    END SELECT
-  END SUBROUTINE dbcsr_transposed_type
-
-
 
 ! *****************************************************************************
 !> \brief Converts global offsets to local

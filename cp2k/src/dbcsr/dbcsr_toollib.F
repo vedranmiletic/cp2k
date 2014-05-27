@@ -16,7 +16,6 @@ MODULE dbcsr_toollib
 
   USE dbcsr_array_i4_sort,             ONLY: dbcsr_1d_i4_sort
   USE dbcsr_array_i8_sort,             ONLY: dbcsr_1d_i8_sort
-  USE dbcsr_error_handling
   USE kinds,                           ONLY: int_4,&
                                              int_8
 
@@ -34,10 +33,9 @@ MODULE dbcsr_toollib
   ! string routines
   PUBLIC :: uppercase
   ! math routines
-  PUBLIC :: gcd, lcm, ceil_log2
+  PUBLIC :: gcd, lcm
   ! utility routines
   PUBLIC :: sort, joaat_hash
-  PUBLIC :: partitions
 
   INTERFACE swap
      MODULE PROCEDURE iswap, bswap

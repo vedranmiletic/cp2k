@@ -57,21 +57,21 @@ MODULE cp_linked_list_fm
   LOGICAL, PRIVATE, PARAMETER :: debug_this_module=.TRUE.
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cp_linked_list_fm'
 
-! type
+!API type
   PUBLIC :: cp_sll_fm_type, cp_sll_fm_p_type
-! common methods
+!API common methods
   PUBLIC :: cp_create, cp_dealloc, cp_get, cp_set, cp_next
-! special get
+!API special get
   PUBLIC :: cp_get_first_el, cp_get_rest, cp_get_empty, cp_get_length,&
        cp_get_element_at, cp_to_array
-! special set
+!API special set
   PUBLIC :: cp_set_element_at
-! structure manipulation
+!API structure manipulation
   PUBLIC :: cp_insert, cp_remove_first_el, cp_remove_el, cp_remove_all
-! low level
+!API low level
   PUBLIC :: cp_dealloc_node
 
-  ! underlying routines
+  !API underlying routines
   PUBLIC :: cp_sll_fm_create, cp_sll_fm_dealloc,&
        cp_sll_fm_dealloc_node,cp_sll_fm_set,&
        cp_sll_fm_get,cp_sll_fm_next,&
@@ -1057,124 +1057,6 @@ USE cp_fm_types, ONLY: cp_fm_type, cp_fm_p_type
      CPAssert(ASSOCIATED(iter),cp_failure_level,routineP,error,failure)
   END IF
 END SUBROUTINE cp_sll_fm_insert_ordered2
-
-! *****************************************************************************
-!> \brief returns true if the list contains the given element
-!> \param sll the linked list you want to control
-!> \param el the element to control
-!> \param ordered if true assumes that the list is ordered in growing order.
-!>        (defaults to false)
-!> \param error variable to control error logging, stopping,...
-!>        see module cp_error_handling
-!> \note
-!>      marginally faster if ordered (n/2 instread of n)
-!> \par History
-!>      07.2002 created [fawzi]
-!> \author Fawzi Mohamed
-! *****************************************************************************
-FUNCTION cp_sll_fm_contains(sll,el,ordered,error) RESULT(res)
-    TYPE(cp_sll_fm_type), POINTER            :: sll
-    TYPE(cp_fm_type), POINTER                :: el
-    LOGICAL, INTENT(in), OPTIONAL            :: ordered
-    TYPE(cp_error_type), INTENT(inout)       :: error
-    LOGICAL                                  :: res
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'cp_sll_fm_contains', &
-      routineP = moduleN//':'//routineN
-
-    LOGICAL                                  :: failure, ord
-    TYPE(cp_fm_type), POINTER                :: el_att
-    TYPE(cp_sll_fm_type), POINTER            :: iter
-
-  failure=.FALSE.; ord=.FALSE.
-  res=.FALSE.
-
-  iter => sll
-  IF (PRESENT(ordered)) ord=ordered
-  IF (ord) THEN
-     DO
-        IF (.NOT.cp_sll_fm_next(iter,el_att=el_att,error=error)) EXIT
-        IF (.NOT.CP_SLL_FM_LESS_Q(el_att,el,error=error)) THEN
-           res=.NOT.CP_SLL_FM_LESS_Q(el,el_att,error=error)
-           RETURN
-        END IF
-     END DO
-  ELSE
-     DO
-        IF (.NOT.cp_sll_fm_next(iter,el_att=el_att,error=error)) EXIT
-        IF (.NOT.CP_SLL_FM_EQUAL_Q(el_att,el,error)) THEN
-           res=.TRUE.
-           RETURN
-        END IF
-     END DO
-  END IF
-END FUNCTION cp_sll_fm_contains
-
-! *****************************************************************************
-!> \brief returns true if the list contains the given element
-!> \param sll the linked list you want to control
-!> \param el the element to control
-!> \param compare_function a function used to compare two elements,
-!>        it should return a negative number if the first argument is less
-!>        than the second, 0 if they are equal, otherwise a positive number
-!> \param ordered if true assumes that the list is ordered in growing order.
-!>        (defaults to false)
-!> \param error variable to control error logging, stopping,...
-!>        see module cp_error_handling
-!> \note
-!>      marginally faster if ordered (n/2 instread of n)
-!> \par History
-!>      07.2002 created [fawzi]
-!> \author Fawzi Mohamed
-! *****************************************************************************
-FUNCTION cp_sll_fm_contains2(sll,el,compare_function,ordered,error)&
-     RESULT(res)
-    TYPE(cp_sll_fm_type), POINTER            :: sll
-    TYPE(cp_fm_type), POINTER                :: el
-  INTERFACE
-! *****************************************************************************
-     FUNCTION compare_function(el1,el2)
-       USE kinds, ONLY: dp
-USE cp_fm_types, ONLY: cp_fm_type, cp_fm_p_type
-       INTEGER :: compare_function
-       TYPE(cp_fm_type), POINTER :: el1,el2
-     END FUNCTION compare_function
-  END INTERFACE
-    LOGICAL, INTENT(in), OPTIONAL            :: ordered
-    TYPE(cp_error_type), INTENT(inout)       :: error
-    LOGICAL                                  :: res
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'cp_sll_fm_contains2', &
-      routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: comp
-    LOGICAL                                  :: failure
-    TYPE(cp_fm_type), POINTER                :: el_att
-    TYPE(cp_sll_fm_type), POINTER            :: iter
-
-  failure=.FALSE.
-  res=.FALSE.
-
-  iter => sll
-  IF (ordered) THEN
-     DO
-        IF (.NOT.cp_sll_fm_next(iter,el_att=el_att,error=error)) EXIT
-        comp=compare_function(el_att,el)
-        IF (comp>=0) THEN
-           res= comp==0
-           RETURN
-        END IF
-     END DO
-  ELSE
-     DO
-        IF (.NOT.cp_sll_fm_next(iter,el_att=el_att,error=error)) EXIT
-        IF (compare_function(el_att,el)==0) THEN
-           res=.TRUE.
-           RETURN
-        END IF
-     END DO
-  END IF
-END FUNCTION cp_sll_fm_contains2
 
 ! template def put here so that line numbers in template and derived
 ! files are almost the same (multi-line use change it a bit)

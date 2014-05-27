@@ -37,7 +37,6 @@ MODULE pw_pool_types
                                              cp_sll_pw_type
   USE f77_blas
   USE kinds,                           ONLY: dp
-  USE machine,                         ONLY: m_loc_r
   USE pw_grid_types,                   ONLY: pw_grid_type
   USE pw_grids,                        ONLY: pw_grid_compare,&
                                              pw_grid_release,&
@@ -66,11 +65,10 @@ MODULE pw_pool_types
 
   PUBLIC :: pw_pool_type, pw_pool_p_type
   PUBLIC :: pw_pool_create, pw_pool_retain, pw_pool_release,&
-       pw_pool_create_pw, pw_pool_give_back_pw,&
-       pw_pool_flush_cache, pw_pool_write,&
-       pw_pool_create_cr3d, pw_pool_give_back_cr3d
+            pw_pool_create_pw, pw_pool_give_back_pw,&
+            pw_pool_create_cr3d, pw_pool_give_back_cr3d
   PUBLIC :: pw_pools_copy, pw_pools_dealloc, pw_pools_flush_cache,&
-       pw_pools_create_pws, pw_pools_give_back_pws
+            pw_pools_create_pws, pw_pools_give_back_pws
 
 ! *****************************************************************************
 !> \brief Manages a pool of grids (to be used for example as tmp objects),
@@ -658,14 +656,12 @@ SUBROUTINE pw_pool_create_cr3d(pw_pool,cr3d,error)
         CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
         IF (debug_this_module) THEN
            WRITE (unit=cp_logger_get_default_unit_nr(logger,local=.TRUE.),&
-                fmt="(' *** pw_pool ',i4,' created cr3d at 0x',z16.16)")&
-                pw_pool%id_nr, m_loc_r(cr3d)
+                fmt="(' *** pw_pool ',i4,' created cr3d')") pw_pool%id_nr
            CALL print_stack(cp_logger_get_default_unit_nr(logger,local=.TRUE.))
         END IF
      ELSEIF (debug_this_module) THEN
            WRITE (unit=cp_logger_get_default_unit_nr(logger,local=.TRUE.),&
-                fmt="(' *** pw_pool ',i4,' created cr3d reusing the one at 0x',z16.16)")&
-                pw_pool%id_nr, m_loc_r(cr3d)
+                fmt="(' *** pw_pool ',i4,' created cr3d')") pw_pool%id_nr
           CALL print_stack(cp_logger_get_default_unit_nr(logger,local=.TRUE.))
      END IF
   END IF
@@ -710,8 +706,7 @@ SUBROUTINE pw_pool_give_back_cr3d(pw_pool,cr3d,accept_non_compatible,error)
      IF (ASSOCIATED(cr3d)) THEN
         IF (debug_this_module) THEN
            WRITE (unit=cp_logger_get_default_unit_nr(logger,local=.TRUE.),&
-                fmt="(' *** pw_pool ',i4,' received back a cr3d at 0x',z16.16)")&
-                pw_pool%id_nr, m_loc_r(cr3d)
+                fmt="(' *** pw_pool ',i4,' received back a cr3d')") pw_pool%id_nr
            CALL print_stack(cp_logger_get_default_unit_nr(logger,local=.TRUE.))
         END IF
         compatible=ALL( MERGE( pw_pool%pw_grid%bounds_local(1,:)==LBOUND(cr3d).AND. &

@@ -12,7 +12,14 @@ MODULE input_cp2k_barostats
   USE cp_output_handling,              ONLY: cp_print_key_section_create
   USE cp_units,                        ONLY: cp_unit_to_cp2k
   USE f77_blas
-  USE input_constants
+  USE input_constants,                 ONLY: do_clv_x,&
+                                             do_clv_xy,&
+                                             do_clv_xyz,&
+                                             do_clv_xz,&
+                                             do_clv_y,&
+                                             do_clv_yz,&
+                                             do_clv_z,&
+                                             high_print_level
   USE input_cp2k_thermostats,          ONLY: create_mass_section,&
                                              create_thermostat_section,&
                                              create_velocity_section
@@ -89,7 +96,7 @@ CONTAINS
        CALL keyword_release(keyword,error=error)
 
        CALL keyword_create(keyword, name="TEMP_TOL",&
-            description="Maximum oscillation of the Barostat temperature imposed by recaling.",&
+            description="Maximum oscillation of the Barostat temperature imposed by rescaling.",&
             usage="TEMP_TOL real",default_r_val=0._dp, &
             unit_str='K',error=error)
        CALL section_add_keyword(section,keyword,error=error)

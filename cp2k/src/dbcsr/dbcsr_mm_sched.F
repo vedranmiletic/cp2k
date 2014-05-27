@@ -28,7 +28,9 @@ MODULE dbcsr_mm_sched
                                              mm_driver_acc
   USE dbcsr_data_methods,              ONLY: dbcsr_data_ensure_size,&
                                              dbcsr_data_get_size
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: dbcsr_error_set,&
+                                             dbcsr_error_stop,&
+                                             dbcsr_error_type
   USE dbcsr_mm_accdrv,                 ONLY: dbcsr_mm_accdrv_barrier,&
                                              dbcsr_mm_accdrv_finalize,&
                                              dbcsr_mm_accdrv_init,&
@@ -338,9 +340,9 @@ MODULE dbcsr_mm_sched
        ! Check if homogenous stacks are indeed homogenous
        IF(stack_descr%defined_mnk) THEN
          DO sp = 1, stack_fillcount
-           IF(stack_data(p_m,sp) /= stack_descr%m) CALL abort()
-           IF(stack_data(p_n,sp) /= stack_descr%n) CALL abort()
-           IF(stack_data(p_k,sp) /= stack_descr%k) CALL abort()
+           IF(stack_data(p_m,sp) /= stack_descr%m) CALL mp_abort("homogenous stacks check failed")
+           IF(stack_data(p_n,sp) /= stack_descr%n) CALL mp_abort("homogenous stacks check failed")
+           IF(stack_data(p_k,sp) /= stack_descr%k) CALL mp_abort("homogenous stacks check failed")
          END DO
        ENDIF
      ENDIF
@@ -563,7 +565,7 @@ MODULE dbcsr_mm_sched
 
     !sorting stat entries by flops per multiplication
     ALLOCATE(sort_key(SIZE(stats_num_mnk_stacks,1)-1))
-    sort_key = 2*PRODUCT(stats_num_mnk_stacks(2:,1:3), DIM=2)
+    sort_key(:) = 2*PRODUCT(stats_num_mnk_stacks(2:,1:3), DIM=2)
     ALLOCATE(sort_idx(SIZE(sort_key)))
     CALL sort(sort_key, SIZE(sort_key), sort_idx)
 

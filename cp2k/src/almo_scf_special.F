@@ -22,7 +22,7 @@ MODULE almo_scf_special
                                              almo_objectM1_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_cp2k_link,              ONLY: cp_dbcsr_alloc_block_from_nbl
@@ -89,7 +89,7 @@ MODULE almo_scf_special
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'almo_scf_special'
 
   PUBLIC :: almo_level2_spec2_1, almo_levelX_spec6_0, almo_levelX_spec5_0,&
-            almo_levelX_spec4_1, almo_levelX_spec3_0, almo_levelX_spec1_0,&
+            almo_levelX_spec3_0,&
             almo_level2_spec1_0, almo_levelX_spec2_0
 
 CONTAINS

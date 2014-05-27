@@ -77,9 +77,7 @@ MODULE rt_propagation
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'rt_propagation'
 
   PUBLIC :: rt_prop_setup,&
-       init_ehrenfest_md,&
-       run_propagation, &
-       rt_write_input_restart
+            rt_write_input_restart
 
 
 CONTAINS
@@ -425,8 +423,7 @@ CONTAINS
     INTEGER                                  :: homo, ispin, stat
     LOGICAL                                  :: energy_consistency, failure
     TYPE(cp_fm_pool_p_type), DIMENSION(:), &
-      POINTER                                :: ao_mo_fm_pools, &
-                                                ao_mo_fm_pools_aux_fit
+      POINTER                                :: ao_mo_fm_pools_aux_fit
     TYPE(cp_fm_type), POINTER                :: mo_coeff, mo_coeff_aux_fit
 
     SELECT CASE(rtp_control%initial_wfn)

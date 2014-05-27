@@ -17,7 +17,7 @@ MODULE qs_scf_post_gpw
   USE atom_kind_orbitals,              ONLY: calculate_atomic_density
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
@@ -167,7 +167,6 @@ MODULE qs_scf_post_gpw
             qs_scf_post_occ_cubes,&
             qs_scf_post_unocc_cubes,&
             qs_scf_post_moments,&
-            qs_scf_post_efg,&
             write_available_results,&
             write_mo_free_results
 
@@ -2376,7 +2375,7 @@ CONTAINS
                    bfun = 0._dp
                    DO ispin = 1,dft_control%nspins
                       IF(ASSOCIATED(rho_atom%rho_rad_h(1)%r_coef)) THEN
-                         bfun = bfun + rho_atom%rho_rad_h(ispin)%r_coef - rho_atom%rho_rad_s(ispin)%r_coef
+                         bfun(:,:) = bfun + rho_atom%rho_rad_h(ispin)%r_coef - rho_atom%rho_rad_s(ispin)%r_coef
                       END IF
                    END DO
                    CALL mp_sum(bfun,para_env%group)

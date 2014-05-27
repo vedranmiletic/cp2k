@@ -55,8 +55,6 @@
     IF (PRESENT (col_size)) col_size = csize
 
     IF(found) THEN
-       IF (dbcsr_buffers_2d_needed) &
-            CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
        nze = rsize*csize
        IF (nze .GT. 0) THEN
           !
@@ -159,8 +157,6 @@
 
     NULLIFY (block)
     IF(found) THEN
-       IF (dbcsr_buffers_2d_needed) &
-            CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
        nze = rsize*csize
        IF(nze.eq.0) THEN
           found = .TRUE.
@@ -233,8 +229,9 @@
     LOGICAL                                  :: stored_tr
     TYPE(btree_2d_data_s)          :: data_block
     REAL(kind=real_4), DIMENSION(:), POINTER           :: block_1d
-    TYPE(dbcsr_block_buffer_obj)             :: buffers
+
 !   ---------------------------------------------------------------------------
+
     IF (debug_mod) THEN
        CALL dbcsr_assert (matrix%m%data_type, "EQ", dbcsr_type_real_4,&
             dbcsr_fatal_level, dbcsr_caller_error,&
@@ -250,10 +247,6 @@
     IF (PRESENT (col_size)) col_size = csize
 
     IF(found) THEN
-       IF (dbcsr_buffers_2d_needed) THEN
-          buffers = matrix%m%buffers
-          CALL dbcsr_buffers_flush (buffers, error=error)
-       ENDIF
        nze = rsize*csize
        IF (nze .GT. 0) THEN
           !
@@ -332,8 +325,9 @@
                                                 rsize, stored_row,&
                                                 stored_col
     LOGICAL                                  :: stored_tr
-    TYPE(dbcsr_block_buffer_obj)             :: buffers
+
 !   ---------------------------------------------------------------------------
+
     IF (debug_mod) THEN
        CALL dbcsr_assert (matrix%m%data_type, "EQ", dbcsr_type_real_4,&
             dbcsr_fatal_level, dbcsr_caller_error,&
@@ -351,10 +345,6 @@
 
     NULLIFY (block)
     IF(found) THEN
-       IF (dbcsr_buffers_2d_needed) THEN
-          buffers = matrix%m%buffers
-          CALL dbcsr_buffers_flush (buffers, error=error)
-       ENDIF
        nze = rsize*csize
        !
        block => pointer_view (&
@@ -492,7 +482,7 @@
 
     TYPE(btree_2d_data_s)          :: data_block
     INTEGER                                  :: stored_row, stored_col, iw, nwms
-    TYPE(dbcsr_error_type)                   :: error
+!$  TYPE(dbcsr_error_type)                   :: error
 
 !   ---------------------------------------------------------------------------
 
@@ -633,11 +623,6 @@
     CALL dbcsr_get_stored_block_info (matrix%m, stored_row, stored_col,&
          found, blk, offset)
     IF(found) THEN
-       ! This buffer flush is to prevent having a stale buffer overwrite
-       ! newer data.
-       IF (dbcsr_buffers_2d_needed) &
-            CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
-       !
        ! let's copy the block
        offset = ABS (offset)
        ! Fix the index if the new block's transpose flag is different
@@ -785,84 +770,14 @@
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: error_handler
-    LOGICAL                                  :: cont_p
-    TYPE(dbcsr_block_buffer_obj)             :: buffers
     REAL(kind=real_4), DIMENSION(:), POINTER           :: lin_blk_p
 
 !   ---------------------------------------------------------------------------
 
     IF (careful_mod) CALL dbcsr_error_set (routineN, error_handler, error)
-    IF (dbcsr_buffers_2d_needed) THEN
-       IF (PRESENT (contiguous_pointers)) THEN
-          cont_p = contiguous_pointers
-       ELSE
-          cont_p = .TRUE.
-       ENDIF
-       buffers = matrix%m%buffers
-       CALL dbcsr_buffers_flush (buffers, error=error)
-       IF (buffer_tr) THEN
-          CALL dbcsr_buffers_resize (buffers, row_size=csize, col_size=rsize,&
-               minimum=.NOT.cont_p, error=error)
-       ELSE
-          CALL dbcsr_buffers_resize (buffers, row_size=rsize, col_size=csize,&
-               minimum=.NOT.cont_p, error=error)
-       ENDIF
-       CALL dbcsr_buffers_set_pointer_2d (pointer_any, row, col,&
-            rsize, csize, main_tr, base_offset, buffers, buffer_tr, error=error)
-       IF (PRESENT (read_only)) THEN
-          IF (read_only) THEN
-             CALL dbcsr_buffers_mark_dirty (buffers, dirty=.FALSE., error=error)
-          ENDIF
-       ENDIF
-    ELSE
-       CALL dbcsr_get_data (matrix%m%data_area, lin_blk_p,&
-            lb=base_offset, ub=base_offset+rsize*csize-1)
-       CALL pointer_s_rank_remap2 (pointer_any, rsize, csize,&
-            lin_blk_p)
-    ENDIF
+    CALL dbcsr_get_data (matrix%m%data_area, lin_blk_p,&
+         lb=base_offset, ub=base_offset+rsize*csize-1)
+    CALL pointer_s_rank_remap2 (pointer_any, rsize, csize,&
+         lin_blk_p)
     IF (careful_mod) CALL dbcsr_error_stop (error_handler, error)
   END SUBROUTINE dbcsr_set_block_pointer_2d_s
-
-! *****************************************************************************
-!> \brief Sets a pointer, possibly using the buffers.
-!> \param[in] matrix           Matrix to use
-!> \param[in,out] pointer      The pointer to set
-!> \param[in] row, col         Row and column of block to point to
-!> \param[in] rsize, csize     Row and column sizes of block to point to
-!> \param[in] main_tr          Whether block is transposed in the matrix
-!> \param[in] base_offset      The block pointer
-!> \param[in] buffer_tr        Whether buffer should be transposed
-!> \param[in] contiguous_pointers  (optional) Whether pointers should be made
-!>                                 contiguous
-!> \param[in] read_only        (optional) User promise not to change data
-!> \param[in,out] error        error
-! *****************************************************************************
-  SUBROUTINE dbcsr_set_block_pointer_1d_s (&
-       matrix, pointer_any, row, col,&
-       rsize, csize, main_tr, base_offset, buffer_tr, contiguous_pointers,&
-       read_only, error)
-    TYPE(dbcsr_obj), INTENT(IN)              :: matrix
-    REAL(kind=real_4), DIMENSION(:), POINTER           :: pointer_any
-    INTEGER, INTENT(IN)                      :: row, col, rsize, csize
-    LOGICAL, INTENT(IN)                      :: main_tr
-    INTEGER, INTENT(IN)                      :: base_offset
-    LOGICAL, INTENT(IN)                      :: buffer_tr
-    LOGICAL, INTENT(IN), OPTIONAL            :: contiguous_pointers, read_only
-    TYPE(dbcsr_error_type), INTENT(INOUT)    :: error
-
-    CHARACTER(len=*), PARAMETER :: &
-      routineN = 'dbcsr_set_block_pointer_1d_s', &
-      routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: error_handler
-    LOGICAL                                  :: cont_p
-    TYPE(dbcsr_block_buffer_obj)             :: buffers
-
-!   ---------------------------------------------------------------------------
-
-    IF (careful_mod) CALL dbcsr_error_set (routineN, error_handler, error)
-    CALL dbcsr_get_data (matrix%m%data_area, pointer_any,&
-         lb=base_offset, ub=base_offset+rsize*csize-1)
-    IF (careful_mod) CALL dbcsr_error_stop (error_handler, error)
-  END SUBROUTINE dbcsr_set_block_pointer_1d_s
-

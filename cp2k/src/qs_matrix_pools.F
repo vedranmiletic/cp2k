@@ -10,6 +10,7 @@
 !> \author fawzi
 ! *****************************************************************************
 MODULE qs_matrix_pools
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_fm_pool_types,                ONLY: cp_fm_pool_p_type,&
                                              cp_fm_pool_type,&
                                              fm_pool_create,&
@@ -20,10 +21,11 @@ MODULE qs_matrix_pools
                                              fm_pools_dealloc
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
                                              cp_fm_struct_get,&
+                                             cp_fm_struct_get_ncol_block,&
+                                             cp_fm_struct_get_nrow_block,&
                                              cp_fm_struct_release,&
                                              cp_fm_struct_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE f77_blas
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
@@ -39,8 +41,8 @@ MODULE qs_matrix_pools
   INTEGER, SAVE, PRIVATE :: last_mpools_id=0
 
   PUBLIC :: qs_matrix_pools_type
-  PUBLIC :: mpools_retain, mpools_release, mpools_set, mpools_get,&
-       mpools_create, mpools_rebuild_fm_pools
+  PUBLIC :: mpools_retain, mpools_release, mpools_get,&
+            mpools_create, mpools_rebuild_fm_pools
 
 ! *****************************************************************************
 !> \brief container for the pools of matrixes used by qs
@@ -329,13 +331,12 @@ END SUBROUTINE mpools_create
 !> \author Fawzi Mohamed
 ! *****************************************************************************
 SUBROUTINE mpools_rebuild_fm_pools(mpools, mos, blacs_env, para_env,&
-     nrow_block,ncol_block,nmosub,error)
+                                   nmosub,error)
     TYPE(qs_matrix_pools_type), POINTER      :: mpools
     TYPE(mo_set_p_type), DIMENSION(:), &
       POINTER                                :: mos
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env
     TYPE(cp_para_env_type), POINTER          :: para_env
-    INTEGER, INTENT(in)                      :: nrow_block, ncol_block
     INTEGER, DIMENSION(2), INTENT(IN), &
       OPTIONAL                               :: nmosub
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -344,14 +345,18 @@ SUBROUTINE mpools_rebuild_fm_pools(mpools, mos, blacs_env, para_env,&
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ispin, max_nmo, &
-                                                min_nmo, nao, ncg, nmo, nrg, &
-                                                nspins, stat
+                                                min_nmo, nao, ncg, &
+                                                ncol_block, nmo, nrg, &
+                                                nrow_block, nspins, stat
     LOGICAL                                  :: failure, prepare_subset, &
                                                 should_rebuild
     TYPE(cp_fm_pool_type), POINTER           :: p_att
     TYPE(cp_fm_struct_type), POINTER         :: fmstruct
 
   CALL timeset(routineN,handle)
+
+  nrow_block=cp_fm_struct_get_nrow_block()
+  ncol_block=cp_fm_struct_get_ncol_block()
 
   failure=.FALSE.
   NULLIFY(fmstruct, p_att)

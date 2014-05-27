@@ -221,7 +221,7 @@ CONTAINS
 
     INTEGER                                  :: handle, i, im, ispin, nspin, &
                                                 re
-    REAL(dp)                                 :: dt, eps_arnoldi, t
+    REAL(dp)                                 :: eps_arnoldi, t
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: propagator_matrix
     TYPE(cp_fm_p_type), DIMENSION(:), &
@@ -259,17 +259,18 @@ CONTAINS
        IF(rtp_control%fixed_ions.AND..NOT.rtp%do_hfx)THEN
           CALL arnoldi(mos_old(re:im),mos_new(re:im),&
                eps_arnoldi,Him=propagator_matrix_fm(im)%matrix,&
-               mos_next=mos_next(re:im),error=error)
+               mos_next=mos_next(re:im),narn_old=rtp%narn_old,error=error)
        ELSE
           CALL arnoldi(mos_old(re:im),mos_new(re:im),&
                eps_arnoldi,Hre=propagator_matrix_fm(re)%matrix,&
-               Him=propagator_matrix_fm(im)%matrix,mos_next=mos_next(re:im),error=error)
+               Him=propagator_matrix_fm(im)%matrix,mos_next=mos_next(re:im),&
+               narn_old=rtp%narn_old,error=error)
        END IF
     END DO
 
-    DO i=1,SIZE(propagator_matrix)
-         CALL copy_fm_to_dbcsr(propagator_matrix_fm(i)%matrix,propagator_matrix(i)%matrix,error=error)
-    END DO
+!    DO i=1,SIZE(propagator_matrix)
+!         CALL copy_fm_to_dbcsr(propagator_matrix_fm(i)%matrix,propagator_matrix(i)%matrix,error=error)
+!    END DO
     CALL cp_fm_vect_dealloc(propagator_matrix_fm,error=error)
 
     CALL timestop(handle)
@@ -312,7 +313,8 @@ CONTAINS
        im=2*ispin
 
        IF(rtp%iter==1) THEN
-          !For EM I have to copy rho_old onto rho_next and for ETRS, this is the first term of the series of commutators that result in rho_next
+          ! For EM I have to copy rho_old onto rho_next and for ETRS,
+          ! this is the first term of the series of commutators that result in rho_next
           CALL cp_dbcsr_copy(rho_next(re)%matrix,rho_old(re)%matrix,error=error)
           CALL cp_dbcsr_copy(rho_next(im)%matrix,rho_old(im)%matrix,error=error)
           IF(rtp_control%propagator==do_etrs) THEN

@@ -90,13 +90,13 @@ MODULE pw_spline_utils
 
     INTEGER, SAVE, PRIVATE :: last_precond_id=0
 
-  PUBLIC :: pw_spline3_interpolate_values_g, pw_spline3_evaluate_values_g,&
-       pw_spline3_deriv_g
-  PUBLIC :: pw_spline_scale_deriv, pw_nn_smear_g
-  PUBLIC :: pw_spline2_interpolate_values_g, pw_spline2_evaluate_values_g,&
-       pw_spline2_deriv_g
-  PUBLIC :: pw_nn_compose_r, pw_nn_smear_r, pw_nn_deriv_r, &
-            spl3_nopbc, spl3_pbc, pw_nn_compose_r_no_pbc, spl3_nopbct
+  PUBLIC :: pw_spline3_interpolate_values_g,&
+            pw_spline3_deriv_g
+  PUBLIC :: pw_spline_scale_deriv
+  PUBLIC :: pw_spline2_interpolate_values_g,&
+            pw_spline2_deriv_g
+  PUBLIC :: pw_nn_smear_r, pw_nn_deriv_r,&
+            spl3_nopbc, spl3_pbc, spl3_nopbct
   PUBLIC :: add_fine2coarse, add_coarse2fine
   PUBLIC :: pw_spline_precond_create,&
             pw_spline_do_precond,&
@@ -1657,7 +1657,7 @@ CPSourceFileRef,&
 
           p_old=pos_of_x(fine_gbo(1,1)+MODULO(fi_lb-fine_gbo(1,1),sf))
           p_lb=FLOOR((fi_lb-2-f_shift(1))/2.)
-          sent_size=send_offset
+          sent_size(:)=send_offset
           ss=my_coarse_bo(2,1)-my_coarse_bo(1,1)+1
           DO x=fi_lb,fi_ub
              p=pos_of_x(fine_gbo(1,1)+MODULO(x-fine_gbo(1,1),sf))
@@ -1766,7 +1766,7 @@ CPSourceFileRef,&
           my_lb=MAX(coarse_gbo(1,1),coarse_bo(1,1))
           my_ub=MIN(coarse_gbo(2,1),coarse_bo(2,1))
           pos_of_x => coarse_coeffs_pw%pw_grid%para%pos_of_x
-          sent_size=rcv_offset
+          sent_size(:)=rcv_offset
           ss=coarse_bo(2,1)-coarse_bo(1,1)+1
           DO x=my_ub+1,coarse_bo(2,1)
              p_old=pos_of_x(coarse_gbo(1,1)+MODULO(x-coarse_gbo(1,1),s(1)))
@@ -2904,7 +2904,7 @@ CPSourceFileRef,&
           pos_of_x => coarse_coeffs_pw%pw_grid%para%pos_of_x
           p_old=pos_of_x(coarse_gbo(1,1) &
                +MODULO(coarse_bo(1,1)-coarse_gbo(1,1),s(1)))
-          sent_size=send_offset
+          sent_size(:)=send_offset
           ss=coarse_bo(2,1)-coarse_bo(1,1)+1
           DO x=coarse_bo(1,1),coarse_bo(2,1)
              p=pos_of_x(coarse_gbo(1,1)+MODULO(x-coarse_gbo(1,1),s(1)))
@@ -2945,7 +2945,7 @@ CPSourceFileRef,&
 
           ! ** sum & reorder rcv buffer
 
-          sent_size=rcv_offset
+          sent_size(:)=rcv_offset
           DO ip=0,n_procs-1
 
              DO x=pp_lb(ip),coarse_gbo(1,1)-1

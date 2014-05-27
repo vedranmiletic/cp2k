@@ -13,32 +13,26 @@
 
 MODULE ma_topology
 
-#if defined (__HAS_NO_ISO_C_BINDING)
-#if defined __GEMINI || __SEASTAR || __NET 
- !Compile-time error. These two flags are incompatible
-  STOP "The topology needs ISO_C_BINDING.Compile without __HAS_NO_ISO_C_BINDING"
-#endif
-#endif
-
-#if !defined (__HAS_NO_ISO_C_BINDING)
-      USE ISO_C_BINDING
-#endif
-
- USE machine,                      ONLY: m_walltime,m_getpid
- USE machine_architecture_types,   ONLY: net_topo,ma_mp_type,has_MPI,&
-                                         cannon_graph,complete_graph
- USE ma_errors,                    ONLY: ma_error_stop, &
-                                         ma_error_allocation, &
-                                         ma_error_finalize, &
-                                         ma_error_option, &
-                                         ma_error_database, &
-                                          ma_error_remove 
- USE ma_kinds,                     ONLY: dp,default_string_length
- USE mathlib,                      ONLY: gcd
- USE message_passing,              ONLY: mp_environ, mp_reordering, &
-                                         mp_proc_name,mp_scatter,mp_sync,&
-                                         mp_sum, mp_isendrecv,mp_waitall
- USE string_utilities,             ONLY: integer_to_string
+  USE ISO_C_BINDING
+  USE ma_errors,                       ONLY: ma_error_allocation,&
+                                             ma_error_database,&
+                                             ma_error_option,&
+                                             ma_error_remove,&
+                                             ma_error_stop
+  USE ma_kinds,                        ONLY: default_string_length,&
+                                             dp
+  USE machine,                         ONLY: m_getpid,&
+                                             m_walltime
+  USE machine_architecture_types,      ONLY: cannon_graph,&
+                                             complete_graph,&
+                                             net_topo
+  USE mathlib,                         ONLY: gcd
+  USE message_passing,                 ONLY: mp_environ,&
+                                             mp_isendrecv,&
+                                             mp_proc_name,&
+                                             mp_sum,&
+                                             mp_waitall
+  USE string_utilities,                ONLY: integer_to_string
 
 IMPLICIT NONE
 
@@ -48,38 +42,26 @@ IMPLICIT NONE
 
   !Maximum number of nodes in each direction
   PUBLIC :: ma_net_topology, ma_allocated_topology
-  PUBLIC :: ma_get_allocated_topology, ma_set_allocated_topology
-  PUBLIC :: ma_nodes_x, ma_nodes_y, ma_nodes_z
-  PUBLIC :: ma_num_nodes
-  PUBLIC :: ma_get_host_coordinates
-  PUBLIC :: ma_hops, ma_compute_contention
-  PUBLIC :: ma_hops_byte,ma_hop_bytes
-  PUBLIC :: ma_dist_bytes
-  PUBLIC :: ma_comm_graph, ma_comm_pattern_cannon
-  PUBLIC :: ma_comm_pattern_alltoall
+  PUBLIC :: ma_compute_contention
+  PUBLIC :: ma_comm_graph
   PUBLIC :: ma_2dgrid_dimensions
   PUBLIC :: ma_get_job_allocation
   PUBLIC :: ma_destroy_topology
   
-#if defined __parallel
-#if defined __GEMINI || __SEASTAR
- PUBLIC :: ma_extract_topology
- PUBLIC :: ma_remove_topology
- PUBLIC :: ma_get_job_alloc_strategy
-#endif 
-#endif
  
 ! These are for Machine architecture internal use.
 !
   PUBLIC :: net_topology
-  PUBLIC :: comm_graph
-  PUBLIC :: allocated_topology 
-  PUBLIC :: max_nodes, max_x, max_y, max_z
+  PUBLIC :: allocated_topology
 
   TYPE(net_topo),DIMENSION(:),POINTER      :: net_topology
+#if defined __parallel
+#if defined __GEMINI || __SEASTAR
   INTEGER                                  :: max_x
   INTEGER                                  :: max_y
   INTEGER                                  :: max_z
+#endif 
+#endif
 
   INTEGER, DIMENSION(:), POINTER           :: allocated_topology
   INTEGER, DIMENSION(:,:), POINTER         :: comm_graph
@@ -160,15 +142,30 @@ CONTAINS
 !>      2.2012 created [ Christiane Pousa ]
 ! *****************************************************************************
  SUBROUTINE ma_net_topology (mp_group)
-  INTEGER                                  :: rst_unit,istat,i,j,nfields  
-  INTEGER,DIMENSION(:), POINTER            :: nid,x,y,z
-  INTEGER                                  :: fnid,fx,fy,fz,endoffile,myid
-  INTEGER                                  :: mp_group,source, numtask, req(2)
-  CHARACTER(LEN=default_string_length)     :: host_name,name_file,myid_str
+    INTEGER                                :: mp_group
+    
   CHARACTER(LEN=*), PARAMETER :: routineN = 'ma_net_topology', &
       routineP = moduleN//':'//routineN
-  REAL, DIMENSION(:), POINTER              :: msgin,msgout
-  REAL(KIND=dp)                            :: startTime,endTime
+
+  INTEGER                                  :: istat
+  INTEGER                                  :: source, numtask
+#if defined __SEASTAR && __parallel
+  CHARACTER(LEN=default_string_length)     :: name_file, myid_str
+  INTEGER                                  :: endoffile, fnid, fx, fy, fz, &
+                                              myid, nfields, rst_unit
+#elif __GEMINI  && __parallel
+  CHARACTER(LEN=default_string_length)     :: name_file, myid_str
+  INTEGER                                  :: endoffile, fnid, fx, fy, fz, &
+                                              myid, nfields, rst_unit
+  INTEGER, DIMENSION(:), POINTER           :: nid,x,y,z
+#elif defined __NET && __parallel
+  INTEGER                                  :: i, j
+  REAL(KIND=dp)                            :: startTime, endTime
+  INTEGER, DIMENSION(2)                    :: req
+  REAL, DIMENSION(:), POINTER              :: msgin, msgout
+#elif defined __parallel 
+  CHARACTER(LEN=default_string_length)     :: host_name
+#endif
 
 !if it is the seastar connection
 #if defined __SEASTAR && __parallel
@@ -387,9 +384,14 @@ CONTAINS
  SUBROUTINE ma_allocated_topology (mp_group)
     INTEGER                                  :: mp_group
 
-    CHARACTER(LEN=default_string_length)     :: host_name
-    INTEGER                                  :: host_code, i, istat, numtask, &
+    INTEGER                                  :: istat, numtask, &
                                                 source
+#if defined __GEMINI || __SEASTAR
+    CHARACTER(LEN=default_string_length)     :: host_name
+#elif defined __NET
+    CHARACTER(LEN=default_string_length)     :: host_name
+    INTEGER                                  :: host_code, i
+#endif
 
   CALL mp_environ(numtask,source,mp_group) 
   ALLOCATE (allocated_topology(numtask),STAT=istat)
@@ -550,13 +552,16 @@ CONTAINS
 !> \var dest  the id of the dest node
 ! *****************************************************************************
   FUNCTION ma_hops (src,dest) RESULT (nhops)
-   INTEGER, INTENT(IN)          :: src,dest
-   INTEGER                      :: x,y,z,nhops
-   INTEGER                      :: src_x, src_y, src_z,&
-                                   dest_x, dest_y, dest_z
-   REAL                         :: tmp
+   INTEGER, INTENT(IN)          :: src, dest
+
+   INTEGER                      :: nhops
 
 #if defined __GEMINI || __SEASTAR  
+   INTEGER                      :: src_x, src_y, src_z,&
+                                   dest_x, dest_y, dest_z,&
+                                   x, y, z
+   REAL                         :: tmp
+
    CALL ma_get_host_coordinates(src,src_x, src_y, src_z)
    CALL ma_get_host_coordinates(dest,dest_x, dest_y, dest_z)   
 
@@ -819,11 +824,12 @@ ENDIF
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Get the direction to for each communication
- SUBROUTINE get_direction(src, dest,xdir,ydir,zdir)
-   INTEGER                        ::  xdir, ydir, zdir
-   INTEGER                        ::  x,y,z, src, dest
+ SUBROUTINE get_direction(src,dest,xdir,ydir,zdir)
+   INTEGER                        :: src, dest, xdir, ydir, zdir
 
 #if defined __GEMINI || __SEASTAR   
+   INTEGER                        :: x,y,z
+
    x = MOD((net_topology(dest)%coord_x - net_topology(src)%coord_x),ma_nodes_x())
    IF(x .LT. ma_nodes_x()/2) THEN
      xdir = 1 

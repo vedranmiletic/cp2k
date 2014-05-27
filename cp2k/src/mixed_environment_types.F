@@ -11,7 +11,7 @@ MODULE mixed_environment_types
                                              atomic_kind_list_release,&
                                              atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE cell_types,                      ONLY: cell_release,&
+  USE cell_methods,                    ONLY: cell_release,&
                                              cell_retain,&
                                              cell_type
   USE cp_para_env,                     ONLY: cp_para_env_release,&
@@ -95,16 +95,14 @@ MODULE mixed_environment_types
 
 ! *** Public data types ***
 
-  PUBLIC :: mixed_environment_type,        &
-            mixed_environment_p_type
+  PUBLIC :: mixed_environment_type
 
 ! *** Public subroutines ***
 
   PUBLIC :: get_mixed_env,&
-            init_mixed_env,&
             set_mixed_env,&
-            mixed_env_create, &
-            mixed_env_release, &
+            mixed_env_create,&
+            mixed_env_release,&
             mixed_env_retain
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'mixed_environment_types'

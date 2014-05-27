@@ -14,7 +14,7 @@
 ! *****************************************************************************
 MODULE hfx_libint_interface
 
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              real_to_scaled
   USE f77_blas
   USE gamma,                           ONLY: fgamma=>fgamma_0
@@ -34,8 +34,8 @@ MODULE hfx_libint_interface
        do_hfx_potential_short, do_hfx_potential_truncated
   USE kinds,                           ONLY: dp,&
                                              int_8
-  USE mathconstants
-  USE orbital_pointers
+  USE mathconstants,                   ONLY: pi
+  USE orbital_pointers,                ONLY: nco
   USE t_c_g0,                          ONLY: t_c_g0_n
 #include "./common/cp_common_uses.f90"
 

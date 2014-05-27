@@ -9,9 +9,7 @@
 !> \date    2013-04
 ! *****************************************************************************
 MODULE acc_hostmem
-#if !defined (__HAS_NO_ISO_C_BINDING)
   USE ISO_C_BINDING
-#endif
   USE acc_kinds,                       ONLY: int_4,&
                                              int_4_size,&
                                              int_8,&
@@ -20,7 +18,7 @@ MODULE acc_hostmem
                                              real_4_size,&
                                              real_8,&
                                              real_8_size
-  USE dummy_c_bindings
+
   IMPLICIT NONE
 
   PRIVATE
@@ -109,8 +107,9 @@ CONTAINS
 
     CHARACTER(len=*), PARAMETER :: routineN = 'acc_hostmem_alloc_raw', &
       routineP = moduleN//':'//routineN
-
+#if defined (__ACC)
     INTEGER                                  :: istat
+#endif
 
 #if defined (__ACC)
     istat = cuda_host_mem_alloc_cu(host_mem_c_ptr, &

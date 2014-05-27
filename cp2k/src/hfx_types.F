@@ -18,7 +18,7 @@ MODULE hfx_types
   USE bibliography,                    ONLY: cite_reference,&
                                              guidon2008,&
                                              guidon2009
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              plane_distance,&
                                              scaled_to_real
@@ -57,9 +57,11 @@ MODULE hfx_types
   USE machine,                         ONLY: m_chdir,&
                                              m_getcwd
   USE mathconstants,                   ONLY: pi
-  USE orbital_pointers
+  USE orbital_pointers,                ONLY: nco,&
+                                             ncoset,&
+                                             nso
   USE string_utilities,                ONLY: compress
-  USE t_c_g0,                          ONLY: free
+  USE t_c_g0,                          ONLY: free_C0
   USE timings,                         ONLY: timeset,&
                                              timestop
 #include "./common/cp_common_uses.f90"
@@ -1230,7 +1232,7 @@ MODULE hfx_types
     IF(x_data(1,1)%potential_parameter%potential_type == do_hfx_potential_truncated .OR. &
        x_data(1,1)%potential_parameter%potential_type == do_hfx_potential_mix_cl_trunc ) THEN
       init_t_c_g0_lmax = -1
-      CALL free()
+      CALL free_C0()
     END IF
     DO i_thread= 1,n_threads
       DO irep=1,n_rep_hf

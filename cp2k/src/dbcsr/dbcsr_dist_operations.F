@@ -18,7 +18,10 @@ MODULE dbcsr_dist_operations
        array_data, array_equality, array_exists, array_hold, array_i1d_obj, &
        array_new, array_nullify, array_release, array_size
   USE dbcsr_config,                    ONLY: max_elements_per_block
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: &
+       dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
+       dbcsr_error_type, dbcsr_fatal_level, dbcsr_internal_error, &
+       dbcsr_warning_level, dbcsr_wrong_args_error
   USE dbcsr_methods,                   ONLY: &
        dbcsr_distribution, dbcsr_distribution_col_dist, &
        dbcsr_distribution_has_threads, dbcsr_distribution_hold, &
@@ -69,38 +72,21 @@ MODULE dbcsr_dist_operations
             dbcsr_reblocking_targets,&
             create_bl_distribution,&
             dbcsr_create_dist_r_unrot,&
-            dbcsr_create_dist_r_rot,&
-            dbcsr_create_dist_l_unrot,&
-            dbcsr_create_dist_l_rot,&
-            dbcsr_create_dist_elemental,&
-            dbcsr_create_dist_fullest,&
             dbcsr_create_dist_block_cyclic
 
-  PUBLIC :: dbcsr_create_image_dist,&
-            make_image_distribution_dense
+  PUBLIC :: dbcsr_create_image_dist
 
   ! Helper routines
-  PUBLIC ::  evenly_bin,&
-             dbcsr_dist_bin,&
-             rebin_distribution,&
-             reimage_distribution,&
-             rebin_imaged_distribution,&
-             test_create_bl_distribution,&
-             match_sizes_to_dist, make_sizes_dense,&
-             mostly_non_transposed,&
-             dbcsr_print_dist,&
-             image_calculator
+  PUBLIC :: dbcsr_dist_bin,&
+            make_sizes_dense,&
+            image_calculator
 
-  PUBLIC ::  find_local_virtual_elements,&
-             map_local_virtual_elements,&
-             dbcsr_get_local_rows, dbcsr_get_local_cols,&
-             dbcsr_get_global_row_map, dbcsr_get_global_col_map,&
-             dbcsr_get_local_vrows, dbcsr_get_local_vcols,&
-             dbcsr_get_global_vrow_map, dbcsr_get_global_vcol_map,&
-             dbcsr_reset_locals, dbcsr_reset_vlocals
+  PUBLIC :: dbcsr_get_local_rows, dbcsr_get_local_cols,&
+            dbcsr_get_local_vrows, dbcsr_get_local_vcols,&
+            dbcsr_reset_locals, dbcsr_reset_vlocals
 
   ! For dense distributions
-  PUBLIC ::  dbcsr_make_1dist_dense, dbcsr_make_dists_dense
+  PUBLIC :: dbcsr_make_dists_dense
 
 
   INTERFACE dbcsr_get_stored_block_info
@@ -1780,60 +1766,6 @@ CONTAINS
     ENDDO
     CALL array_new (new_sizes, new_s, gift=.TRUE.)
   END SUBROUTINE make_sizes_dense
-
-
-! *****************************************************************************
-!> \brief Matches row/block sizes and offsets to a given distribution, inplace.
-!> \note Used for making matrices dense/undense
-! *****************************************************************************
-  SUBROUTINE make_sizes_dense_old (new_distribution, old_distribution,&
-       blk_sizes, blk_offsets, nbins,&
-       old_image_dist, nimages)
-    TYPE(array_i1d_obj), INTENT(IN)          :: new_distribution, &
-                                                old_distribution
-    TYPE(array_i1d_obj), INTENT(INOUT)       :: blk_sizes, blk_offsets
-    INTEGER, INTENT(IN)                      :: nbins
-    INTEGER, DIMENSION(:), INTENT(in), &
-      OPTIONAL                               :: old_image_dist
-    INTEGER, INTENT(IN), OPTIONAL            :: nimages
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'make_sizes_dense_old', &
-      routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: nvbins
-    INTEGER, DIMENSION(:), POINTER           :: bo, bs, new_bin_dist, &
-                                                old_bin_dist, old_bo
-    LOGICAL                                  :: images
-    TYPE(array_i1d_obj)                      :: old_blk_offsets, old_blk_sizes
-
-!   ---------------------------------------------------------------------------
-
-    images = PRESENT (old_image_dist) .AND. PRESENT (nimages)
-    ! Save old data
-    old_bin_dist => array_data (old_distribution)
-    old_blk_sizes = blk_sizes
-    old_blk_offsets = blk_offsets
-    old_bo => array_data (blk_offsets)
-    CALL array_nullify (blk_sizes)
-    CALL array_nullify (blk_offsets)
-    new_bin_dist => array_data (new_distribution)
-    IF (images) THEN
-       nvbins = nbins * nimages
-       ALLOCATE (bs(nvbins), bo(nvbins+1))
-       CALL match_sizes_to_el_dist(bs, old_bo, new_bin_dist,&
-            old_bin_dist, old_image_dist, nimages)
-    ELSE
-       nvbins = nbins
-       ALLOCATE (bs(nvbins), bo(nvbins+1))
-       CALL match_sizes_to_el_dist (bs, old_bo, new_bin_dist,&
-            old_bin_dist)
-    ENDIF
-    CALL convert_sizes_to_offsets (bs, bo)
-    CALL array_new (blk_sizes, bs, gift=.TRUE.)
-    CALL array_new (blk_offsets, bo, gift=.TRUE.)
-    CALL array_release (old_blk_sizes)
-    CALL array_release (old_blk_offsets)
-  END SUBROUTINE make_sizes_dense_old
 
 
 ! *****************************************************************************

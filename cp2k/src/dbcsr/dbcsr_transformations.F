@@ -18,10 +18,7 @@ MODULE dbcsr_transformations
                                              array_hold,&
                                              array_i1d_obj,&
                                              array_release
-  USE dbcsr_block_access,              ONLY: dbcsr_access_flush,&
-                                             dbcsr_access_start,&
-                                             dbcsr_access_stop,&
-                                             dbcsr_get_block_p,&
+  USE dbcsr_block_access,              ONLY: dbcsr_get_block_p,&
                                              dbcsr_put_block
   USE dbcsr_block_operations,          ONLY: dbcsr_block_conjg,&
                                              dbcsr_block_partial_copy,&
@@ -43,7 +40,11 @@ MODULE dbcsr_transformations
                                              dbcsr_reblocking_targets,&
                                              dbcsr_transpose_dims,&
                                              dbcsr_transpose_distribution
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: &
+       dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
+       dbcsr_error_type, dbcsr_failure_level, dbcsr_fatal_level, &
+       dbcsr_internal_error, dbcsr_unimplemented_error_nr, &
+       dbcsr_warning_level, dbcsr_wrong_args_error
   USE dbcsr_index_operations,          ONLY: dbcsr_addto_index_array,&
                                              dbcsr_clearfrom_index_array,&
                                              dbcsr_repoint_index,&
@@ -176,7 +177,6 @@ CONTAINS
 
     CALL dbcsr_assert (dbcsr_valid_index(normal), dbcsr_fatal_level, dbcsr_caller_error,&
          routineN, "Matrix does not exist.",__LINE__,error)
-    CALL dbcsr_access_flush (normal, error=error)
     ! Internalize options
     shallow = .FALSE.
     IF (PRESENT (shallow_data_copy)) shallow = shallow_data_copy
@@ -352,8 +352,6 @@ CONTAINS
     CALL dbcsr_assert (dbcsr_valid_index (sm),&
          dbcsr_fatal_level, dbcsr_caller_error, routineN,&
          "Input matrix is invalid.",__LINE__,error)
-    CALL dbcsr_access_flush (sm, error=error)
-    CALL dbcsr_access_flush (desm, error=error)
     IF(dbcsr_valid_index (desm)) THEN
        CALL dbcsr_release(desm)
        CALL dbcsr_init(desm)
@@ -602,7 +600,6 @@ CONTAINS
     CALL dbcsr_assert (matrix%m%replication_type .NE. dbcsr_repl_none,&
          dbcsr_warning_level, dbcsr_caller_error, routineN,&
          "Distributing a non-replicated matrix makes no sense.",__LINE__,error)
-    CALL dbcsr_access_flush (matrix, error=error)
     IF (PRESENT (fast)) THEN
        mini=fast
     ELSE
@@ -800,7 +797,6 @@ CONTAINS
        cs = dbcsr_checksum (matrix, error=error)
        WRITE(*,*)routineN//" prod cs pre", cs
     ENDIF
-    CALL dbcsr_access_flush (matrix, error=error)
     old_distribution = dbcsr_distribution (matrix)
     ! Conversion of global to local offsets for the dense blocks
     CALL dbcsr_get_local_rows (dense_dist, dense_local_rows,&
@@ -1035,7 +1031,6 @@ CONTAINS
 !   ---------------------------------------------------------------------------
 
     CALL dbcsr_error_set(routineN, error_handler, error)
-    CALL dbcsr_access_flush (matrix, error=error)
     IF (dbg) THEN
        cs = dbcsr_checksum (matrix, error=error)
        WRITE(*,*)routineN//" prod cs pre", cs
@@ -1174,10 +1169,9 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'make_dense_data', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: blk_col, blk_col_offset, blk_col_size, blk_row, &
-      blk_row_offset, blk_row_size, dense_col, dense_row, error_handle, &
-      target_col_offset, target_cs, target_offset, target_row_offset, &
-      target_rs, tco, tro
+    INTEGER :: blk_col, blk_col_size, blk_row, blk_row_size, dense_col, &
+      dense_row, error_handle, target_col_offset, target_cs, target_offset, &
+      target_row_offset, target_rs, tco, tro
     LOGICAL                                  :: tr
     TYPE(dbcsr_data_obj)                     :: block
     TYPE(dbcsr_error_type)                   :: error
@@ -1200,7 +1194,7 @@ CONTAINS
 !$OMP PARALLEL DEFAULT(none) &
 !$OMP PRIVATE (block, iter, &
 !$OMP         target_rs, target_cs, blk_row, blk_col, tr, blk_row_size, blk_col_size,&
-!$OMP         blk_row_offset, blk_col_offset, tro, tco, target_offset,&
+!$OMP         tro, tco, target_offset,&
 !$OMP         target_row_offset, target_col_offset,&
 !$OMP         dense_row, dense_col) &
 !$OMP SHARED (error,&
@@ -1422,7 +1416,6 @@ CONTAINS
 !   ---------------------------------------------------------------------------
 
     CALL dbcsr_error_set(routineN, error_handler, error)
-    CALL dbcsr_access_flush (matrix, error=error)
     CALL dbcsr_assert (dbcsr_valid_index(matrix%m),&
          dbcsr_fatal_level, dbcsr_caller_error,&
          routineN, "Matrix not initialized.",__LINE__,error)
@@ -1718,7 +1711,6 @@ CONTAINS
     CALL dbcsr_assert (matrix%m%replication_type .EQ. dbcsr_repl_none,&
          dbcsr_warning_level, dbcsr_caller_error, routineN,&
          "Can not redistribute replicated matrix.",__LINE__,error)
-    CALL dbcsr_access_flush (matrix, error=error)
     !
     my_keep_sparsity = .FALSE.
     IF (PRESENT (keep_sparsity)) my_keep_sparsity = keep_sparsity
@@ -1964,7 +1956,6 @@ CONTAINS
          redist%m%max_rbs, redist%m%max_cbs)
     CALL dbcsr_data_new (data_block, dbcsr_type_1d_to_2d (data_type))
 
-    CALL dbcsr_access_start (redist, error=error)
     !blk_p = 1
     !blk = 1
     blk_ps = 0
@@ -2040,7 +2031,6 @@ CONTAINS
     CALL dbcsr_data_clear_pointer(data_block)
     CALL dbcsr_data_release (buff_data)
     CALL dbcsr_data_release (data_block)
-    CALL dbcsr_access_stop (redist, error=error)
     !
     IF (dbg) THEN
        WRITE(*,*)routineN//" Declared blocks=",redist%m%wms(1)%lastblk,&
@@ -2115,8 +2105,6 @@ CONTAINS
 !   ---------------------------------------------------------------------------
 
     CALL dbcsr_error_set(routineN, error_handler, error)
-    CALL dbcsr_access_flush (matrix, error=error)
-    CALL dbcsr_access_flush (redist, error=error)
     !call dbcsr_print_dist (matrix%m%dist)
     !call dbcsr_print_dist (redist%m%dist)
     CALL dbcsr_assert (dbcsr_valid_index(matrix%m),&

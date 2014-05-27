@@ -23,7 +23,11 @@ MODULE mode_selective
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_result_methods,               ONLY: get_results
   USE global_types,                    ONLY: global_environment_type
-  USE input_constants
+  USE input_constants,                 ONLY: ms_guess_atomic,&
+                                             ms_guess_bfgs,&
+                                             ms_guess_molden,&
+                                             ms_guess_restart,&
+                                             ms_guess_restart_vec
   USE input_section_types,             ONLY: section_vals_get,&
                                              section_vals_get_subs_vals,&
                                              section_vals_type,&
@@ -39,8 +43,8 @@ MODULE mode_selective
   USE particle_types,                  ONLY: particle_type
   USE physcon,                         ONLY: massunit,&
                                              vibfac
-  USE replica_types,                   ONLY: rep_env_calc_e_f,&
-                                             replica_env_type
+  USE replica_methods,                 ONLY: rep_env_calc_e_f
+  USE replica_types,                   ONLY: replica_env_type
   USE timings,                         ONLY: timeset,&
                                              timestop
   USE util,                            ONLY: sort
@@ -73,8 +77,7 @@ MODULE mode_selective
      INTEGER                                  :: initial_guess
   END TYPE ms_vib_type
 
-  PUBLIC :: ms_vb_anal,&
-            ms_vib_type
+  PUBLIC :: ms_vb_anal
 
 CONTAINS
   ! *****************************************************************************
@@ -878,8 +881,8 @@ CONTAINS
        ALLOCATE(tmp_s(3*natoms,ms_vib%mat_size),stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
-       tmp_b=ms_vib%b_mat
-       tmp_s=ms_vib%s_mat
+       tmp_b(:,:)=ms_vib%b_mat
+       tmp_s(:,:)=ms_vib%s_mat
 
        DEALLOCATE(ms_vib%b_mat,stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -932,7 +935,7 @@ CONTAINS
 
     CALL dgemm('T','N',ms_vib%mat_size,ms_vib%mat_size,SIZE(ms_vib%s_mat,1),1._dp,ms_vib%b_mat,SIZE(ms_vib%b_mat,1),&
          ms_vib%s_mat,SIZE(ms_vib%s_mat,1),0._dp,approx_H,ms_vib%mat_size)
-    H_save=approx_H
+    H_save(:,:)=approx_H
 
     CALL diamat_all(approx_H,eigenval,error=error)
 

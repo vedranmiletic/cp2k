@@ -18,7 +18,12 @@ MODULE input_cp2k_thermostats
   USE cp_output_handling,              ONLY: cp_print_key_section_create
   USE cp_units,                        ONLY: cp_unit_to_cp2k
   USE f77_blas
-  USE input_constants
+  USE input_constants,                 ONLY: &
+       do_constr_atomic, do_constr_molec, do_constr_none, do_region_defined, &
+       do_region_global, do_region_massive, do_region_molecule, &
+       do_region_none, do_thermo_al, do_thermo_csvr, do_thermo_gle, &
+       do_thermo_nose, do_thermo_same_as_part, high_print_level, &
+       low_print_level
   USE input_cp2k_subsys,               ONLY: create_rng_section
   USE input_keyword_types,             ONLY: keyword_create,&
                                              keyword_release,&
@@ -573,11 +578,11 @@ CONTAINS
              type_of_var=real_t, unit_str="internal_cp2k",&
              n_var=-1, repeats=.TRUE., required=.FALSE., &
 !             default_r_vals=(/ &
-!       1.859575861256e+2_dp,     2.726385349840e-1_dp,     1.152610045461e+1_dp,    -3.641457826260e+1_dp,     2.317337581602e+2_dp, &
-!      -2.780952471206e-1_dp,     8.595159180871e-5_dp,     7.218904801765e-1_dp,    -1.984453934386e-1_dp,     4.240925758342e-1_dp, &
-!      -1.482580813121e+1_dp,    -7.218904801765e-1_dp,     1.359090212128e+0_dp,     5.149889628035e+0_dp,    -9.994926845099e+0_dp, &
-!      -1.037218912688e+1_dp,     1.984453934386e-1_dp,    -5.149889628035e+0_dp,     2.666191089117e+1_dp,     1.150771549531e+1_dp, &
-!       2.180134636042e+2_dp,    -4.240925758342e-1_dp,     9.994926845099e+0_dp,    -1.150771549531e+1_dp,     3.095839456559e+2_dp /), &
+!    1.859575861256e+2_dp,  2.726385349840e-1_dp,  1.152610045461e+1_dp, -3.641457826260e+1_dp,  2.317337581602e+2_dp, &
+!   -2.780952471206e-1_dp,  8.595159180871e-5_dp,  7.218904801765e-1_dp, -1.984453934386e-1_dp,  4.240925758342e-1_dp, &
+!   -1.482580813121e+1_dp, -7.218904801765e-1_dp,  1.359090212128e+0_dp,  5.149889628035e+0_dp, -9.994926845099e+0_dp, &
+!   -1.037218912688e+1_dp,  1.984453934386e-1_dp, -5.149889628035e+0_dp,  2.666191089117e+1_dp,  1.150771549531e+1_dp, &
+!    2.180134636042e+2_dp, -4.240925758342e-1_dp,  9.994926845099e+0_dp, -1.150771549531e+1_dp,  3.095839456559e+2_dp /), &
              error=error)
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)

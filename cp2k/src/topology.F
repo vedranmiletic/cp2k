@@ -11,7 +11,7 @@
 MODULE topology
   USE atomic_kind_types,               ONLY: atomic_kind_type
   USE atoms_input,                     ONLY: read_atoms_input
-  USE cell_types,                      ONLY: cell_create,&
+  USE cell_methods,                    ONLY: cell_create,&
                                              cell_retain,&
                                              cell_type,&
                                              read_cell,&
@@ -37,7 +37,6 @@ MODULE topology
   USE kinds,                           ONLY: default_path_length,&
                                              default_string_length,&
                                              dp
-  USE machine
   USE mm_mapping_library,              ONLY: create_ff_map,&
                                              destroy_ff_map
   USE molecule_kind_types,             ONLY: molecule_kind_type
@@ -98,9 +97,8 @@ MODULE topology
   PRIVATE
 
 ! *** Public parameters ***
-  PUBLIC :: topology_control, &
-            connectivity_control, &
-            coordinate_control
+  PUBLIC :: topology_control,&
+            connectivity_control
 
 CONTAINS
 

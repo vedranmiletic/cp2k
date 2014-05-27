@@ -16,10 +16,11 @@ MODULE distribution_methods
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc,&
                                              real_to_scaled
   USE cp_array_i_utils,                ONLY: cp_1d_i_p_type
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_dbcsr_interface,              ONLY: heap_fill,&
                                              heap_get_first,&
                                              heap_new,&
@@ -30,7 +31,6 @@ MODULE distribution_methods
                                              cp_print_key_finished_output,&
                                              cp_print_key_should_output,&
                                              cp_print_key_unit_nr
-  USE cp_para_types,                   ONLY: cp_blacs_env_type
   USE distribution_1d_types,           ONLY: distribution_1d_create,&
                                              distribution_1d_type
   USE distribution_2d_types,           ONLY: distribution_2d_create,&
@@ -1307,10 +1307,10 @@ CONTAINS
     IF (natoms<=nbins) THEN
        ! assign the most expensive atom to the least costly bin
        ALLOCATE(bin_costs_sorted(nbins),permutation(nbins))
-       bin_costs_sorted=bin_costs
+       bin_costs_sorted(:)=bin_costs
        CALL sort(bin_costs_sorted,nbins,permutation)
        ALLOCATE(atom_costs_sorted(natoms),atom_permutation(natoms))
-       atom_costs_sorted=costs
+       atom_costs_sorted(:)=costs
        CALL sort(atom_costs_sorted,natoms,atom_permutation)
        ibin=0
        ! WRITE(6,*) "Dealing with a new bunch of atoms "
@@ -1327,7 +1327,7 @@ CONTAINS
        ! divide atoms in two subsets, sorting according to their coordinates, alternatively x,y,z
        ! recursively do this for both subsets
        ALLOCATE(coord(natoms),permutation(natoms))
-       coord=pbc_scaled_coords(MOD(level,3)+1,:)
+       coord(:)=pbc_scaled_coords(MOD(level,3)+1,:)
        CALL sort(coord,natoms,permutation)
        CALL spatial_recurse(pbc_scaled_coords(:,permutation(1:nhalf)), costs(permutation(1:nhalf)),&
                             indices(permutation(1:nhalf)), bin_costs, distribution, level+1)

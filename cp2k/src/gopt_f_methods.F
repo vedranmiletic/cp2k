@@ -14,7 +14,7 @@ MODULE gopt_f_methods
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
-  USE cell_types,                      ONLY: cell_copy,&
+  USE cell_methods,                    ONLY: cell_copy,&
                                              cell_create,&
                                              cell_release,&
                                              cell_type,&
@@ -67,10 +67,10 @@ MODULE gopt_f_methods
   LOGICAL, PRIVATE, PARAMETER :: debug_this_module=.TRUE.
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'gopt_f_methods'
 
-  PUBLIC :: gopt_f_create_x0, check_converg, write_final_info,&
-       print_geo_opt_header, check_rot_conv, write_rot_cycle_infos, print_geo_opt_nc,&
-       geo_opt_io, gopt_f_io_init, gopt_f_io, gopt_f_io_finalize, gopt_f_ii, &
-       apply_cell_change
+  PUBLIC :: gopt_f_create_x0,&
+            print_geo_opt_header, print_geo_opt_nc,&
+            gopt_f_io_init, gopt_f_io, gopt_f_io_finalize, gopt_f_ii,&
+            apply_cell_change
 
 CONTAINS
 

@@ -16,7 +16,7 @@ MODULE eip_silicon
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              get_cell
   USE cp_output_handling,              ONLY: cp_p_file,&
                                              cp_print_key_finished_output,&
@@ -1726,7 +1726,7 @@ CONTAINS
                   lstb(0:myspace-1),rel(5,0:myspace-1)
 
         INTEGER       :: jat, k1, k2, k3, jj
-        REAL(KIND=dp) :: rr2, tt, tti, xrel, yrel, zrel, coord2, cut
+        REAL(KIND=dp) :: rr2, tt, tti, xrel, yrel, zrel
 
         DO 6003,k3=l3-1,l3+1
         DO 6002,k2=l2-1,l2+1
@@ -1807,8 +1807,8 @@ CONTAINS
                          tcoord2, tener, tener2
         INTEGER       :: i, iam, iat, iat1, iat2, ii, il, in, indlst, indlstx,&
                          istop, istopg, l1, l2, l3, ll1, ll2, ll3, lot, ncx, nn, &
-                         nnbrx, npjkx, npjx, laymx, npr, rlc1i, rlc2i, rlc3i, jat, &
-                         jj, myspace, myspaceout
+                         nnbrx, npjkx, npjx, laymx, npr, rlc1i, rlc2i, rlc3i, &
+                         myspace, myspaceout
 
 !        tmax_phi= 0.4500000e+01_dp
 !        cut=tmax_phi

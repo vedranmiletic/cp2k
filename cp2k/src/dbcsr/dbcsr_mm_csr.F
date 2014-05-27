@@ -25,7 +25,13 @@ MODULE dbcsr_mm_csr
   USE dbcsr_config,                    ONLY: dbcsr_get_conf_nstacks,&
                                              default_resize_factor,&
                                              mm_stack_size
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: dbcsr_assert,&
+                                             dbcsr_error_set,&
+                                             dbcsr_error_stop,&
+                                             dbcsr_error_type,&
+                                             dbcsr_fatal_level,&
+                                             dbcsr_internal_error,&
+                                             dbcsr_wrong_args_error
   USE dbcsr_mm_sched,                  ONLY: &
        dbcsr_mm_sched_barrier, dbcsr_mm_sched_begin_burst, &
        dbcsr_mm_sched_end_burst, dbcsr_mm_sched_finalize, &
@@ -277,7 +283,7 @@ MODULE dbcsr_mm_csr
     LOGICAL, PARAMETER                       :: dbg = .FALSE., &
                                                 local_timing = .FALSE.
 
-    INTEGER :: a_blk, a_col_l, a_row_l, b_blk, b_col_l, c, c_blk_id, &
+    INTEGER :: a_blk, a_col_l, a_row_l, b_blk, b_col_l, c_blk_id, &
       c_col_logical, c_nze, c_row_logical, ithread, k_size, m_size, &
       mapped_col_size, mapped_k_size, mapped_row_size, n_a_norms, n_b_norms, &
       n_size, nstacks, s_dp, ws
@@ -579,7 +585,7 @@ MODULE dbcsr_mm_csr
     ENDDO
 
     CALL sort(flop_list, nstacks-1, flop_index)
-    tmp_descr = this%stacks_descr
+    tmp_descr(:) = this%stacks_descr
     DO istack=1,nstacks-1
        this%stacks_descr(istack) = tmp_descr(flop_index(istack)) 
     ENDDO
@@ -914,7 +920,7 @@ END SUBROUTINE flush_stacks
 
     IF (hash_table%nele*inv_hash_table_fill>hash_table%nmax) THEN
        ALLOCATE(tmp_hash(LBOUND(hash_table%table,1):UBOUND(hash_table%table,1)))
-       tmp_hash=hash_table%table
+       tmp_hash(:)=hash_table%table
        CALL hash_table_release(hash_table)
        CALL hash_table_create(hash_table,INT((UBOUND(tmp_hash,1)+8)*hash_table_expand))
        DO i=LBOUND(tmp_hash,1),UBOUND(tmp_hash,1)
@@ -971,6 +977,7 @@ END SUBROUTINE flush_stacks
          RETURN
       ENDIF
    ENDDO
+   p=HUGE(p)
   END FUNCTION hash_table_get
 
 ! End of hashtable

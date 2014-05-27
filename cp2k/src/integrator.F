@@ -27,7 +27,7 @@ MODULE integrator
                                              get_atomic_kind,&
                                              get_atomic_kind_set
   USE barostat_types,                  ONLY: barostat_type
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              init_cell,&
                                              parse_cell_line
   USE constraint,                      ONLY: rattle_control,&
@@ -80,7 +80,7 @@ MODULE integrator
                                              update_particle_set
   USE physcon,                         ONLY: bohr,&
                                              femtoseconds
-  USE qmmm_main,                       ONLY: qmmm_update_force_mixing_env
+  USE qmmm_update,                     ONLY: qmmm_update_force_mixing_env
   USE qmmm_util,                       ONLY: apply_qmmm_walls_reflective
   USE reftraj_types,                   ONLY: reftraj_type
   USE reftraj_util,                    ONLY: compute_msd_reftraj
@@ -522,7 +522,7 @@ CONTAINS
     ! Update forces
     ! In case of ehrenfest dynamics, velocities need to be iterated
     IF(ehrenfest_md)THEN
-       v_old=tmp%vel
+       v_old(:,:)=tmp%vel
        CALL vv_second(tmp, atomic_kind_set, local_particles, particle_set, &
             core_particle_set, shell_particle_set, nparticle_kind, shell_adiabatic, dt, error=error )
        CALL update_dealloc_tmp ( tmp, particle_set, shell_particle_set, &

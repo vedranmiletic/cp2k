@@ -10,7 +10,7 @@
 !> \author Manuel Guidon
 ! *****************************************************************************
 MODULE hfx_pair_list_methods
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE gamma,                           ONLY: fgamma=>fgamma_0
   USE hfx_libint_wrapper_types,        ONLY: prim_data_f_size
@@ -25,7 +25,7 @@ MODULE hfx_pair_list_methods
        do_hfx_potential_short, do_hfx_potential_truncated, &
        do_mp2_potential_TShPSC
   USE kinds,                           ONLY: dp
-  USE mathconstants
+  USE mathconstants,                   ONLY: pi
   USE mp2_types,                       ONLY: pair_list_type_mp2
   USE particle_types,                  ONLY: particle_type
   USE t_c_g0,                          ONLY: t_c_g0_n

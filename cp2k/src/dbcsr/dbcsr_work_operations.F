@@ -25,11 +25,6 @@ MODULE dbcsr_work_operations
   USE btree_I8_k_dp2d_v,               ONLY: btree_2d_data_d => dp2d
   USE btree_I8_k_sp2d_v,               ONLY: btree_2d_data_s => sp2d
   USE btree_I8_k_zp2d_v,               ONLY: btree_2d_data_z => zp2d
-  USE dbcsr_block_buffers,             ONLY: dbcsr_buffers_2d_needed,&
-                                             dbcsr_buffers_flush,&
-                                             dbcsr_buffers_init,&
-                                             dbcsr_buffers_new,&
-                                             dbcsr_buffers_release
   USE dbcsr_block_operations,          ONLY: block_copy_c,&
                                              block_copy_d,&
                                              block_copy_s,&
@@ -46,7 +41,11 @@ MODULE dbcsr_work_operations
        dbcsr_get_data_p_d, dbcsr_get_data_p_s, dbcsr_get_data_p_z
   USE dbcsr_data_operations,           ONLY: dbcsr_data_copyall,&
                                              dbcsr_sort_data
-  USE dbcsr_error_handling
+  USE dbcsr_error_handling,            ONLY: &
+       dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
+       dbcsr_error_type, dbcsr_failure_level, dbcsr_fatal_level, &
+       dbcsr_internal_error, dbcsr_unimplemented_error_nr, &
+       dbcsr_warning_level, dbcsr_wrong_args_error
   USE dbcsr_index_operations,          ONLY: dbcsr_addto_index_array,&
                                              dbcsr_build_row_index,&
                                              dbcsr_clearfrom_index_array,&
@@ -115,7 +114,7 @@ MODULE dbcsr_work_operations
 
 
   PUBLIC :: dbcsr_create, dbcsr_work_create, dbcsr_finalize, dbcsr_special_finalize
-  PUBLIC :: dbcsr_work_destroy, dbcsr_add_wm_from_matrix,&
+  PUBLIC :: dbcsr_add_wm_from_matrix,&
             add_work_coordinate
 
   INTERFACE dbcsr_create
@@ -197,9 +196,6 @@ CONTAINS
     IF (.NOT.hijack) THEN
        CALL dbcsr_init (matrix%m)
        matrix%m%refcount = 1
-    ELSEIF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
-       CALL dbcsr_buffers_release (matrix%m%buffers, error=error)
     ENDIF
     !$OMP CRITICAL
     matrix%m%serial_number = dbcsr_matrix_counter
@@ -397,12 +393,6 @@ CONTAINS
     matrix%m%has_global_rows = .FALSE.
     matrix%m%has_local_cols  = .FALSE.
     matrix%m%has_global_cols = .FALSE.
-    CALL dbcsr_buffers_init (matrix%m%buffers)
-    IF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_new (matrix%m%buffers, matrix%m%data_area,&
-            error=error)
-    ENDIF
-!$  CALL OMP_INIT_LOCK (matrix%m%modification_lock)
     CALL dbcsr_make_index_exist (matrix%m, error=error)
     matrix%m%valid = .TRUE.
     CALL dbcsr_error_stop(error_handler, error)
@@ -711,9 +701,6 @@ CONTAINS
     CALL dbcsr_assert (dbcsr_is_initialized (matrix),&
          dbcsr_fatal_level, dbcsr_caller_error,&
          routineN, "Can not finalize uninitialized matrix.",__LINE__,error)
-    IF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
-    ENDIF
 
     ! If the matrix is not marked as dirty then skip the work.
     IF (dbcsr_valid_index(matrix)) THEN
@@ -898,10 +885,6 @@ CONTAINS
        DEALLOCATE (empty_row_p)
     ENDIF
 !$OMP END MASTER
-    IF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_new (matrix%m%buffers, matrix%m%data_area,&
-            error=error)
-    ENDIF
 !$OMP BARRIER
     CALL dbcsr_error_stop(error_handler, error)
   END SUBROUTINE dbcsr_finalize
@@ -940,9 +923,6 @@ CONTAINS
          dbcsr_fatal_level, dbcsr_caller_error,&
          routineN, "Optimized finalize requires single work matrix",__LINE__,error)
 
-    IF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_flush (matrix%m%buffers, error=error)
-    ENDIF
     !
     ! If possible, data copying is avoided.
     IF (PRESENT (reshuffle)) THEN
@@ -997,10 +977,6 @@ CONTAINS
        !$OMP SINGLE
        CALL dbcsr_verify_matrix (matrix, error=error)
        !$OMP END SINGLE
-    ENDIF
-    IF (dbcsr_buffers_2d_needed) THEN
-       CALL dbcsr_buffers_new (matrix%m%buffers, matrix%m%data_area,&
-            error=error)
     ENDIF
     !$OMP BARRIER
     CALL dbcsr_error_stop(error_handler, error)
@@ -1405,35 +1381,6 @@ CONTAINS
     IF (PRESENT (index)) index = matrix%lastblk
     IF (careful_mod) CALL dbcsr_error_stop(error_handler, error)
   END SUBROUTINE add_work_coordinate
-
-
-! *****************************************************************************
-!> \brief Count actual size taken by work matrix
-!> \param[in] row_i           row indices
-!> \param[in] col_i           column indices
-!> \param[in] row_block_sizes  offsets of rows
-!> \param[in] col_block_sizes  offsets of columns
-!> \param[in] nblks              number of blocks
-!> \param[out] nze               counted data size
-! *****************************************************************************
-  PURE SUBROUTINE dbcsr_count_wm(row_i, col_i,&
-       row_block_sizes, col_block_sizes, nblks, nze)
-    INTEGER, INTENT(IN)                      :: nblks
-    INTEGER, DIMENSION(:), INTENT(IN)        :: col_block_sizes, &
-                                                row_block_sizes
-    INTEGER, DIMENSION(nblks), INTENT(IN)    :: col_i, row_i
-    INTEGER, INTENT(OUT)                     :: nze
-
-    INTEGER                                  :: blk
-
-!   ---------------------------------------------------------------------------
-
-    nze = 0
-    DO blk = 1, nblks
-       nze = nze + row_block_sizes(row_i(blk)) * col_block_sizes(col_i(blk))
-    ENDDO
-  END SUBROUTINE dbcsr_count_wm
-
 
 ! *****************************************************************************
 !> \brief Merge data from matrix and work matrices into the final matrix.

@@ -35,7 +35,7 @@ MODULE qs_energy_utils
   USE kinds,                           ONLY: dp
   USE molecule_types_new,              ONLY: molecule_of_atom,&
                                              molecule_type
-  USE mp2
+  USE mp2,                             ONLY: mp2_main
   USE pw_env_types,                    ONLY: pw_env_get
   USE pw_pool_types,                   ONLY: pw_pool_give_back_pw,&
                                              pw_pool_type
@@ -397,7 +397,6 @@ CONTAINS
     TYPE(atprop_type), POINTER               :: atprop
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
-    TYPE(qs_ks_env_type), POINTER            :: ks_env
     TYPE(section_vals_type), POINTER         :: input, rest_b_section
 
     CALL timeset(routineN,handle)

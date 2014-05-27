@@ -34,8 +34,7 @@ MODULE cp_dbcsr_diag
   USE cp_fm_types,                     ONLY: cp_fm_create,&
                                              cp_fm_release,&
                                              cp_fm_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE kinds,                           ONLY: dp
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -49,9 +48,8 @@ MODULE cp_dbcsr_diag
 
   ! Public subroutines
 
-  PUBLIC :: cp_dbcsr_syevd, &
-            cp_dbcsr_syevr, &
-            cp_dbcsr_syevx, &
+  PUBLIC :: cp_dbcsr_syevd,&
+            cp_dbcsr_syevx,&
             cp_dbcsr_heevd
 
 CONTAINS
@@ -75,7 +73,6 @@ CONTAINS
 
     INTEGER                                  :: handle, nfullrows_total
     LOGICAL                                  :: failure
-    TYPE(cp_blacs_env_type), POINTER         :: context
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
     TYPE(cp_fm_type), POINTER                :: fm_eigenvectors, fm_matrix
 
@@ -132,7 +129,6 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, n, neig_local
-    TYPE(cp_blacs_env_type), POINTER         :: context
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
     TYPE(cp_fm_type), POINTER                :: fm_eigenvectors, fm_matrix
 
@@ -188,7 +184,6 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, n
-    TYPE(cp_blacs_env_type), POINTER         :: context
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
     TYPE(cp_fm_type), POINTER                :: fm_eigenvectors, fm_matrix
 

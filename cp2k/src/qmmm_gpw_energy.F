@@ -10,7 +10,7 @@
 !> \author Teodoro Laino
 ! *****************************************************************************
 MODULE qmmm_gpw_energy
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_output_handling,              ONLY: cp_p_file,&
                                              cp_print_key_finished_output,&
@@ -73,7 +73,7 @@ MODULE qmmm_gpw_energy
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'qmmm_gpw_energy'
 
   PUBLIC :: qmmm_el_coupling
-  PUBLIC :: qmmm_elec_with_gaussian, qmmm_elec_with_gaussian_low,&
+  PUBLIC :: qmmm_elec_with_gaussian,&
             qmmm_elec_with_gaussian_LR, qmmm_elec_with_gaussian_LG
 !***
 CONTAINS

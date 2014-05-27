@@ -23,8 +23,7 @@ MODULE dbcsr_data_methods_low
        dbcsr_assert, dbcsr_caller_error, dbcsr_error_set, dbcsr_error_stop, &
        dbcsr_error_type, dbcsr_failure_level, dbcsr_fatal_level, &
        dbcsr_internal_error, dbcsr_warning_level, dbcsr_wrong_args_error
-  USE dbcsr_ptr_util,                  ONLY: dbcsr_ptr_remapping,&
-                                             memory_allocate,&
+  USE dbcsr_ptr_util,                  ONLY: memory_allocate,&
                                              memory_deallocate,&
                                              memory_zero,&
                                              pointer_c_rank_remap2,&
@@ -55,22 +54,18 @@ MODULE dbcsr_data_methods_low
 
 
   PUBLIC :: dbcsr_type_is_2d, dbcsr_type_2d_to_1d, dbcsr_type_1d_to_2d
-  PUBLIC :: dbcsr_scalar, dbcsr_scalar_one, dbcsr_scalar_i, dbcsr_scalar_zero,&
+  PUBLIC :: dbcsr_scalar, dbcsr_scalar_one, dbcsr_scalar_zero,&
             dbcsr_scalar_are_equal, dbcsr_scalar_negative,&
-            dbcsr_scalar_add, dbcsr_scalar_multiply,&
             dbcsr_scalar_get_type, dbcsr_scalar_set_type,&
             dbcsr_scalar_fill_all, dbcsr_scalar_get_value
   PUBLIC :: dbcsr_data_init, dbcsr_data_hold,&
-            dbcsr_data_get_size, dbcsr_data_get_type,&
-            dbcsr_data_reset_type, dbcsr_data_query_type,&
-            dbcsr_data_get_type_size
-  PUBLIC :: dbcsr_data_resize
-  PUBLIC :: dbcsr_get_data, &
+            dbcsr_data_get_size, dbcsr_data_get_type
+  PUBLIC :: dbcsr_get_data,&
             dbcsr_data_set_pointer,&
             dbcsr_data_clear_pointer, dbcsr_data_set_2d_pointer,&
-            dbcsr_data_clear_2d_pointer, &
+            dbcsr_data_clear_2d_pointer,&
             dbcsr_data_get_sizes, dbcsr_data_verify_bounds,&
-            dbcsr_data_exists, dbcsr_data_valid, dbcsr_data_get_memory_type
+            dbcsr_data_exists, dbcsr_data_get_memory_type
   PUBLIC :: dbcsr_data_zero
   PUBLIC :: dbcsr_data_set_size_referenced, dbcsr_data_get_size_referenced
   PUBLIC :: dbcsr_get_data_p, dbcsr_get_data_p_s, dbcsr_get_data_p_c,&
@@ -174,60 +169,6 @@ MODULE dbcsr_data_methods_low
     END SELECT
   END FUNCTION dbcsr_data_get_type_size
 
-
-! *****************************************************************************
-! \brief Data type transformations
-! *****************************************************************************
-  FUNCTION data_type_2d_from_1d (type_1d) RESULT (type_2d)
-    INTEGER, INTENT(in)                      :: type_1d
-    INTEGER                                  :: type_2d
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'data_type_2d_from_1d', &
-      routineP = moduleN//':'//routineN
-
-    TYPE(dbcsr_error_type)                   :: error
-
-    SELECT CASE (type_1d)
-    CASE (dbcsr_type_real_4)
-       type_2d = dbcsr_type_real_4_2d
-    CASE (dbcsr_type_real_8)
-       type_2d = dbcsr_type_real_8_2d
-    CASE (dbcsr_type_complex_4)
-       type_2d = dbcsr_type_complex_4_2d
-    CASE (dbcsr_type_complex_8)
-       type_2d = dbcsr_type_complex_8_2d
-    CASE default
-       CALL dbcsr_assert (.FALSE., dbcsr_failure_level, dbcsr_caller_error,&
-            routineN, "Invalid data type.",__LINE__,error)
-    END SELECT
-  END FUNCTION data_type_2d_from_1d
-
-! Data type transformations
-  FUNCTION data_type_1d_from_2d (type_2d) RESULT (type_1d)
-    INTEGER, INTENT(IN)                      :: type_2d
-    INTEGER                                  :: type_1d
-
-    CHARACTER(len=*), PARAMETER :: routineN = 'data_type_1d_from_2d', &
-      routineP = moduleN//':'//routineN
-
-    TYPE(dbcsr_error_type)                   :: error
-
-    SELECT CASE (type_2d)
-    CASE (dbcsr_type_real_4_2d)
-       type_1d = dbcsr_type_real_4
-    CASE (dbcsr_type_real_8_2d)
-       type_1d = dbcsr_type_real_8
-    CASE (dbcsr_type_complex_4_2d)
-       type_1d = dbcsr_type_complex_4
-    CASE (dbcsr_type_complex_8_2d)
-       type_1d = dbcsr_type_complex_8
-    CASE default
-       CALL dbcsr_assert (.FALSE., dbcsr_failure_level, dbcsr_caller_error,&
-            routineN, "Invalid data type.",__LINE__,error)
-    END SELECT
-  END FUNCTION data_type_1d_from_2d
-
-
 ! *****************************************************************************
 !> \brief Initializes a data area
 !> \param[inout] area         data area
@@ -255,7 +196,7 @@ MODULE dbcsr_data_methods_low
     CHARACTER(len=*), PARAMETER :: routineN = 'internal_data_allocate', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: d, error_handle
+    INTEGER                                  :: error_handle
 
 !   ---------------------------------------------------------------------------
 
@@ -618,10 +559,6 @@ MODULE dbcsr_data_methods_low
     ENDIF
     ! There's a remap if the ranks are compatible but not equal.
     rmp = dt1 .NE. dt2
-    IF (.NOT. dbcsr_ptr_remapping) &
-         CALL dbcsr_assert (.NOT. rmp, dbcsr_fatal_level, dbcsr_internal_error,&
-         routineN, "Compiler does not support pointer rank remapping.",&
-         __LINE__, error=error)
     SELECT CASE (dt2)
     CASE (dbcsr_type_real_4_2d)
        area%d%r2_sp => pointee%d%r2_sp(1:rsize,1:csize)
@@ -1035,7 +972,7 @@ MODULE dbcsr_data_methods_low
     CHARACTER(len=*), PARAMETER :: routineN = 'dbcsr_data_get_sizes_any', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: d, error_handler
+    INTEGER                                  :: error_handler
 
 !   ---------------------------------------------------------------------------
 
@@ -1107,7 +1044,7 @@ MODULE dbcsr_data_methods_low
     CHARACTER(len=*), PARAMETER :: routineN = 'dbcsr_data_get_sizes_2', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: d, error_handler
+    INTEGER                                  :: error_handler
     INTEGER, DIMENSION(2)                    :: s
 
 !   ---------------------------------------------------------------------------
@@ -1148,7 +1085,7 @@ MODULE dbcsr_data_methods_low
     CHARACTER(len=*), PARAMETER :: routineN = 'dbcsr_data_get_sizes_1', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: d, error_handler
+    INTEGER                                  :: error_handler
     INTEGER, DIMENSION(1)                    :: s
 
 !   ---------------------------------------------------------------------------
@@ -1192,7 +1129,7 @@ MODULE dbcsr_data_methods_low
 !   ---------------------------------------------------------------------------
 
     CALL dbcsr_error_set (routineN, error_handler, error)
-    !
+
     CALL dbcsr_assert (ASSOCIATED (area%d), dbcsr_fatal_level,&
          dbcsr_caller_error, routineN,&
          "Invalid data area", __LINE__, error=error)

@@ -27,9 +27,7 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'iterator_next_1d_block_z', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: blk_p, bp, csize, ithread, &
-                                                nze, rsize, pos
-    COMPLEX(kind=real_8), DIMENSION(:), POINTER :: rbp
+    INTEGER                                  :: blk_p, bp, csize, nze, rsize
 
 !   ---------------------------------------------------------------------------
 ! If we're pointing to a valid block, return that block.
@@ -91,8 +89,7 @@
     CHARACTER(len=*), PARAMETER :: routineN = 'iterator_next_2d_block_z', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: blk_p, bp, csize, ithread, &
-                                                nze, rsize, pos,&
+    INTEGER                                  :: blk_p, bp, csize, nze, rsize, &
                                                 block_row_size, block_col_size
     COMPLEX(kind=real_8), DIMENSION(:), POINTER           :: lin_blk_p
     INTEGER                                  :: error_handle
@@ -119,22 +116,10 @@
        IF (PRESENT (row_offset)) row_offset = iterator%row_offset
        IF (PRESENT (col_offset)) col_offset = iterator%coff(column)
        nze = rsize * csize
-       IF (dbcsr_buffers_2d_needed) THEN
-          CALL dbcsr_buffers_flush (iterator%buffer_2d, error=error)
-          CALL resize_buffers (iterator, error=error)
-          CALL dbcsr_buffers_set_pointer_2d (block, row, column,&
-               block_row_size, block_col_size,&
-               transposed, blk_p, iterator%buffer_2d, .FALSE., error=error)
-          IF (iterator%read_only) &
-               CALL dbcsr_buffers_mark_dirty (iterator%buffer_2d,&
-               dirty=.FALSE., error=error)
-          transposed = .FALSE.
-       ELSE
-          IF (transposed) CALL swap (rsize, csize)
-          CALL dbcsr_get_data (iterator%data_area, lin_blk_p,&
-               lb=bp, ub=bp+nze-1)
-          CALL pointer_z_rank_remap2 (block, rsize, csize, lin_blk_p)
-       ENDIF
+       IF (transposed) CALL swap (rsize, csize)
+       CALL dbcsr_get_data (iterator%data_area, lin_blk_p,&
+            lb=bp, ub=bp+nze-1)
+       CALL pointer_z_rank_remap2 (block, rsize, csize, lin_blk_p)
        IF (PRESENT (block_number)) block_number = iterator%pos
        ! Move to the next non-deleted position.
        CALL iterator_advance (iterator)

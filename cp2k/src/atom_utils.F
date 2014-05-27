@@ -24,7 +24,11 @@ MODULE atom_utils
                                              open_file
   USE erf_fn,                          ONLY: erf
   USE f77_blas
-  USE input_constants
+  USE input_constants,                 ONLY: do_rhf_atom,&
+                                             do_rks_atom,&
+                                             do_rohf_atom,&
+                                             do_uhf_atom,&
+                                             do_uks_atom
   USE kinds,                           ONLY: default_string_length,&
                                              dp
   USE lapack
@@ -47,7 +51,7 @@ MODULE atom_utils
 
   PUBLIC :: atom_set_occupation, get_maxl_occ, get_maxn_occ
   PUBLIC :: atom_denmat, atom_density, atom_core_density
-  PUBLIC :: prune_grid, integrate_grid, atom_trace, atom_solve
+  PUBLIC :: integrate_grid, atom_trace, atom_solve
   PUBLIC :: coulomb_potential_numeric, coulomb_potential_analytic
   PUBLIC :: exchange_numeric, exchange_semi_analytic
   PUBLIC :: numpot_matrix, ceri_contract, eeri_contract, err_matrix

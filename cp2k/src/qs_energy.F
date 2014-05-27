@@ -17,7 +17,6 @@ MODULE qs_energy
   USE f77_blas
   USE input_constants,                 ONLY: ehrenfest
   USE kinds,                           ONLY: dp
-  USE mp2
   USE qs_energy_utils,                 ONLY: qs_energies_compute_matrix_w,&
                                              qs_energies_init,&
                                              qs_energies_mp2,&
@@ -25,7 +24,6 @@ MODULE qs_energy
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_ks_methods,                   ONLY: qs_ks_update_qs_env
-  USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_scf,                          ONLY: scf
   USE rt_propagation_methods,          ONLY: propagation_step,&
                                              s_matrices_create
@@ -102,7 +100,6 @@ CONTAINS
 
     INTEGER                                  :: handle
     TYPE(dft_control_type), POINTER          :: dft_control
-    TYPE(qs_ks_env_type), POINTER            :: ks_env
 
     CALL timeset(routineN,handle)
 
@@ -161,7 +158,7 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: aspc_order, handle
-    REAL(Kind=dp)                            :: delta_iter, eps_ener
+    REAL(Kind=dp)                            :: eps_ener
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: s_mat
     TYPE(rt_prop_type), POINTER              :: rtp

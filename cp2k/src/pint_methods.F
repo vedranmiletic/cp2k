@@ -91,9 +91,9 @@ MODULE pint_methods
                                              thermostat_gle,&
                                              thermostat_none,&
                                              thermostat_nose
-  USE replica_types,                   ONLY: rep_env_calc_e_f,&
-                                             rep_env_create,&
-                                             rep_env_release,&
+  USE replica_methods,                 ONLY: rep_env_calc_e_f,&
+                                             rep_env_create
+  USE replica_types,                   ONLY: rep_env_release,&
                                              replica_env_type
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -586,7 +586,7 @@ CONTAINS
      IF (ASSOCIATED(pint_env)) THEN
         ALLOCATE(x1(pint_env%ndim,pint_env%p),stat=stat)
         CPPostcondition(stat==0,cp_fatal_level,routineP,error,failure)
-        x1=pint_env%x
+        x1(:,:)=pint_env%x
         CALL pint_x2u(pint_env,error=error)
         pint_env%x=0._dp
         CALL pint_u2x(pint_env,error=error)

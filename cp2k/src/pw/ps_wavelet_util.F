@@ -12,7 +12,9 @@ MODULE ps_wavelet_util
   USE f77_blas
   USE kinds,                           ONLY: dp
   USE mathconstants,                   ONLY: fourpi
-  USE ps_wavelet_base
+  USE ps_wavelet_base,                 ONLY: f_poissonsolver,&
+                                             p_poissonsolver,&
+                                             s_poissonsolver
   USE ps_wavelet_fft3d,                ONLY: fourier_dim
   USE pw_grid_types,                   ONLY: pw_grid_type
   USE timings,                         ONLY: timeset,&
@@ -82,7 +84,6 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE PSolver(geocode,datacode,iproc,nproc,n01,n02,n03,hx,hy,hz,&
        rhopot,karray,pw_grid,error)
-    !  INCLUDE 'mpif.h'
     CHARACTER(len=1), INTENT(in)             :: geocode, datacode
     INTEGER, INTENT(in)                      :: iproc, nproc, n01, n02, n03
     REAL(KIND=dp), INTENT(in)                :: hx, hy, hz

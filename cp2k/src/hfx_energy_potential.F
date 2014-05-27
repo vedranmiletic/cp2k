@@ -16,7 +16,7 @@ MODULE hfx_energy_potential
   USE bibliography,                    ONLY: cite_reference,&
                                              guidon2008,&
                                              guidon2009
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_matrix_type,&
                                              cp_dbcsr_p_type,&
@@ -41,8 +41,7 @@ MODULE hfx_energy_potential
                                              hfx_reset_cache_and_container
   USE hfx_contract_block,              ONLY: contract_block
   USE hfx_libint_interface,            ONLY: evaluate_eri
-  USE hfx_libint_wrapper_types,        ONLY: has_iso_c_binding,&
-                                             lib_int
+  USE hfx_libint_wrapper_types,        ONLY: lib_int
   USE hfx_load_balance_methods,        ONLY: collect_load_balance_info,&
                                              hfx_load_balance,&
                                              hfx_update_load_balance
@@ -71,11 +70,13 @@ MODULE hfx_energy_potential
   USE machine,                         ONLY: m_flush,&
                                              m_memory,&
                                              m_walltime
-  USE mathconstants
+  USE mathconstants,                   ONLY: fac
   USE message_passing,                 ONLY: mp_max,&
                                              mp_sum,&
                                              mp_sync
-  USE orbital_pointers
+  USE orbital_pointers,                ONLY: nco,&
+                                             ncoset,&
+                                             nso
   USE particle_types,                  ONLY: particle_type
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
@@ -259,14 +260,12 @@ MODULE hfx_energy_potential
                                              :: sphi_a_ext_set, sphi_b_ext_set, sphi_c_ext_set, sphi_d_ext_set
     LOGICAL                                  :: do_dynamic_load_balancing, bins_left, do_it
     TYPE(hfx_distribution), POINTER          :: distribution_energy
-    INTEGER                                  :: shm_total_bins, shm_task_counter, my_thread_id, my_bin_id ,&
-                                                storage_id
+    INTEGER                                  :: shm_total_bins, shm_task_counter, my_thread_id, my_bin_id
     TYPE(hfx_task_list_type), DIMENSION(:), &
                               POINTER        :: shm_task_list, tmp_task_list
     INTEGER(int_8), DIMENSION(:), &
                     ALLOCATABLE              :: tmp_task_list_cost
     INTEGER, DIMENSION(:), ALLOCATABLE       :: tmp_index
-    INTEGER(int_8)                           :: current_ram_counter
     REAL(dp), DIMENSION(:), ALLOCATABLE      :: ee_work, ee_work2, &
                                                 ee_buffer1, ee_buffer2, &
                                                 ee_primitives_tmp
@@ -276,13 +275,11 @@ MODULE hfx_energy_potential
     INTEGER                                  :: sphi_b_u1, sphi_b_u2, sphi_b_u3
     INTEGER                                  :: sphi_a_u1, sphi_a_u2, sphi_a_u3
     INTEGER                                  :: iatom_start, iatom_end, jatom_start, jatom_end, katom_start,&
-                                                katom_end, latom_start, latom_end, my_process_id
+                                                katom_end, latom_start, latom_end
     REAL(dp), DIMENSION(:,:), POINTER        :: shm_pmax_atom, shm_pmax_block
     REAL(dp)                                 :: pmax_atom, screen_kind_ij, screen_kind_kl, pmax_blocks,afac
-    INTEGER::ii,pbc_shells_dummy
     REAL(dp), DIMENSION(:), POINTER          :: p_work
     LOGICAL, DIMENSION(:,:), POINTER         :: shm_atomic_pair_list
-    TYPE(section_vals_type), POINTER         :: print_key
     LOGICAL                                  :: do_print_load_balance_info,is_anti_symmetric
 
 #if defined(__USE_PAT)
@@ -539,11 +536,6 @@ MODULE hfx_energy_potential
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE(ee_primitives_tmp(nsgf_max**4),STAT=stat) ! XXXXX could be wrong
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-
-    IF( .NOT. has_iso_c_binding) THEN
-      ALLOCATE(p_work(nco(max_am)**4), STAT=stat)
-      CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-    END IF
 
     nspins = qs_env%dft_control%nspins
 
@@ -2149,11 +2141,6 @@ MODULE hfx_energy_potential
 
     DEALLOCATE(ee_work, ee_work2, ee_buffer1, ee_buffer2, ee_primitives_tmp, STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-
-    IF( .NOT. has_iso_c_binding) THEN
-      DEALLOCATE(p_work, STAT=stat)
-      CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-    END IF
 
     DEALLOCATE(nimages, STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)

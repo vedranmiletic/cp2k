@@ -11,7 +11,7 @@
 ! *****************************************************************************
 
 MODULE tmc_moves
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
   USE kinds,                           ONLY: dp
@@ -472,7 +472,7 @@ CONTAINS
     inside = .TRUE.
     ! return if no subbox is defined
     IF(.NOT.ANY(tmc_params%sub_box_size(:).LE.0.1_dp)) THEN
-      pos_tmp = pos(:)-subbox_center(:)
+      pos_tmp(:) = pos(:)-subbox_center(:)
       CALL get_scaled_cell(cell=tmc_params%cell, box_scale=box_scale, &
                            vec=pos_tmp, error=error)
       ! check

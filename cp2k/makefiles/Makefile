@@ -56,6 +56,7 @@ endif
 # Discover files and directories ============================================
 ALL_SRC_DIRS := $(shell find $(SRCDIR) -type d ! -name preprettify  ! -path "*/.svn*" | awk '{printf("%s:",$$1)}')
 LIBCUSMM_DIR := $(shell find $(SRCDIR) -type d -name "libcusmm")
+ALL_PREPRETTY_DIRS = $(shell find $(SRCDIR) -type d -name preprettify)
 
 ALL_PKG_FILES  = $(shell find $(SRCDIR) ! -path "*/preprettify/*" -name "PACKAGE")
 OBJ_SRC_FILES  = $(shell find $(SRCDIR) ! -path "*/preprettify/*" -name "*.F")
@@ -164,7 +165,7 @@ OTHER_HELP += "realclean : Remove all file for given ARCH and VERSION"
 #
 # Remove all files from previous builds
 #
-distclean:
+distclean: prettyclean
 	rm -rf $(DOXYGENDIR) $(MAINEXEDIR) $(MAINOBJDIR) $(MAINLIBDIR) $(LIBCUSMM_DIR)/libcusmm.cu
 OTHER_HELP += "distclean : Remove all files from previous builds"
 
@@ -191,7 +192,7 @@ instantiateddir:
 templates: instantiateddir $(addprefix $(INSTANTIATEDDIR), $(ALL_INST_FILES:.instantiation=.instantiated))
 TOOL_HELP += "templates : instantiate all templates"
 
-$(addprefix $(INSTANTIATEDDIR), %.instantiated): %.instantiation
+$(addprefix $(INSTANTIATEDDIR), %.instantiated): %.instantiation instantiateddir
 	@cd $(dir $<); $(TOOLSRC)/instantiateTemplates.py $(notdir $<)
 	@touch $@
 
@@ -209,8 +210,8 @@ pretty: prettydir $(addprefix $(PRETTYOBJDIR)/, $(ALL_OBJECTS:.o=.pretty))
 TOOL_HELP += "pretty : Reformat all source files in a pretty way."
 
 prettyclean:
-	-rm -rf $(PRETTYOBJDIR)
-TOOL_HELP += "prettyclean : Remove prettify markers"
+	-rm -rf $(PRETTYOBJDIR) $(ALL_PREPRETTY_DIRS)
+TOOL_HELP += "prettyclean : Remove prettify marker files and preprettify directories"
 
 $(PRETTYOBJDIR)/%.pretty: %.F
 	cd $(dir $<); $(TOOLSRC)/prettify.py $(notdir $<)
@@ -323,11 +324,13 @@ endif
 %.o: %.c
 	$(CC) -c $(CFLAGS) $<
 
+ifneq ($(LIBDIR),)
 $(LIBDIR)/%:
 	@echo "Updating archive $@"
 	@$(AR) $@ $?
 ifneq ($(RANLIB),)
 	@$(RANLIB) $@
+endif
 endif
 
 %.o: %.cu

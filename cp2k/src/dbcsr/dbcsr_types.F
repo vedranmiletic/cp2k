@@ -24,7 +24,6 @@ MODULE dbcsr_types
   USE kinds,                           ONLY: &
        default_string_length, dp, int_4, int_4_size, int_8, int_8_size, &
        real_4, real_4_size, real_8, real_8_size
-  USE message_passing,                 ONLY: mp_window_type
 
   !$ USE OMP_LIB
 
@@ -42,15 +41,14 @@ MODULE dbcsr_types
             dbcsr_work_type,&
             dbcsr_2d_array_type,&
             dbcsr_array_type,&
-            dbcsr_mp_obj, dbcsr_mp_type,&
-            dbcsr_distribution_obj, dbcsr_distribution_type,&
+            dbcsr_mp_obj,&
+            dbcsr_distribution_obj,&
             dbcsr_imagedistribution_type,&
             dbcsr_imagedistribution_obj,&
             dbcsr_iterator,&
             dbcsr_1d_array_obj,&
             dbcsr_2d_array_obj,&
-            dbcsr_mutable_obj, dbcsr_mutable_type,&
-            dbcsr_block_buffer_obj, dbcsr_block_buffer_type
+            dbcsr_mutable_obj
   PUBLIC :: dbcsr_meta_size
   PUBLIC :: dbcsr_slot_size,&
             dbcsr_slot_row_p,&
@@ -87,8 +85,7 @@ MODULE dbcsr_types
   PUBLIC :: dbcsr_mempool_type,&
             dbcsr_mempool_entry_type,&
             dbcsr_memtype_type,&
-            dbcsr_memtype_default,&
-            dbcsr_memtype_MPI
+            dbcsr_memtype_default
 
   PUBLIC :: dbcsr_type_invalid, dbcsr_type_no_symmetry, dbcsr_type_symmetric,&
             dbcsr_type_antisymmetric, dbcsr_type_hermitian, dbcsr_type_antihermitian
@@ -271,7 +268,6 @@ MODULE dbcsr_types
 
   !providing pool=Null() explicitly to circumvent bug in ifort 12.1
   TYPE(dbcsr_memtype_type), PARAMETER :: dbcsr_memtype_default = dbcsr_memtype_type(pool=Null())
-  TYPE(dbcsr_memtype_type), PARAMETER :: dbcsr_memtype_MPI = dbcsr_memtype_type(mpi=.TRUE., pool=Null())
 
 ! *****************************************************************************
 !> \brief Stores actual data
@@ -553,7 +549,6 @@ MODULE dbcsr_types
      TYPE(dbcsr_distribution_obj)       :: dist
      INTEGER                 :: refcount
      LOGICAL                 :: work_mutable
-!$   INTEGER(KIND=omp_lock_kind) :: modification_lock
   END TYPE dbcsr_type
 
 
@@ -671,7 +666,6 @@ MODULE dbcsr_types
 ! *****************************************************************************
   TYPE dbcsr_array_type
      TYPE(dbcsr_obj), DIMENSION(:), POINTER :: mats
-     TYPE(mp_window_type), DIMENSION(:), POINTER :: data_windows, index_windows
      TYPE(dbcsr_imagedistribution_type) :: image_dist
   END TYPE dbcsr_array_type
 

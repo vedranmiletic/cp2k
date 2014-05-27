@@ -10,12 +10,12 @@
 !> \author Fawzi Mohamed
 ! *****************************************************************************
 MODULE cp_fm_basic_linalg
+  USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_fm_struct,                    ONLY: cp_fm_struct_equivalent
   USE cp_fm_types,                     ONLY: &
        cp_fm_create, cp_fm_get_element, cp_fm_get_info, cp_fm_get_submatrix, &
        cp_fm_release, cp_fm_set_all, cp_fm_set_submatrix, cp_fm_to_fm, &
        cp_fm_type
-  USE cp_para_types,                   ONLY: cp_blacs_env_type
   USE kahan_sum,                       ONLY: accurate_sum
   USE kinds,                           ONLY: dp,&
                                              sp
@@ -32,25 +32,23 @@ MODULE cp_fm_basic_linalg
   LOGICAL, PRIVATE, PARAMETER :: debug_this_module=.TRUE.
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cp_fm_basic_linalg'
 
-  PUBLIC :: cp_fm_scale, &                 ! scale a matrix
-            cp_fm_scale_and_add, &         ! scale and add two matrices
-            cp_fm_column_scale, &          ! scale colummns of a matrix
-            cp_fm_trace, &                 ! trace of the transpose(A)*B
-            cp_fm_schur_product, &         ! schur product
-            cp_fm_transpose, &             ! transpose a matrix
-            cp_fm_upper_to_full, &         ! symmetrise an upper symmetric matrix
-            cp_fm_syrk, &                  ! rank k update
-            cp_fm_triangular_multiply, &   ! triangular matrix multiply / solve
-            cp_fm_symm, &                  ! multiply a symmetric with a non-symmetric matrix
-            cp_fm_gemm, &                  ! multiply two matrices
-            cp_complex_fm_gemm, &          ! multiply two complex matrices, represented by non_complex fm matrices
-            cp_fm_lu_decompose,&           ! computes determinant (and lu decomp)
-            cp_fm_invert,&                 ! computes the inverse and determinant
-            cp_fm_frobenius_norm,&         ! frobenius norm
-            cp_fm_ger, &                   ! rank 1 operation
-            cp_fm_triangular_invert,&      ! compute the reciprocal of a tirangular matrix
-            cp_fm_qr_factorization,&       ! compute the QR factorization of a rectangular matrix
-            cp_fm_solve                    ! solves the equation  A*B=C A and C are input
+  PUBLIC :: cp_fm_scale,&  ! scale a matrix
+            cp_fm_scale_and_add,&  ! scale and add two matrices
+            cp_fm_column_scale,&  ! scale colummns of a matrix
+            cp_fm_trace,&  ! trace of the transpose(A)*B
+            cp_fm_schur_product,&  ! schur product
+            cp_fm_transpose,&  ! transpose a matrix
+            cp_fm_upper_to_full,&  ! symmetrise an upper symmetric matrix
+            cp_fm_syrk,&  ! rank k update
+            cp_fm_triangular_multiply,&  ! triangular matrix multiply / solve
+            cp_fm_symm,&  ! multiply a symmetric with a non-symmetric matrix
+            cp_fm_gemm,&  ! multiply two matrices
+            cp_complex_fm_gemm,&  ! multiply two complex matrices, represented by non_complex fm matrices
+            cp_fm_invert,&  ! computes the inverse and determinant
+            cp_fm_frobenius_norm,&  ! frobenius norm
+            cp_fm_triangular_invert,&  ! compute the reciprocal of a tirangular matrix
+            cp_fm_qr_factorization,&  ! compute the QR factorization of a rectangular matrix
+            cp_fm_solve  ! solves the equation  A*B=C A and C are input
 
 CONTAINS
 
@@ -183,14 +181,16 @@ CPSourceFileRef,&
     CHARACTER(len=*), PARAMETER :: routineN = 'cp_fm_lu_decompose', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, i, info, lda, n
+    INTEGER                                  :: handle, i, info, n
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: ipivot
     INTEGER, DIMENSION(9)                    :: desca
     REAL(KIND=dp)                            :: determinant
     REAL(KIND=dp), DIMENSION(:), POINTER     :: diag
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a
-
-! *** locals ***
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda
+#endif
 
     CALL timeset(routineN,handle)
 
@@ -268,10 +268,14 @@ CPSourceFileRef,&
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, i_a, i_b, i_c, j_b, &
-                                                j_c, lda, ldb, ldc
+                                                j_c
     INTEGER, DIMENSION(9)                    :: desca, descb, descc
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, b, c
     REAL(KIND=sp), DIMENSION(:, :), POINTER  :: a_sp, b_sp, c_sp
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda, ldb, ldc
+#endif
 
     CALL timeset(routineN,handle)
 
@@ -387,11 +391,13 @@ CPSourceFileRef,&
     CHARACTER(len=*), PARAMETER :: routineN = 'cp_fm_symm', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, lda, ldb, ldc
+    INTEGER                                  :: handle
     INTEGER, DIMENSION(9)                    :: desca, descb, descc
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, b, c
-
-! -------------------------------------------------------------------------
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda, ldb, ldc
+#endif
 
     CALL timeset(routineN,handle)
 
@@ -471,11 +477,13 @@ CPSourceFileRef,&
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ia, incx, incy, ja, &
-                                                lda, m, n
+                                                m, n
     INTEGER, DIMENSION(9)                    :: desca, descx, descy
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, x, y
-
-! -------------------------------------------------------------------------
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda
+#endif
 
     CALL timeset(routineN,handle)
 
@@ -536,9 +544,13 @@ CPSourceFileRef,&
     CHARACTER(len=*), PARAMETER :: routineN = 'cp_fm_syrk', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, lda, ldc, n
+    INTEGER                                  :: handle, n
     INTEGER, DIMENSION(9)                    :: desca, descc
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, c
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda, ldc
+#endif
 
     CALL timeset(routineN,handle)
 
@@ -851,11 +863,15 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
     CHARACTER(len=*), PARAMETER :: routineN = 'cp_fm_transpose', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: handle, i, j, ncol_global, &
+    INTEGER                                  :: handle, ncol_global, &
                                                 nrow_global
     INTEGER, DIMENSION(9)                    :: desca, descc
     LOGICAL                                  :: failure
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, c
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: i, j
+#endif
 
     failure = .FALSE.
     CPPrecondition(ASSOCIATED(matrix),cp_failure_level,routineP,error,failure)
@@ -899,9 +915,7 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
     TYPE(cp_fm_type), POINTER          :: matrix,work
     TYPE(cp_error_type), INTENT(inout)  :: error
 
-!   *** Local variables ***
-
-    INTEGER :: handle,icol_global,icol_local,ipcol,iprow,irow_global,&
+    INTEGER :: handle,icol_global,icol_local,irow_global,&
                irow_local,mypcol,myprow,ncol_block,ncol_global,ncol_local,&
                npcol,nprow,nrow_block,nrow_global,nrow_local
 
@@ -916,7 +930,6 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
 
 #if defined(__SCALAPACK)
     INTEGER, EXTERNAL :: indxl2g
-
 #endif
 
     failure = .FALSE.
@@ -1025,10 +1038,14 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
     TYPE(cp_fm_type), POINTER                :: matrixa
     REAL(KIND=dp), DIMENSION(:), INTENT(in)  :: scaling
 
-    INTEGER :: i, icol_global, icol_local, ipcol, iprow, irow_local, k, &
+    INTEGER :: icol_global, icol_local, ipcol, iprow, irow_local, k, &
       mypcol, myprow, n, ncol_global, npcol, nprow
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a
     REAL(KIND=sp), DIMENSION(:, :), POINTER  :: a_sp
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: i
+#endif
 
     myprow=matrixa%matrix_struct%context%mepos(1)
     mypcol=matrixa%matrix_struct%context%mepos(2)
@@ -1092,12 +1109,17 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
     INTEGER                                  :: i, info, liwork, lwork, n
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: ipivot, iwork
     INTEGER, DIMENSION(9)                    :: desca
-    LOGICAL                                  :: failure, sign
-    REAL(KIND=dp)                            :: alpha, beta, determinant, eps1
+    LOGICAL                                  :: failure
+    REAL(KIND=dp)                            :: alpha, beta, determinant
     REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: berr, ferr, work
     REAL(KIND=dp), DIMENSION(:), POINTER     :: diag
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a
     TYPE(cp_fm_type), POINTER                :: matrix_B, matrix_lu
+#if defined(__SCALAPACK)
+#else
+    LOGICAL                                  :: sign
+    REAL(KIND=dp)                            :: eps1
+#endif
 
     failure=.FALSE.
 
@@ -1318,12 +1340,14 @@ SUBROUTINE cp_fm_triangular_multiply(triangular_matrix,matrix_b,side,&
       routineP = moduleN//':'//routineN
     REAL(KIND=dp), PARAMETER                 :: one = 1.0_dp, zero = 0.0_dp
 
-    INTEGER                                  :: handle, info, lda, ldb, n
+    INTEGER                                  :: handle, info, n
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: ipivot
     INTEGER, DIMENSION(9)                    :: desca, descb
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: a, a_general
-
-! *** locals ***
+#if defined(__SCALAPACK)
+#else
+    INTEGER                                  :: lda, ldb
+#endif
 
     CALL timeset(routineN,handle)
 

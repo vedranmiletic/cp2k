@@ -11,7 +11,7 @@
 ! *****************************************************************************
 
 MODULE tmc_calculations
-  USE cell_types,                      ONLY: cell_copy,&
+  USE cell_methods,                    ONLY: cell_copy,&
                                              cell_type,&
                                              get_cell,&
                                              init_cell,&
@@ -277,8 +277,7 @@ flag = .TRUE.
     TYPE(cell_type), INTENT(IN), POINTER     :: cell
     REAL(KIND=dp), DIMENSION(3, 3), &
       INTENT(IN)                             :: scaled_hmat
-    REAL(KIND=dp), DIMENSION(:), &
-      INTENT(OUT), POINTER                   :: box_scale
+    REAL(KIND=dp), DIMENSION(:), INTENT(OUT) :: box_scale
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(LEN=*), PARAMETER :: routineN = 'get_cell_scaling', &

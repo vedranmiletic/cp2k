@@ -111,20 +111,20 @@ How to compile CP2K code
 
  2i) Machine architecture abstraction support (optional, under development):
      * Use the __HWLOC or __LIBNUMA to compile with hwloc or libnuma support
-       for machine architecture and process/threads/memory 
+       for machine architecture and process/threads/memory
        placement  and visualization. It is necessary to link with -lhwloc or -lnuma.
        The compiler must support ISO_C_BINDING.
-     * Machine architecture visualization is supported only with hwloc. 
+     * Machine architecture visualization is supported only with hwloc.
        Process/threads/memory placement and visualization is supported by both.
      * Note that it is not possible to use at same time hwloc and libnuma.
      * Consult machine/README for more information.
 
  2j) Process mapping support (optional, under development):
      * Use the target machine flag (see 3b) to compile with topology support.
-     * You can also define the strategy to be used using as a command line, 
+     * You can also define the strategy to be used using as a command line,
        with -mpi-mapping [1,2,3,4,5,6,7]. 1=SMP-style rank ordering, 2=file based rank ordering,
        3=hilbert space-filling curve, 4=peano space-fillinng curve,
-       5=round-robin rank ordering, 6=hilbert-peano, 7=cannon pattern mapping  
+       5=round-robin rank ordering, 6=hilbert-peano, 7=cannon pattern mapping
      * The compiler must support ISO_C_BINDING.
      * Consult machine/README for more information.
 
@@ -135,12 +135,13 @@ How to compile CP2K code
      * Add -D__LIBXC2 to DFLAGS and -L$(LIBXC_DIR)/lib -lxc to LIBS.
 
  2l) Library ELPA for the solution of the eigenvalue problem
-     * One version of ELPA need to be downloaded (http://elpa.rzg.mpg.de/software)
-       and installed. During the installation the libelpa.a (or libelpa_mt.a if omp active) is created. 
-       we tested the version of November 2013, with generic kernel and with/without omp
+     * One version of ELPA need to be downloaded (http://elpa.rzg.mpg.de/software or directly
+       http://elpa.rzg.mpg.de/elpa-tar-archive ) and installed.
+       During the installation the libelpa.a (or libelpa_mt.a if omp active) is created.
+       We tested the version of November 2013, with generic kernel and with/without omp
      * Add -D__ELPA to  DFLAGS and -L$(ELPA_DIR) -lelpa to LIBS
      * ELPA replaces the ScaLapack SYEVD to improve the performance of the diagonalization
-     * For specific architectures it can be better to install specifically 
+     * For specific architectures it can be better to install specifically
        optimized kernels (see BG) and/or employ a higher optimization level to compile it.
 
  2m) python 2.x is needed to run the dependency generator.
@@ -161,7 +162,7 @@ How to compile CP2K code
      You'll need to modify one of these files to match your system's settings.
      You can now build CP2K using these settings (where -j N allows for a
      parallel build using N processes):
-     
+
      > cd cp2k/makefiles
      > make -j N ARCH=architecture VERSION=version
      e.g.
@@ -182,27 +183,13 @@ How to compile CP2K code
 
  3b) The following flags should be present (or not) in the arch file
      (see also 3c, next)
-     -D__parallel -D__BLACS -D__SCALAPACK: parallel runs
+     -D__parallel -D__SCALAPACK: parallel runs
      -D__LIBINT: use libint (needed for HF exchange)
      -D__LIBXC: use libxc
      -D__ELPA: use ELPA in place of SYEVD  to solve the eigenvalue problem
-     various FFTs (use __FFTW3 if possible) :
-     -D__FFTSG: Stefan Goedecker FFT (should always be there)
-     -D__FFTW3: FFTW version 3
+     -D__FFTW3: FFTW version 3 : recommended
      -D__PW_CUDA: CUDA FFT and associated gather/scatter on the GPU
-     various compilers/architectures needing their own machine_* file
      -D__MKL: link the MKL library for linear algebra and/or FFT
-     -D__NAG
-     -D__AIX
-     -D__ABSOFT
-     -D__PGI
-     -D__INTEL
-     -D__GFORTRAN
-     -D__SX
-     -D__DEC
-     -D__XT3
-     -D__XT5
-     -D__G95
      various network interconnections:
      -D__GEMINI
      -D__SEASTAR
@@ -211,8 +198,8 @@ How to compile CP2K code
      with -D__GRID_CORE=X (with X=1..6) specific optimized core routines can
                              be selected.  Reasonable defaults are provided
                              (see src/lib/collocate_fast.F) but trial-and-error
-			     might yield (a small ~10%) speedup.
-     with -D__HAS_LIBGRID (and -L/path/to/libgrid.a in LIBS) tuned versions of 
+                             might yield (a small ~10%) speedup.
+     with -D__HAS_LIBGRID (and -L/path/to/libgrid.a in LIBS) tuned versions of
                              integrate and collocate routines can be generated.
                              See tools/autotune_grid/README for details
      -D__PILAENV_BLOCKSIZE=1024 or similar is a hack to overwrite (if the linker allows this)
@@ -221,15 +208,17 @@ How to compile CP2K code
                              The optimal value depends on hardware (GPU?) and precise problem.
      Some options controlling MPI behavior and capabilities:
      -D__NO_MPI_THREAD_SUPPORT_CHECK  - Workaround for MPI libraries that do
-                             not declare they are thread safe but you want to
+                             not declare they are thread safe (funneled) but you want to
                              use them with OpenMP code anyways.
-     -D__NO_MPI_MEMORY     - Do not use MPI memory allocation/deallocation
-                             routines.
+     -D__HAS_NO_MPI_MOD - workaround if mpi has been built for a different (version
+                          of the) Fortran compiler, rendering the MPI module
+                          unreadable (reverts to f77 style mpif.h includes)
+     -D__NO_IPI_DRIVER disables the socket interface in case of troubles compiling 
+                       on systems that do not support POSIX sockets
 
- 3c) CP2K currently assumes full Fortran 95 compliance and expects the
-     ISO_C_BINDING module of Fortran 2003 to be present, which
-     commonly is available even in current compilers.  For OpenMP,
-     version 3.0 is assumed.
+ 3c) CP2K currently assumes Fortran2003 compliance, even though few features are used.
+     Explicitly required, are full ISO_C_BINDING support, rank remapping, procedure pointers.
+     For OpenMP, version 3.1 is assumed.
 
      If you you get compilation errors about unsupported language
      features, then some flags may be used to reduce the language
@@ -238,19 +227,11 @@ How to compile CP2K code
      In addition, some flags are used to declare compiler support for
      additional language features that the compiler supports.
 
-     Subparts of Fortran 2003 or later that help various aspects of the code:
-     -D__PTR_RANK_REMAP    - compiler supports pointer rank remapping
-     -D__HAS_NO_ISO_C_BINDING - compiler does not support all needed
-                             ISO_C_BINDING features. The default is to
-                             assume support.  (At least g95 0.91
-                             silently fails with segfaults since it
-                             does not support C_F_POINTER.)
      Other language capabilities and support:
      -D__HAS_NO_OMP_3      - CP2K assumes that compilers support OpenMP 3.0.
                              If this is not the case specify this flag to
                              compile.  Runtime performance will be poorer on
                              low numbers of processors
-     -D__CRAY_POINTERS     - compiler supports CRAY pointers
      -D__HAS_NO_CUDA_STREAM_PRIORITIES - Needed for CUDA sdk version < 5.5
 
  3d) Additional esoteric, development, and debugging options.  This
@@ -263,15 +244,6 @@ How to compile CP2K code
                               the NAG, gfortran, compilers.
      -D__mp_timeset__       - Timing of MPI routines.
      -D__USE_LEGACY_WEIGHTS - Use legacy atomic weights (?)
-     -D__NO_ASSUMED_SIZE_NOCOPY_ASSUMPTION - Do not assume that
-                              assumed-sized dummy arguments will
-                              always be passed in by reference.
-                              Unless the ISO_C_BINDINGS is present,
-                              CP2K will not compile with this option.
-     -D__cray_pointers      - cray pointers will be be used in preference
-                              to the ISO_C_BINDINGS call to
-                              MPI_ALLOC_MEM.
-     -D__PLASMA             - plasma support for DBCSR (neglected, may not work)
      -D__USE_PAT            - craypat profiling (?)
      -D__HMD                - ?
      -D__HPM                - ?

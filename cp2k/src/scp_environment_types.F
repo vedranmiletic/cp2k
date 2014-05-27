@@ -8,13 +8,13 @@
 ! *****************************************************************************
 MODULE scp_environment_types
   USE cp_blacs_env,                    ONLY: cp_blacs_env_release,&
-                                             cp_blacs_env_retain
+                                             cp_blacs_env_retain,&
+                                             cp_blacs_env_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_deallocate_matrix,&
                                              cp_dbcsr_type
   USE cp_para_env,                     ONLY: cp_para_env_release,&
                                              cp_para_env_retain
-  USE cp_para_types,                   ONLY: cp_blacs_env_type,&
-                                             cp_para_env_type
+  USE cp_para_types,                   ONLY: cp_para_env_type
   USE f77_blas
   USE input_section_types,             ONLY: section_vals_release,&
                                              section_vals_retain,&
@@ -63,10 +63,9 @@ MODULE scp_environment_types
 ! *** Public subroutines ***
 
   PUBLIC :: get_scp_env,&
-            init_scp_env,&
-            set_scp_env, &
-            scp_env_create, &
-            scp_env_retain, &
+            set_scp_env,&
+            scp_env_create,&
+            scp_env_retain,&
             scp_env_release
 
 CONTAINS

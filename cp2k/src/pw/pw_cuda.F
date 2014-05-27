@@ -18,32 +18,25 @@
 !> \author Benjamin G. Levine
 ! *****************************************************************************
 MODULE pw_cuda
-#if !defined (__HAS_NO_ISO_C_BINDING)
   USE ISO_C_BINDING
-#endif
   USE f77_blas
+  USE fft_tools,                       ONLY: &
+       cube_transpose_1, cube_transpose_2, fft_scratch_sizes, &
+       fft_scratch_type, get_fft_scratch, release_fft_scratch, x_to_yz, &
+       xz_to_yz, yz_to_x, yz_to_xz
   USE kinds,                           ONLY: dp,&
                                              int_size
-  USE pw_types,                        ONLY: RECIPROCALSPACE,&
-                                             REALSPACE,&
-                                             pw_type
-  USE pw_grid_types,                   ONLY: FULLSPACE
-  USE timings,                         ONLY: timeset,&
-                                             timestop
-  USE fft_tools,                       ONLY: get_fft_scratch,&
-                                             release_fft_scratch,&
-                                             fft_scratch_type,&
-                                             fft_scratch_sizes,&
-                                             cube_transpose_1,&
-                                             cube_transpose_2,&
-                                             yz_to_x, x_to_yz,&
-                                             xz_to_yz, yz_to_xz
   USE message_passing,                 ONLY: mp_comm_compare,&
                                              mp_environ,&
                                              mp_rank_compare
+  USE pw_grid_types,                   ONLY: FULLSPACE
+  USE pw_types,                        ONLY: REALSPACE,&
+                                             RECIPROCALSPACE,&
+                                             pw_type
   USE termination,                     ONLY: stop_memory,&
                                              stop_program
-
+  USE timings,                         ONLY: timeset,&
+                                             timestop
 #include "../common/cp_common_uses.f90"
 
   IMPLICIT NONE
@@ -483,7 +476,7 @@ END SUBROUTINE pw_cuda_finalize
 !--------------------------------------------------------------------------
     ELSE
        CALL stop_program(routineN,moduleN,__LINE__,&
-          "Not implemented (no ray_distr.) in: pw_cuda_c1dr3d_3d_ps.")
+          "Not implemented (no ray_distr.) in: pw_cuda_r3dc1d_3d_ps.")
        !CALL fft3d ( dir, n, pwin, grays, pw1%pw_grid%para%rs_group, &
        !     pw1%pw_grid%para%bo, scale = scale, debug=test )
     END IF

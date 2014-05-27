@@ -14,7 +14,7 @@ MODULE pme_tools
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE cell_types,                      ONLY: cell_type,&
+  USE cell_methods,                    ONLY: cell_type,&
                                              real_to_scaled
   USE f77_blas
   USE kinds,                           ONLY: dp
@@ -25,7 +25,7 @@ MODULE pme_tools
   IMPLICIT NONE
 
   PRIVATE
-  PUBLIC :: get_center, in_slice, set_list
+  PUBLIC :: get_center, set_list
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'pme_tools'
 

@@ -23,7 +23,7 @@ MODULE rt_propagation_methods
        cp_dbcsr_add, cp_dbcsr_allocate_matrix_set, cp_dbcsr_copy, &
        cp_dbcsr_copy_into_existing, cp_dbcsr_create, &
        cp_dbcsr_deallocate_matrix, cp_dbcsr_deallocate_matrix_set, &
-       cp_dbcsr_desymmetrize, cp_dbcsr_frobenius_norm, cp_dbcsr_get_block, &
+       cp_dbcsr_desymmetrize, cp_dbcsr_frobenius_norm, cp_dbcsr_get_block_p, &
        cp_dbcsr_get_occupation, cp_dbcsr_init, cp_dbcsr_init_p, &
        cp_dbcsr_iterator, cp_dbcsr_iterator_blocks_left, &
        cp_dbcsr_iterator_next_block, cp_dbcsr_iterator_start, &
@@ -69,8 +69,7 @@ MODULE rt_propagation_methods
                                              rt_convergence_density
   USE rt_propagation_types,            ONLY: get_rtp,&
                                              get_rtp_hfx,&
-                                             rt_prop_type,&
-                                             rtp_hfx_type
+                                             rt_prop_type
   USE timings,                         ONLY: timeset,&
                                              timestop
 #include "./common/cp_common_uses.f90"
@@ -82,13 +81,11 @@ MODULE rt_propagation_methods
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'rt_propagation_methods'
 
   PUBLIC :: propagation_step,&
-       s_matrices_create,&
-       calc_update_rho,&
-       calc_update_rho_sparse,&
-       aspc_extrapolate,&
-       calc_sinvH,&
-       put_data_to_history,&
-       purify_mcweeny_complex_nonorth
+            s_matrices_create,&
+            calc_update_rho,&
+            calc_update_rho_sparse,&
+            calc_sinvH,&
+            put_data_to_history
 
 
 CONTAINS
@@ -527,17 +524,15 @@ CONTAINS
     CALL cp_dbcsr_iterator_start(iter, tmp)
     DO WHILE (cp_dbcsr_iterator_blocks_left (iter))
        CALL cp_dbcsr_iterator_next_block(iter, row_atom, col_atom, block_values)
-       ALLOCATE(block_values2(SIZE(block_values)))
-       CALL cp_dbcsr_get_block(mat_re, row_atom, col_atom, block_values2, found=found)
+       CALL cp_dbcsr_get_block_p(mat_re, row_atom, col_atom, block_values2, found=found)
        IF(found) THEN
           block_values=block_values2*block_values2
        ENDIF
-       CALL cp_dbcsr_get_block(mat_im, row_atom, col_atom, block_values2, found=found)
+       CALL cp_dbcsr_get_block_p(mat_im, row_atom, col_atom, block_values2, found=found)
        IF(found) THEN
           block_values=block_values+block_values2*block_values2
        ENDIF
        block_values=SQRT(block_values)
-       DEALLOCATE(block_values2)
     END DO
     CALL cp_dbcsr_iterator_stop (iter)
     frob_norm=cp_dbcsr_frobenius_norm(tmp)
@@ -658,13 +653,11 @@ CONTAINS
        CALL cp_fm_get_info(mos(re)%matrix,ncol_global=ncol,error=error)
        CALL cp_dbcsr_plus_fm_fm_t(sparse_matrix=rho%rho_ao(i)%matrix,&
                                matrix_v=mos(re)%matrix,&
-                               matrix_g=mos(re)%matrix,&
                                ncol=ncol,&
                                alpha=alpha,error=error)
        ! It is actually complex conjugate but i*i=-1 therfore it must be added
        CALL cp_dbcsr_plus_fm_fm_t(sparse_matrix=rho%rho_ao(i)%matrix,&
                         matrix_v=mos(im)%matrix,&
-                        matrix_g=mos(im)%matrix,&
                         ncol=ncol,&
                         alpha=alpha,error=error)
     END DO
@@ -733,7 +726,6 @@ CONTAINS
       POINTER                                :: matrix_p_im
     TYPE(cp_fm_p_type), DIMENSION(:), &
       POINTER                                :: mos
-    TYPE(rtp_hfx_type), POINTER              :: rtp_hfx
 
     CALL get_rtp(rtp=rtp,mos_new=mos,error=error)
     CALL get_rtp_hfx(rtp_hfx=rtp%rtp_hfx,matrix_p_im=matrix_p_im,error=error)
