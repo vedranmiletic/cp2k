@@ -2,7 +2,6 @@
 !   CP2K: A general program to perform molecular dynamics simulations         !
 !   Copyright (C) 2000 - 2012  CP2K developers group                          !
 !-----------------------------------------------------------------------------!
-
 ! *****************************************************************************
 !> \brief performs global geometry optimization
 !> \par History
@@ -78,7 +77,7 @@ MODULE paramopt_types
    REAL(KIND=dp),POINTER                                 :: E_res(:)
    REAL(KIND=dp),POINTER                                 :: res(:)
    REAL(KIND=dp),POINTER                                 :: rmsd(:,:)
-   REAL(KIND=dp),POINTER                                 :: dipole(:)
+   REAL(KIND=dp),POINTER                                 :: dipole(:,:)
    REAL(KIND=dp),POINTER                                 :: force(:,:)
    REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
    REAL(KIND=dp),POINTER                                 :: obj_f(:)

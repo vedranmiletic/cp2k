@@ -280,7 +280,8 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "iter", iter)
         CALL swarm_message_add(report, "conv", 0) 
         CALL swarm_message_add(report, "rmsd", huge(1._dp))
-        if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
+        if (coord_file .eq. 'WATER27structures/H2O.xyz' .or. &
+            coord_file .eq. 'WATER27structures/O3.xyz') THEN
            CALL swarm_message_add(report, "dipole",huge(1._dp) )
         endif
         CALL swarm_message_add(report, "Epot", huge(1._dp)) 
@@ -446,6 +447,15 @@ MODULE paramopt_worker
           enddo
           this%dipole_error = abs(1.86_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
           deallocate(dipole)
+        else if (coord_file .eq. 'WATER27structures/O3.xyz') then
+          !-----------calculate dipole--------------------------
+          CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
+          dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9)  
+          do i = 1,3
+            dipole=dipole + this%dipole(:,i)
+          enddo
+          this%dipole_error = abs(0.53_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+          deallocate(dipole)
         endif
         !!---------------cleanup-----------------------------
           deallocate(this%pos,this%pos2,this%g)!
@@ -463,7 +473,8 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "conv", this%converged) 
         !CALL swarm_message_add(report, "force", this%force)
         CALL swarm_message_add(report, "rmsd", this%rmsd)
-        if (coord_file .eq. 'WATER27structures/H2O.xyz') THEN
+        if (coord_file .eq. 'WATER27structures/H2O.xyz' .or. &
+            coord_file .eq. 'WATER27structures/O3.xyz')  THEN
            CALL swarm_message_add(report, "dipole", this%dipole_error)
         endif
         CALL swarm_message_add(report, "Epot", energy)
@@ -490,7 +501,9 @@ MODULE paramopt_worker
     SUBROUTINE bench_function(this,energy)
     TYPE(paramopt_worker_type)      :: this
     real(kind=dp)                   :: energy,tmp
+    INTEGER                         :: n
         tmp=0._dp
+        n=size(this%x)
         !sphere function
         !do i=1,this%num_var
         !    energy = energy + this%x(i)**2
@@ -513,9 +526,9 @@ MODULE paramopt_worker
     !    tmp = 1_dp + 9_dp*tmp/(size(this%x)-1._dp)
     !    this%rmsd = tmp*(1_dp - sqrt(h(this%x(1),size(this%x))/tmp))
         !Zitzler¿Deb¿Thiele's function N. 1
-    !    tmp = g(this%x)
-    !    energy = this%x(1)
-    !    this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp))
+        tmp = g(this%x)
+        energy = this%x(1)
+        this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp))
         !Zitzler¿Deb¿Thiele's function N. 2
     !    tmp = g(this%x)
     !    energy = this%x(1)
@@ -525,20 +538,24 @@ MODULE paramopt_worker
     !    energy = this%x(1)
     !    this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp)-this%x(1)/tmp*sin(10_dp*pi*this%x(1)))
        !Zitzler¿Deb¿Thiele's function N. 6
-        tmp = g(this%x)**0.25_dp
-        energy = 1_dp - exp(-4_dp*this%x(1))*sin(6_dp*pi*this%x(1))**6 
-        this%rmsd = tmp * (1_dp - (energy/tmp)**2)
+    !    tmp = g(this%x)**0.25_dp
+    !    energy = 1_dp - exp(-4_dp*this%x(1))*sin(6_dp*pi*this%x(1))**6 
+    !    this%rmsd = tmp * (1_dp - (energy/tmp)**2)
            !Zitzler¿Deb¿Thiele's function N. 4
     !    energy = this%x(1) !/10._dp+0.5_dp
     !    tmp = g4(this%x) 
     !    this%rmsd = tmp * (1_dp - sqrt(energy/tmp))
+       ! Fonesca and Fleming function
+       ! DOESN NOT WORK
+    !   energy = 1._dp - exp(-sum((this%x-1._dp/sqrt(n))**2))
+    !   this%rmsd = 1._dp - exp(-sum((this%x+1._dp/sqrt(n))**2))
     END SUBROUTINE
 !-----------------------------------------------------------------------
 REAL FUNCTION g(x)
     REAL(dp),DIMENSION(:)                    :: x
     integer                                  :: n
     n = size(x)
-    g = 1._dp + 9._dp*(sum(x(2:n))/(real(n)-1_dp))
+    g = 1._dp + 9._dp/(real(n)-1._dp)*(sum(x(2:n)))
 END FUNCTION g   
 REAL FUNCTION g4(x)
 !-----------------------------------------------------------------------

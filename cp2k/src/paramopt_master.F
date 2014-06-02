@@ -14,7 +14,8 @@ MODULE paramopt_master
                                              close_file
   USE cma_es,                          ONLY: cmaes,gen_pop
   USE cma_es_utils,                    ONLY: a_k_init, &
-                                             read_x
+                                             read_x, &
+                                             a_k_copy
   USE cma_es_types,                    ONLY: individual_type, &
                                              individual_type_p, &
                                              cmaes_opt_type
@@ -117,11 +118,12 @@ MODULE paramopt_master
     !------------------
     n = this%num_var
     !------------------
-    this%num_obj = 6
+    this%num_obj = 7
     this%multi_obj = .true.
     !-------------------
     this%num_inp = 32 ! now also H2 and O3 in the set!!!
     if (this%benchmark) this%num_inp = 2 !is basically the number of objectives
+    if (this%benchmark) this%num_obj = 2 !is basically the number of objectives
     !-------------------
     this%num_calc = 30
     !--------------------
@@ -141,7 +143,7 @@ MODULE paramopt_master
     !-------------------
     allocate(this%E_res(this%num_para_set))
     allocate(this%rmsd(this%num_inp,this%num_para_set))
-    allocate(this%dipole(this%num_para_set))
+    allocate(this%dipole(2,this%num_para_set))
     allocate(this%force(this%num_inp,this%num_para_set))
     allocate(this%Epot(this%num_inp,this%num_para_set))
     allocate(this%ener_ref(this%num_ref))
@@ -166,7 +168,7 @@ MODULE paramopt_master
     allocate(this%timings(this%num_inp))
     allocate(this%weights(this%num_obj))
     allocate(this%i_recv(this%num_para_set))
-    allocate(this%function_matrix(this%num_inp,this%num_para_set))
+    !allocate(this%function_matrix(this%num_inp,this%num_para_set))
     allocate(this%converged(this%num_inp,this%num_para_set))
 
     CALL section_vals_val_get(paramopt_section,"STEP_SIZE", r_val=this%step_size, error=error)
@@ -251,6 +253,7 @@ MODULE paramopt_master
     print *,'run_type',this%run_type_id,'step size',this%step_size
     print *,'upper bounds',this%u_bound
     print *,'lower bounds',this%l_bound
+    print *,'benchmark problem',this%benchmark
     print *,'this is inital x'
     print *, this%x
     ! in case sigma is not given use sqrt(var(x))
@@ -335,7 +338,7 @@ MODULE paramopt_master
     if (associated(this%cmaes_opt)) then
       allocate(this%cmaes_opt%insigma(this%num_var))
       !CALL section_vals_val_get(paramopt_section,"INSIGMA", r_vals=this%cmaes_opt%insigma, error=error)
-      this%cmaes_opt%insigma = 0.2_dp*(this%u_bound-this%l_bound)
+      this%cmaes_opt%insigma = (this%u_bound-this%l_bound)
       if (this%step_size .eq. 0._dp) this%step_size = 1._dp !the insigmas are already normalized
       print *,'this is insigma',this%cmaes_opt%insigma
       print *,'this is step_size',this%step_size
@@ -365,27 +368,32 @@ MODULE paramopt_master
       !this%cmaes_opt%fmax = (/10_dp,1_dp/)
       !this%cmaes_opt%fmin = (/0_dp,0_dp/)
      !--------------init population-----------------
+     this%cmaes_opt%insigma = this%cmaes_opt%insigma*this%step_size
      do k=1,this%cmaes_opt%lambda_mo
       this%cmaes_opt%population_p(k)%p => this%cmaes_opt%population(k)
       this%cmaes_opt%a_k(k)%p => this%cmaes_opt%population(k)
       a_k => this%cmaes_opt%a_k(k)%p
-
+   
       CALL a_k_init(a_k,this%cmaes_opt%lambda_mo,this%num_obj, &
                     this%step_size,this%cmaes_opt%insigma,this,k)
 
       ! fix sigma for first generation so better distr
-      ini_sigma = a_k%sigma
+      ini_sigma = this%step_size
+      a_k%x = this%x
       a_k%sigma = 0._dp
+      !a_k%sigma = ini_sigma
       CALL gen_pop(a_k,this%cmaes_opt)
       a_k%sigma = ini_sigma
-      print *,'initial x from a_k',a_k%arx
+
       !----init parents too---------------
       this%cmaes_opt%population_p(k+this%cmaes_opt%lambda_mo)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       a_k_parents => this%cmaes_opt%a_k_parents(k)%p
       CALL a_k_init(a_k_parents,this%cmaes_opt%lambda_mo,this%num_obj, &
-                    this%step_size,this%cmaes_opt%insigma,this,k+this%cmaes_opt%lambda_mo,a_k%arx(:,1))
-      a_k_parents%sigma = ini_sigma
+                    this%step_size,this%cmaes_opt%insigma,this,k+this%cmaes_opt%lambda_mo,a_k%x)
+      CALL a_k_copy(a_k_parents,a_k)
+      a_k_parents%f = huge(1._dp)
+      print *,'initial x from a_k',a_k%x
      enddo
      nullify(a_k,a_k_parents)
      
@@ -394,12 +402,13 @@ MODULE paramopt_master
           print *,"==========restart file read==============="
           call read_x(this%cmaes_opt)
           !-----c matrix from bd
-          do k=1,this%cmaes_opt%lambda_mo
-            a_k => this%cmaes_opt%a_k(k)%p
-            CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
-            a_k_parents => this%cmaes_opt%a_k_parents(k)%p
-            CALL DGEMM('N','T',n,n,n,1.0d0,a_k_parents%BD,n,a_k_parents%BD,n,0.0d0,a_k_parents%C,n)
-          enddo
+          !do k=1,this%cmaes_opt%lambda_mo
+          !  a_k => this%cmaes_opt%a_k(k)%p
+          !  
+          !  !CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
+          !  a_k_parents => this%cmaes_opt%a_k_parents(k)%p
+          !  !CALL DGEMM('N','T',n,n,n,1.0d0,a_k_parents%BD,n,a_k_parents%BD,n,0.0d0,a_k_parents%C,n)
+          !enddo
       endif
     endif
 !================================================================================
@@ -449,7 +458,7 @@ MODULE paramopt_master
     this%ref_num_atoms = (/3,6,9,12,15,18,18,18,18,21,21,60,60,60,60,4,7,10,13,22,22,2,5,8,11,14,14,17,20,24/)
     endif
     !------------------------
-!    allocate(this%function_matrix(this%num_para_set,this%num_inp))
+    if (this%benchmark) allocate(this%function_matrix(this%num_inp,this%num_para_set))
     !------------------------
     this%converged = 1
     IF(this%iw>0) WRITE (this%iw,*) "paramopt_master_init done"
@@ -488,9 +497,13 @@ MODULE paramopt_master
        CALL swarm_message_get(report, "conv", this%converged(i,j))    
        !CALL swarm_message_get(report, "force", this%force(i,j))
        CALL swarm_message_get(report, "rmsd", this%rmsd(i,j))
-       if (i_inp .eq. 1) then
-            CALL swarm_message_get(report, "dipole", this%dipole(j))
-
+       if (i_inp .eq. 1 .or. i_inp .eq. 31) then
+           ! Water H2O or O3 Ozone
+           if (i_inp .eq. 1) then
+            CALL swarm_message_get(report, "dipole", this%dipole(1,j))
+            else
+            CALL swarm_message_get(report, "dipole", this%dipole(2,j))
+            endif
        endif
        CALL swarm_message_get(report, "Epot", this%Epot(i,j))
        !this%function_matrix(i,j) = this%rmsd(j)
@@ -507,6 +520,17 @@ MODULE paramopt_master
     !        WRITE (this%iw,'(A,20X,E15.8)')&
     !               " PRMOPT| Reported rmsd ", this%rmsd(i,j)
     !     END IF
+    ELSE IF (report_status == 'bench_calc') THEN
+      CALL swarm_message_get(report, "num_inp", i_inp)
+      CALL swarm_message_get(report, "iter", r_iter)
+      j = mod(r_iter,this%num_para_set) + 1
+      i = i_inp
+      CALL swarm_message_get(report, "Epot", this%function_matrix(1,j))
+      CALL swarm_message_get(report, "rmsd", this%function_matrix(2,j))
+      !------------change status---------------------------------
+       report_status = "wait_done"
+       !------------deal with condition---------------------------
+       this%i_recv(j) = this%i_recv(j) + 1
     ENDIF
     
     IF (sum(this%i_recv) .eq. this%num_para_set*this%num_inp) THEN
@@ -518,9 +542,10 @@ MODULE paramopt_master
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
              a_k%rmsd = sum(this%rmsd(:,j))
-             a_k%dipole = this%dipole(j)
+             a_k%dipole(1) = this%dipole(1,j)
+             a_k%dipole(2) = this%dipole(2,j)
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(:,j), this%dipole(j), this%E_res(j))
+             call calc_obj_f(this, this%Epot(:,j), this%converged(:,j),this%rmsd(:,j), this%dipole(:,j), this%E_res(j))
                if (isnan(this%E_res(j))) then
                  a_k%f(1) = huge(1.0_dp) 
                else     
@@ -530,35 +555,53 @@ MODULE paramopt_master
                  !a_k%f(1) = sqrt(abs(this%E_res(j))) + a_k%penalty
                  ! E_res is sum of energy error divided by num_atoms per calc
                endif
-                 !---yannick use ^2-------
-                 a_k%f(2) = sum(this%rmsd(:,j)) + a_k%penalty
+                 !---this is error ^2-------
+                 !a_k%f(1) = a_k%f(1)**2
+                 !a_k%f(2) = (sum(this%rmsd(:,j)))**2 + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
+                 !a_k%f(3) = this%dipole(1,j)**2 + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
+                 !a_k%f(4) = this%dipole(2,j)**2 + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
+                 !a_k%f(5) = (this%rmsd(1,j)) + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
+                 !a_k%f(6) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(5) = huge(1._dp)
+                 !a_k%f(7) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
+                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(6) = huge(1._dp)
+                 !---this is normal error-------
+                 a_k%f(1) = a_k%f(1)
+                 a_k%f(2) = (sum(this%rmsd(:,j))) + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
-                 a_k%f(3) = this%dipole(j) + a_k%penalty
+                 a_k%f(3) = this%dipole(1,j) + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
-                 a_k%f(4) = (this%rmsd(1,j)) + a_k%penalty
+                 a_k%f(4) = this%dipole(2,j) + a_k%penalty
+                 if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
+                 a_k%f(5) = (this%rmsd(1,j)) + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
-                 a_k%f(5) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
+                 a_k%f(6) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(5) = huge(1._dp)
-                 a_k%f(6) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
+                 a_k%f(7) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
                  if (a_k%f(1) == huge(1._dp) ) a_k%f(6) = huge(1._dp)
-                 ! here the squaring neeeds to be carried out
-                 !a_k%f(2) = sqrt(sum(abs(this%rmsd(:,j))**2)) + a_k%penalty
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------
              ! call calc_obj_f(this, this%Epot(:,j), this%converged(:,j), this%rmsd(:,j), this%dipole(j), this%E_res(j))
              !this%obj_f(j) = this%weights(1)*this%E_res(j) + &
-             !             this%weights(2)*this%function_matrix(this%num_inp,j) 
+             !             this%weights(2)*this%function_matrix(this%num_inp,j)
              endif
-          else
+          else if (this%benchmark) then
              if (associated(this%cmaes_opt)) then
              a_k => this%cmaes_opt%a_k(j)%p
+             !a_k => this%cmaes_opt%a_k(j)%p
              !    print *,'penalty of a_k',j,'is',this%cmaes_opt%a_k(j)%penalty
-             this%obj_f(j) = this%function_matrix(1,j) !+ this%penalty(j)**2
-             a_k%f(1) = this%obj_f(j) + a_k%penalty
+             !this%obj_f(j) = this%function_matrix(1,j) !+ this%penalty(j)**2
+             !a_k%f(1) = this%obj_f(j) + a_k%penalty
+             a_k%f(1) = this%function_matrix(1,j) + a_k%penalty
              a_k%f(2) = this%function_matrix(2,j) + a_k%penalty
            !  if (this%cmaes_opt%a_k(j)%f(1) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(1) = 0._dp
            !  if (this%cmaes_opt%a_k(j)%f(2) .lt. 1e-6) this%cmaes_opt%a_k(j)%f(2) = 0._dp
+             !print *,'id',a_k%Id,'obj_f',a_k%f
              endif
           endif
         enddo
@@ -660,7 +703,7 @@ MODULE paramopt_master
               CALL swarm_message_add(cmd, "iter", this%inp_iter)
             endif
             if (associated(this%cmaes_opt)) then
-              this%x_temp = a_k%arx(:,1)
+              this%x_temp = a_k%x
             endif
             if (this%calc_deriv) then
               if (j .gt. 1) then
@@ -673,7 +716,7 @@ MODULE paramopt_master
             CALL swarm_message_add(cmd, "num_inp",i)
             CALL swarm_message_add(cmd, "iter", this%inp_iter)
             !print *,a_k%arx
-            this%x_temp = a_k%arx(:,1)
+            this%x_temp = a_k%x
           endif
          CALL swarm_message_add(cmd, "x", this%x_temp)
        IF(this%iw>0) THEN
@@ -707,7 +750,7 @@ MODULE paramopt_master
     TYPE(paramopt_master_type)               :: this
     REAL(KIND=dp),intent(in)                 :: Epot(:)
     REAL(KIND=dp),intent(in)                 :: rmsd(:)
-    REAL(KIND=dp),intent(in)                 :: dipole
+    REAL(KIND=dp),intent(in)                 :: dipole(2)
     INTEGER,intent(in),OPTIONAL              :: Conv(:)
     REAL(KIND=dp),intent(out)                :: obj_f
     REAL(KIND=dp)                            :: energy

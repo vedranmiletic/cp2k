@@ -13,6 +13,6 @@ DFLAGS   = -D__GEMINI -D__GFORTRAN -D__FFTSG -D__FFTW3 -D__HAS_NO_GETLOG -D__par
 CFLAGS   = $(DFLAGS)
 FCFLAGS  = -O3 -march=bdver1 -ffree-form -ftree-vectorize $(DFLAGS) -ffree-line-length-512
 LDFLAGS  = $(FCFLAGS)
-LIBS     = 
+LIBS     =  
 
 OBJECTS_ARCHITECTURE = machine_gfortran.o

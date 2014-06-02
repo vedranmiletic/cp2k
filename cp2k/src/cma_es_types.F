@@ -28,32 +28,40 @@ MODULE cma_es_types
  TYPE :: individual_type
    INTEGER                                         :: id
    INTEGER                                         :: lambda ! pop size
-   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xmean,xold,xmin,weights,zmean
-   REAL(KIND=dp),DIMENSION(:),POINTER              :: multmp_vN
-   REAL(KIND=dp),DIMENSION(:,:),POINTER            :: multmp_mN,multmp_mMU,multmp_mN2,mutmp
-   REAL(KIND=dp),DIMENSION(:),POINTER              :: x 
+   !REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xmean,xold,xmin,weights,zmean
+   !REAL(KIND=dp),DIMENSION(:),POINTER              :: multmp_vN
+   !REAL(KIND=dp),DIMENSION(:,:),POINTER            :: multmp_mN,multmp_mMU,multmp_mN2,mutmp
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xold 
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: x 
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: z 
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: Az
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: w 
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: f
    REAL(KIND=dp)                                   :: sigma
-   REAL(KIND=dp)                                   :: vecnorm
-   REAL(KIND=dp)                                   :: vecsum
+   !REAL(KIND=dp)                                   :: vecnorm
+   !REAL(KIND=dp)                                   :: vecsum
    !strategy parameter setting
-   REAL(KIND=dp)                                   :: cc,cp,cs,ccov,ccovm,damps
+   !REAL(KIND=dp)                                   :: cc,cp,cs,ccov,ccovm,damps
+   REAL(KIND=dp)                                   :: cc,cp,ccov,ccovm,damps
    REAL(KIND=dp)                                   :: p_succ,p_target,p_tresh
    ! initialize dynamic (internal) startegy parameters and constants
-   REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc,ps
-   REAL(KIND=dp)                                   :: eigenval
-   REAL(KIND=dp)                                   :: chiN
+   !REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc,ps
+   REAL(KIND=dp),ALLOCATABLE,DIMENSION(:)          :: pc
+   !REAL(KIND=dp)                                   :: eigenval
+   !REAL(KIND=dp)                                   :: chiN
    REAL(KIND=dp)                                   :: trace
    REAL(KIND=dp)                                   :: det
-   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: B,D,BD,C,triuC,arx,arz
-   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: tempMat,colVec,rowVec
+   REAL(KIND=dp)                                   :: conv
+   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: A,Ainv,C,triuC
+   !REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: B,D,BD,C,triuC,arx,arz
+   !REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: tempMat,colVec,rowVec
       !for general cma-es---------------------------------------
 !   INTEGER                                         :: info
 !   REAL(KIND=dp)                                   :: mucov
-   INTEGER                                         :: mu ! number of parents for recomb
+!   INTEGER                                         :: mu ! number of parents for recomb
 !   REAL(KIND=dp)                                   :: hsig
 !   REAL(KIND=dp)                                   :: mueff
-   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: weightsMat
+!   REAL(KIND=dp),DIMENSION(:,:),ALLOCATABLE        :: weightsMat
    !--------------------non dominated sorting-------------------------------
    INTEGER                                         :: front
    INTEGER                                         :: d_count
@@ -65,7 +73,7 @@ MODULE cma_es_types
    !--------------------------------------------------------------------------
    REAL(KIND=dp)                                   :: penalty
    REAL(KIND=dp)                                   :: rmsd
-   REAL(KIND=dp)                                   :: dipole
+   REAL(KIND=dp)                                   :: dipole(2)
  END TYPE individual_type 
 !================================================================================
  TYPE cmaes_opt_type

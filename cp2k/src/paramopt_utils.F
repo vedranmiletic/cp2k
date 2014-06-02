@@ -32,6 +32,7 @@ MODULE paramopt_utils
  PUBLIC :: plugin
  PUBLIC :: var_trans,var_back_trans
  PUBLIC :: sample
+ PUBLIC :: det
 
 ! TYPE minima_type
 !   INTEGER                                             :: id = -1
@@ -48,14 +49,37 @@ MODULE paramopt_utils
 
  CONTAINS
 
-
+ !*****************************************************************************
+  real(kind=8) function det(N, mat)
+    implicit none
+    integer, intent(in) :: N 
+    real(kind=8), intent(in), dimension(:,:) :: mat
+    integer :: i, info
+    integer, allocatable :: ipiv(:)
+    real(kind=8) :: sgn
+    allocate(ipiv(N))
+     ipiv = 0
+     call dgetrf(N, N, mat, N, ipiv, info)
+     det = 1._dp
+     do i = 1, N
+         det = det*mat(i, i)
+     end do
+     sgn = 1._dp
+     do i = 1, N
+         if(ipiv(i) /= i) then
+             sgn = -sgn
+         end if
+     end do
+     det = sgn*det  
+ end function det
+ !*****************************************************************************
  FUNCTION Variance (Array)
   IMPLICIT NONE
   REAL(kind=dp)::Variance,X
   REAL(kind=dp),INTENT(IN),DIMENSION(:)::Array
   X = SUM(Array)/SIZE(Array)
   Variance = SUM((Array-X)**2)/SIZE(Array)
-  Variance = abs(Variance)/X
+  Variance = Variance/X
  END FUNCTION Variance
  ! *****************************************************************************
 ! *****************************************************************************
@@ -408,6 +432,7 @@ MODULE paramopt_utils
       INTEGER it,iter
       INTEGER jbegin,jend
       REAL(kind=8) h
+      REAL(kind=8) var
       REAL(kind=8) h2,h3,s2,s3,d2,d3,e2,e3,rhat2,rhat3,co2
       REAl(kind=8) const,a,pi,t,r2,co1,rt2pi,s,xiqr,xn
       REAL(kind=8) X(N),Z(M),F(M)
@@ -469,9 +494,14 @@ MODULE paramopt_utils
 !-
 !------- Estimate density with plugin bandwidth
 !-            
-      if (n .lt. 4) H = 1.D0 
-      if (isnan(h)) h = 1.D0
-      if (h .eq. 0.) h = 1.D0 
+      if (h .eq. 0 .or. isnan(h)) then
+          !practical estimation of the bandwidth see wikipedia :)
+          var = variance(X)
+          H = (4._dp*var**(5._dp/2._dp)/3._dp*size(x))**1._dp/5._dp
+          !print *,'yannick...h is',h
+          ! H = 1.D0 
+      endif    
+           
       JBEGIN=1
       JEND=1                                             
       DO 200 I=1,M                                                      

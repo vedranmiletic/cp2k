@@ -494,6 +494,7 @@ CONTAINS
         END IF
         inner_loop_converged=.FALSE.
         exit_inner_loop = .TRUE.
+        should_stop = .TRUE.
      END IF
  
   END SUBROUTINE qs_scf_check_inner_exit
