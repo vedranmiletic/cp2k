@@ -12,15 +12,22 @@
 
 // defines 'acc_opencl_my_device' and some default lenghts
 #include "acc_opencl_dev.h"
+uint acc_opencl_ndevices;
+acc_opencl_dev_type *acc_opencl_devices;
+acc_opencl_dev_type *acc_opencl_my_device;
 
 // defines the ACC interface
 #include "../include/acc.h"
+
+static const int verbose_print = 1;
 
 /****************************************************************************/
 #ifdef __cplusplus
 extern "C" {
 #endif
 int acc_get_ndevices (int *n_devices){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_get_ndevices.\n");
 
   if (acc_opencl_ndevices_configured) {
     // just get it from the global variable
@@ -194,6 +201,9 @@ int acc_get_ndevices (int *n_devices){
     acc_opencl_ndevices_configured = 1;
   }
 
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_get_ndevices.\n");
+
   // assign return value
   return 0;
 }
@@ -207,6 +217,8 @@ int acc_get_ndevices (int *n_devices){
 extern "C" {
 #endif
 int acc_set_active_device (int device_id){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_set_active_device.\n");
 
   // declarations
   uint i;
@@ -239,6 +251,9 @@ int acc_set_active_device (int device_id){
     // just configure once
     if (!acc_opencl_set_device_configured) acc_opencl_set_device_configured = 1;
   }
+
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_set_active_device.\n");
 
   // assign return value
   return 0;

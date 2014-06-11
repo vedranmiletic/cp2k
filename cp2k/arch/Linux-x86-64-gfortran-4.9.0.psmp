@@ -1,40 +1,47 @@
-# - OpenSUSE Linux 12.3 (x86_64) [ module load gfortran-suite/4.8.2 ]
-# - gcc            4.8.2
-# - gfortran       4.8.2
+# - CentOS 6.5 (x86_64) [ module load gfortran-suite/4.9.0 ]
+# - gcc            4.9.0
+# - gfortran       4.9.0
+# - OMP
 # - Intel MKL      Parallel Studio XE v2011-08-23
-# - FFTW3          3.3.3
-# - LIBXC          2.0.3
+# - OpenMPI        1.8.1
+# - FFTW3          3.3.4
+# - LIBXC          2.2.0
 # - LIBINT         1.1.5 (with non default: --with-libint-max-am=5
 #                                           --with-libderiv-max-am1=4)
-# - OpenCL         1.1 (NVIDIA)
+# - OpenCL         1.1 (device type: SM 3.5)
 #
 
 # LIB's ################################################################
-LIBS     = -L${FFTW3_PATH}/lib64 \
-             -lfftw3 \
+LIBS     = -L${FFTW3_PATH}/lib \
+             -lfftw3_threads -lfftw3 \
            -L$(INTEL_MKL_LIB) \
+             -lmkl_scalapack_lp64 \
              -lmkl_gf_lp64 \
              -lmkl_core \
              -lmkl_sequential \
+             -lmkl_blacs_openmpi_lp64 \
              -lpthread \
              -lm \
-           -L$(LIBINT_PATH)/lib64 \
+           -L$(LIBINT_PATH)/lib \
              -lderiv \
              -lint \
-           -L$(LIBXC_PATH)/lib64 \
-             -lxc \
-           -L/usr/lib64 \
+           -L$(LIBXC_PATH)/lib \
+             -lxcf90 -lxc \
+           -L$(CUDA_PATH)/lib64 \
              -lOpenCL -lrt
 
 # PROG's ###############################################################
 PERL     = perl
-CC       = gcc -g
-FC       = gfortran -g -fbacktrace
-LD       = gfortran -g
+CC       = gcc
+FC       = mpif90 -fopenmp
+LD       = mpif90 -fopenmp
 AR       = ar -r
 
 # FLAG's ###############################################################
 DFLAGS   = -D__GFORTRAN \
+           -D__MKL \
+           -D__parallel \
+           -D__BLACS -D__SCALAPACK \
            -D__FFTSG -D__FFTW3 \
            -D__ACC -D__DBCSR_ACC \
            -D__LIBXC2 \
@@ -43,11 +50,9 @@ DFLAGS   = -D__GFORTRAN \
            -D__HAS_ISO_C_BINDING
 
 CPPFLAGS = $(DFLAGS) -traditional -C
-#CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
-#FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
-#           -ffree-form -ffree-line-length-none
-CFLAGS   = $(DFLAGS) -O0 
-FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
+CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
+FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops \
+           -ftree-vectorize -ffree-form -ffree-line-length-none
 LDFLAGS  = $(FCFLAGS)
 
 OBJECTS_ARCHITECTURE = machine_gfortran.o

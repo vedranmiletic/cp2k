@@ -6,7 +6,7 @@
 #ifndef ACC_OPENCL_DEV_H
 #define ACC_OPENCL_DEV_H
 
-#if defined (__ACC) || defined (__DBCSR_OPENCL)
+#if defined (__ACC)
 
 // maximum information line lenght
 #define MAX_DEV_TYPE_LEN 3
@@ -19,9 +19,12 @@ typedef struct {
 } acc_opencl_dev_type;
 
 // global (per MPI) device information
-static uint acc_opencl_ndevices;
-static acc_opencl_dev_type *acc_opencl_devices;
-static acc_opencl_dev_type *acc_opencl_my_device;
+//static uint acc_opencl_ndevices;
+//static acc_opencl_dev_type *acc_opencl_devices;
+//static acc_opencl_dev_type *acc_opencl_my_device;
+extern uint acc_opencl_ndevices;
+extern acc_opencl_dev_type *acc_opencl_devices;
+extern acc_opencl_dev_type *acc_opencl_my_device;
 
 // global configuration information
 static uint acc_opencl_ndevices_configured = 0;

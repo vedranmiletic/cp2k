@@ -24,7 +24,7 @@
 // defines 'acc_opencl_my_device' and some default lenghts
 #include "acc_opencl_dev.h"
 
-// defines 'acc_opencl_queue' struct
+// defines 'acc_opencl_stream_type' struct
 #include "acc_opencl_stream.h"
 
 // defines the ACC interface
@@ -38,9 +38,15 @@ static const int verbose_print = 0;
 extern "C" {
 #endif
 int acc_stream_priority_range (int* least, int* greatest){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_stream_priority_range.\n");
+
   // NOTE: This functionality is not available in OpenCL.
   *least = -1;
   *greatest = -1;
+
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_priority_range.\n");
 
   // assign return value
   return 0;
@@ -54,8 +60,11 @@ int acc_stream_priority_range (int* least, int* greatest){
 #ifdef __cplusplus
 extern "C" {
 #endif
-// NOTE: 'priority is ignored.
+// NOTE: 'priority' and 'name' are ignored.
 int acc_stream_create (void** stream_p, char* name, int priority){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_stream_create.\n");
+
   // get memory on pointer
   *stream_p = malloc(sizeof(acc_opencl_stream_type));
 
@@ -68,6 +77,9 @@ int acc_stream_create (void** stream_p, char* name, int priority){
   (*clstream).queue = clCreateCommandQueue((*acc_opencl_my_device).ctx, (*acc_opencl_my_device).device_id, queue_properties, &cl_error);
   if (acc_opencl_error_check(cl_error, __LINE__))
     return -1;
+
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_create.\n");
 
   // assign return value
   return 0;
@@ -82,6 +94,9 @@ int acc_stream_create (void** stream_p, char* name, int priority){
 extern "C" {
 #endif
 int acc_stream_destroy (void* stream){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_stream_destroy.\n");
+
   // local queue pointer 
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
 
@@ -91,6 +106,9 @@ int acc_stream_destroy (void* stream){
     return -1;
   // free the struct acc_opencl_queue 'stream'
   free(clstream);
+
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_destroy.\n");
 
   // assign return value
   return 0;
@@ -104,6 +122,9 @@ int acc_stream_destroy (void* stream){
 extern "C" {
 #endif
 int acc_stream_sync (void* stream){
+  // debug info
+  if (verbose_print) fprintf(stdout, "Entering: acc_stream_sync.\n");
+
   // local queue pointer 
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
 
@@ -116,6 +137,9 @@ int acc_stream_sync (void* stream){
 
   if (acc_opencl_error_check(cl_error, __LINE__))
     return -1;
+
+  // debug info
+  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_sync.\n");
 
   // assign return value
   return 0;

@@ -11,7 +11,7 @@
 
 /****************************************************************************/
 int acc_opencl_error_check (cl_int cl_error, int line){
-  int         pid;
+  int pid;
 
   if (cl_error != CL_SUCCESS) {
     pid = getpid();
