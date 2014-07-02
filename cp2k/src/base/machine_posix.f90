@@ -205,7 +205,7 @@ CONTAINS
         INTEGER(int_8) FUNCTION get_field_value_in_bytes(field)
            CHARACTER(LEN=*) :: field
            INTEGER :: start
-           INTEGER(KIND=8) :: value
+           INTEGER(KIND=int_8) :: value
            get_field_value_in_bytes=0
            start=INDEX(meminfo,field)
            IF (start.NE.0) THEN
@@ -359,18 +359,19 @@ CONTAINS
     name_long = ""
 
     CALL m_getuid(uid)
+    WRITE(user,'(I16)') uid
     pwd_cptr = getpwuid(uid)
 
-    IF(.NOT.C_ASSOCIATED(pwd_cptr)) STOP "m_getlog failed (1)"
+    IF(.NOT.C_ASSOCIATED(pwd_cptr)) RETURN
     CALL C_F_POINTER(pwd_cptr, pwd)
-    IF(.NOT.C_ASSOCIATED(pwd%name)) STOP "m_getlog failed (2)"
+    IF(.NOT.C_ASSOCIATED(pwd%name)) RETURN
     CALL C_F_POINTER(pwd%name, pwd_name_p, (/LEN(name_long)/) )
 
     DO i=1, LEN(name_long)
       IF(pwd_name_p(i) .EQ. C_NULL_CHAR) EXIT
       name_long(i:i) = pwd_name_p(i)
     END DO
-    IF(i > LEN(name_long)) STOP "m_getlog failed (3)"
+    IF(i > LEN(name_long)) RETURN
 
     user = TRIM(name_long)
   END SUBROUTINE m_getlog

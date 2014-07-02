@@ -1443,14 +1443,16 @@ CONTAINS
       16.37_dp, 12.64_dp, 12.47_dp, 12.01_dp, 24.67_dp, 24.67_dp, 24.67_dp, &
       24.67_dp, 24.67_dp, 24.67_dp, 24.67_dp, 24.67_dp, 24.67_dp, 24.67_dp, &
       24.67_dp, 24.67_dp, 37.32_dp, 38.71_dp, 38.44_dp, 31.74_dp, 31.50_dp, &
-      29.99_dp /), rval = (/1.001_dp, 1.012_dp, 0.825_dp, 1.408_dp, 1.485_dp, &
-      1.452_dp, 1.397_dp, 1.342_dp, 1.287_dp, 1.243_dp, 1.144_dp, 1.364_dp, &
-      1.639_dp, 1.716_dp, 1.705_dp, 1.683_dp, 1.639_dp, 1.595_dp, 1.485_dp, &
-      1.474_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, &
-      1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.650_dp, 1.727_dp, 1.760_dp, &
-      1.771_dp, 1.749_dp, 1.727_dp, 1.628_dp, 1.606_dp, 1.639_dp, 1.639_dp, &
-      1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, &
-      1.639_dp, 1.672_dp, 1.804_dp, 1.881_dp, 1.892_dp, 1.892_dp, 1.881_dp /)
+      29.99_dp /)
+    REAL(KIND=dp), DIMENSION(54), PARAMETER :: rval = (/1.001_dp, 1.012_dp, &
+      0.825_dp, 1.408_dp, 1.485_dp, 1.452_dp, 1.397_dp, 1.342_dp, 1.287_dp, &
+      1.243_dp, 1.144_dp, 1.364_dp, 1.639_dp, 1.716_dp, 1.705_dp, 1.683_dp, &
+      1.639_dp, 1.595_dp, 1.485_dp, 1.474_dp, 1.562_dp, 1.562_dp, 1.562_dp, &
+      1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, 1.562_dp, &
+      1.650_dp, 1.727_dp, 1.760_dp, 1.771_dp, 1.749_dp, 1.727_dp, 1.628_dp, &
+      1.606_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, &
+      1.639_dp, 1.639_dp, 1.639_dp, 1.639_dp, 1.672_dp, 1.804_dp, 1.881_dp, &
+      1.892_dp, 1.892_dp, 1.881_dp /)
 
 !
 ! GRIMME DISPERSION PARAMETERS
@@ -2464,12 +2466,13 @@ CONTAINS
     INTEGER                                  :: i, j
     REAL(KIND=dp)                            :: c6mem, cn1, cn2, csum, dtmpa, &
                                                 dtmpb, dwa, dwb, dza, dzb, r, &
-                                                rsum, tmp1
+                                                rsave, rsum, tmp1
 
 ! the exponential is sensitive to numerics
 ! when nci or ncj is much larger than cn1/cn2
 
-    c6mem=-1.e+99_dp
+    c6mem=-1.0e+99_dp
+    rsave=1.0e+99_dp
     rsum=0.0_dp
     csum=0.0_dp
     dza=0.0_dp
@@ -2480,15 +2483,18 @@ CONTAINS
     DO i=1,mxc(iat)
       DO j=1,mxc(jat)
          c6=c6ab(iat,jat,i,j,1)
-         IF(c6 > 0._dp)THEN
-            c6mem=c6
+         IF(c6 > 0.0_dp)THEN
             cn1=c6ab(iat,jat,i,j,2)
             cn2=c6ab(iat,jat,i,j,3)
             ! distance
             r=(cn1-nci)**2+(cn2-ncj)**2
+            IF (r < rsave) THEN
+               rsave=r
+               c6mem=c6
+            ENDIF
             tmp1=EXP(k3*r)
-            dtmpa=-2._dp*k3*(cn1-nci)*tmp1
-            dtmpb=-2._dp*k3*(cn2-ncj)*tmp1
+            dtmpa=-2.0_dp*k3*(cn1-nci)*tmp1
+            dtmpb=-2.0_dp*k3*(cn2-ncj)*tmp1
             rsum=rsum+tmp1
             csum=csum+tmp1*c6
             dza=dza+dtmpa*c6
@@ -2499,7 +2505,9 @@ CONTAINS
       ENDDO
     ENDDO
 
-    IF(rsum > 0.0_dp)THEN
+    IF(c6 == 0.0_dp) c6mem=0.0_dp
+
+    IF(rsum > 1.0e-66_dp)THEN
        c6=csum/rsum
        dc6a=(dza-c6*dwa)/rsum
        dc6b=(dzb-c6*dwb)/rsum

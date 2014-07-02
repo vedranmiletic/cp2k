@@ -12,11 +12,11 @@
   SUBROUTINE acc_hostmem_alloc_l (host_mem, n, stream)
     INTEGER(KIND=int_8), DIMENSION(:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n
+#if defined (__ACC)
     TYPE(C_PTR)                              :: host_mem_c_ptr
     TYPE(acc_stream_type), INTENT(IN)        :: stream
 
     CALL acc_hostmem_alloc_raw(host_mem_c_ptr, MAX(1,n)*int_8_size, stream)
-#if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, (/ MAX(1,n) /))
 #else
     STOP "acc_hostmem_alloc_l: ACC not compiled in."
@@ -33,13 +33,13 @@
 SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2
+#if defined (__ACC)
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
     TYPE(acc_stream_type), INTENT(IN)        :: stream
 
     n_bytes = MAX(1,n1)*MAX(1,n2)*int_8_size
     CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
-#if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, (/ MAX(1,n1),MAX(1,n2) /))
 #else
     STOP "acc_hostmem_alloc_l_2D: ACC not compiled in."
@@ -55,13 +55,13 @@ SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2, stream)
   SUBROUTINE acc_hostmem_alloc_l_3D (host_mem, n1, n2, n3, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2, n3
+#if defined (__ACC)
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
     TYPE(acc_stream_type), INTENT(IN)        :: stream
 
     n_bytes = MAX(1,n1)*MAX(1,n2)*MAX(1,n3)*int_8_size
     CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
-#if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, &
                                (/ MAX(1,n1),MAX(1,n2),MAX(1,n3) /))
 #else
@@ -78,13 +78,13 @@ SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2, stream)
 SUBROUTINE acc_hostmem_alloc_l_4D (host_mem, n1, n2, n3, n4, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:,:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2, n3, n4
+#if defined (__ACC)
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
     TYPE(acc_stream_type), INTENT(IN)        :: stream
 
     n_bytes = MAX(1,n1)*MAX(1,n2)*MAX(1,n3)*MAX(1,n4)*int_8_size
     CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
-#if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, &
                                (/ MAX(1,n1),MAX(1,n2),MAX(1,n3),MAX(1,n4) /))
 #else

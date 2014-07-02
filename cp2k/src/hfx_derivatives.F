@@ -77,7 +77,7 @@ MODULE hfx_derivatives
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC  derivatives_four_center, forces4
+  PUBLIC :: derivatives_four_center
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'hfx_derivatives'
 
@@ -142,7 +142,6 @@ MODULE hfx_derivatives
       max_contraction_val, max_val1, max_val2, my_adiabatic_rescale_factor, &
       pmax_entry, ra(3), rb(3), rc(3), rd(3), spherical_estimate_virial, &
       symm_fac
-    REAL(dp), ALLOCATABLE, DIMENSION(:)      :: work_forces
     REAL(dp), ALLOCATABLE, DIMENSION(:), &
       TARGET                                 :: primitive_forces
     REAL(dp), DIMENSION(:), POINTER          :: full_density, &
@@ -428,10 +427,6 @@ MODULE hfx_derivatives
     private_deriv = actual_x_data%lib_deriv
 
     !! Get screening parameter
-
-    !! Allocate work-space for forces
-    ALLOCATE(work_forces(((max_am+1)*(max_am+2)/2)**4*12),STAT=stat)
-    CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
     ALLOCATE (atom_of_kind(natom),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -1688,11 +1683,14 @@ MODULE hfx_derivatives
       DEALLOCATE(full_density_beta,STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     END IF
-
+    IF (do_dynamic_load_balancing) THEN
+      DEALLOCATE(actual_x_data%task_list, STAT=stat)
+      CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+    END IF
 !$OMP END MASTER
     DEALLOCATE(primitive_forces, STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-    DEALLOCATE(work_forces, atom_of_kind,kind_of,STAT=stat)
+    DEALLOCATE(atom_of_kind,kind_of,STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     DEALLOCATE(max_contraction,STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)

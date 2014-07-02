@@ -25,10 +25,13 @@
       EPS_PGF_ORB 1.0E-30
     &END QS
     &SCF
-      SCF_GUESS RESTART
+      SCF_GUESS ATOMIC
       EPS_SCF 1.0E-7
       MAX_SCF 100
-      ! ADDED_MOS 15000 15000
+      &PRINT
+        &RESTART OFF
+        &END
+      &END
     &END SCF
     &XC
       &XC_FUNCTIONAL PBE
