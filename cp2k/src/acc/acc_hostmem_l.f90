@@ -9,16 +9,17 @@
 !> \param n size given in terms of item-count (not bytes!)
 !> \author  Ole Schuett
 ! *****************************************************************************
-  SUBROUTINE acc_hostmem_alloc_l (host_mem, n)
+  SUBROUTINE acc_hostmem_alloc_l (host_mem, n, stream)
     INTEGER(KIND=int_8), DIMENSION(:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n
     TYPE(C_PTR)                              :: host_mem_c_ptr
+    TYPE(acc_stream_type), INTENT(IN)        :: stream
 
-    CALL acc_hostmem_alloc_raw(host_mem_c_ptr, MAX(1,n)*int_8_size)
+    CALL acc_hostmem_alloc_raw(host_mem_c_ptr, MAX(1,n)*int_8_size, stream)
 #if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, (/ MAX(1,n) /))
 #else
-    STOP "acc_hostmem_alloc_l_4D: ACC not compiled in."
+    STOP "acc_hostmem_alloc_l: ACC not compiled in."
 #endif
   END SUBROUTINE acc_hostmem_alloc_l
 
@@ -29,17 +30,19 @@
 !> \param n1,n2 sizes given in terms of item-count (not bytes!)
 !> \author  Ole Schuett
 ! *****************************************************************************
-SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2)
+SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
+    TYPE(acc_stream_type), INTENT(IN)        :: stream
+
     n_bytes = MAX(1,n1)*MAX(1,n2)*int_8_size
-    CALL acc_hostmem_alloc_raw(host_mem_c_ptr,n_bytes)
+    CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
 #if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, (/ MAX(1,n1),MAX(1,n2) /))
 #else
-    STOP "acc_hostmem_alloc_l_4D: ACC not compiled in."
+    STOP "acc_hostmem_alloc_l_2D: ACC not compiled in."
 #endif
   END SUBROUTINE acc_hostmem_alloc_l_2D
 
@@ -49,13 +52,15 @@ SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2)
 !> \param n1,n2,n3 sizes given in terms of item-count (not bytes!)
 !> \author  Ole Schuett
 ! *****************************************************************************
-  SUBROUTINE acc_hostmem_alloc_l_3D (host_mem, n1, n2, n3)
+  SUBROUTINE acc_hostmem_alloc_l_3D (host_mem, n1, n2, n3, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2, n3
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
+    TYPE(acc_stream_type), INTENT(IN)        :: stream
+
     n_bytes = MAX(1,n1)*MAX(1,n2)*MAX(1,n3)*int_8_size
-    CALL acc_hostmem_alloc_raw(host_mem_c_ptr,n_bytes)
+    CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
 #if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, &
                                (/ MAX(1,n1),MAX(1,n2),MAX(1,n3) /))
@@ -70,13 +75,15 @@ SUBROUTINE acc_hostmem_alloc_l_2D (host_mem, n1, n2)
 !> \param n1,..,n4 sizes given in terms of item-count (not bytes!)
 !> \author  Ole Schuett
 ! *****************************************************************************
-SUBROUTINE acc_hostmem_alloc_l_4D (host_mem, n1, n2, n3, n4)
+SUBROUTINE acc_hostmem_alloc_l_4D (host_mem, n1, n2, n3, n4, stream)
     INTEGER(KIND=int_8), DIMENSION(:,:,:,:), POINTER           :: host_mem
     INTEGER, INTENT(IN)                      :: n1, n2, n3, n4
     TYPE(C_PTR)                              :: host_mem_c_ptr
     INTEGER                                  :: n_bytes
+    TYPE(acc_stream_type), INTENT(IN)        :: stream
+
     n_bytes = MAX(1,n1)*MAX(1,n2)*MAX(1,n3)*MAX(1,n4)*int_8_size
-    CALL acc_hostmem_alloc_raw(host_mem_c_ptr,n_bytes)
+    CALL acc_hostmem_alloc_raw(host_mem_c_ptr, n_bytes, stream)
 #if defined (__ACC)
     CALL C_F_POINTER (host_mem_c_ptr, host_mem, &
                                (/ MAX(1,n1),MAX(1,n2),MAX(1,n3),MAX(1,n4) /))
