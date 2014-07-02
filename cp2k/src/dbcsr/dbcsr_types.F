@@ -136,11 +136,11 @@ MODULE dbcsr_types
 !> \var refcount              reference counter
 ! *****************************************************************************
   TYPE dbcsr_mp_obj
-     TYPE(dbcsr_mp_type), POINTER :: mp
+     TYPE(dbcsr_mp_type), POINTER :: mp => Null()
   END TYPE dbcsr_mp_obj
 
   TYPE dbcsr_data_obj
-     TYPE(dbcsr_data_area_type), POINTER           :: d
+     TYPE(dbcsr_data_area_type), POINTER           :: d => Null()
   END TYPE dbcsr_data_obj
 ! *****************************************************************************
 !> \brief Matrix distribution on the processor grid

@@ -108,7 +108,7 @@ MODULE dbcsr_mm_accdrv
 
   TYPE stack_buffer_type
      TYPE(acc_devmem_type)                  :: devmem
-     INTEGER, DIMENSION(:,:), POINTER       :: hostmem
+     INTEGER, DIMENSION(:,:), POINTER       :: hostmem => Null()
      TYPE(acc_event_type)                   :: ready
      TYPE(acc_event_type)                   :: calculated
      TYPE(acc_stream_type)                  :: stream
@@ -339,9 +339,6 @@ MODULE dbcsr_mm_accdrv
        DO i=1, my_total_buffers
           CALL acc_devmem_allocate_bytes(stack_buffers(i)%devmem,&
                    int_4_size*dbcsr_ps_width*mm_stack_size)
-          CALL acc_hostmem_allocate(stack_buffers(i)%hostmem, dbcsr_ps_width, mm_stack_size)
-          CALL acc_event_create(stack_buffers(i)%ready)
-          CALL acc_event_create(stack_buffers(i)%calculated)
           IF(i <= my_priority_buffers) THEN
              curr_priority_stream = MOD(curr_priority_stream, SIZE(priority_streams)) + 1
              stack_buffers(i)%stream = priority_streams(curr_priority_stream)
@@ -349,6 +346,9 @@ MODULE dbcsr_mm_accdrv
              curr_posterior_stream = MOD(curr_posterior_stream, SIZE(posterior_streams)) + 1
              stack_buffers(i)%stream = posterior_streams(curr_posterior_stream)
           ENDIF
+          CALL acc_hostmem_allocate(stack_buffers(i)%hostmem, dbcsr_ps_width, mm_stack_size, stack_buffers(i)%stream)
+          CALL acc_event_create(stack_buffers(i)%ready)
+          CALL acc_event_create(stack_buffers(i)%calculated)
        END DO
       !$omp end critical(crit_setup_stackbuffers)
     END IF
