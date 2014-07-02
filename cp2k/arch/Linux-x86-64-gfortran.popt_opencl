@@ -31,9 +31,13 @@ LIBS     = -L${FFTW3_PATH}/lib64 \
 
 # PROG's ###############################################################
 PERL     = perl
-CC       = gcc
-FC       = mpif90
-LD       = mpif90
+CPP      =
+#CC       = gcc
+#FC       = mpif90
+#LD       = mpif90
+CC       = gcc -g
+FC       = mpif90 -g -fbacktrace
+LD       = mpif90 -g
 AR       = ar -r
 
 # FLAG's ###############################################################
@@ -48,9 +52,11 @@ DFLAGS   = -D__GFORTRAN \
            -D__HAS_ISO_C_BINDING
 
 CPPFLAGS = $(DFLAGS) -traditional -C
-CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
-FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
-           -ffree-form -ffree-line-length-none
+#CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
+#FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
+#           -ffree-form -ffree-line-length-none
+CFLAGS   = $(DFLAGS) -O0
+FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
 LDFLAGS  = $(FCFLAGS)
 
 OBJECTS_ARCHITECTURE = machine_gfortran.o

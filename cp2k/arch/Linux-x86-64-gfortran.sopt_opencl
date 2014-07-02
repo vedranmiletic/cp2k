@@ -28,6 +28,10 @@ LIBS     = -L${FFTW3_PATH}/lib64 \
 
 # PROG's ###############################################################
 PERL     = perl
+CPP      =
+#CC       = gcc
+#FC       = gfortran
+#LD       = gfortran
 CC       = gcc -g
 FC       = gfortran -g -fbacktrace
 LD       = gfortran -g
@@ -40,13 +44,15 @@ DFLAGS   = -D__GFORTRAN \
            -D__LIBXC2 \
            -D__LIBINT -D__LIBINT_MAX_AM=6 -D__LIBDERIV_MAX_AM1=5 \
            -D__USE_CP2K_TRACE \
-           -D__HAS_ISO_C_BINDING
+           -D__HAS_ISO_C_BINDING #\
+#                                 \
+#           -D__USE_INTEL_CL
 
 CPPFLAGS = $(DFLAGS) -traditional -C
 #CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
 #FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
 #           -ffree-form -ffree-line-length-none
-CFLAGS   = $(DFLAGS) -O0 
+CFLAGS   = $(DFLAGS) -O0
 FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
 LDFLAGS  = $(FCFLAGS)
 
