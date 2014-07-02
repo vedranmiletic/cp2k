@@ -8,11 +8,11 @@
 
 #if defined (__ACC)
 int libclsmm_process_d (int *param_stack, int stack_size,
-    cudaStream_t stream, int m, int n, int k,
+    void stream, int m, int n, int k,
     double * a_data, double * b_data, double * c_data);
 
 int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer,
-                         int m, int n, cudaStream_t * stream);
+                         int m, int n, void *stream);
 
 void libclsmm_list_blocksizes_d (const int **list, int *length);
 

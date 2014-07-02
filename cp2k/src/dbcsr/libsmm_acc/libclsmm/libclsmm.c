@@ -35,6 +35,8 @@ typedef struct {
    cl_command_queue     queue;
 } acc_opencl_stream_type;
 
+cl_int cl_error;
+
 
 /****************************************************************************/
 // Kernel launch
@@ -87,9 +89,15 @@ fprintf(stdout,"calling process kernel ...\n");
 
 /****************************************************************************/
 // Transpose kernel switch and launch
-int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer, int m, int n, cl_command_queue *stream){
+int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer, int m, int n, void *stream){
   int idx = 0;
   int missing = 0; //false
+
+  // local queue pointer and device + context value 
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  acc_opencl_dev_type     opencl_device = (*opencl_stream).device;
+  cl_context              opencl_ctx    = opencl_device.ctx;
+  cl_device_id            opencl_dev    = opencl_device.device_id;
 
   switch(m){
     case 23: idx = 0; break;
@@ -111,6 +119,29 @@ int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer,
 // CUDA code
 //    transpose_d<23,23> <<<nblks, 128, 0, *stream>>>(trs_stack+offset, nblks, buffer);
 // OpenCL code
+fprintf(stdout,"reading transpose kernel ...\n");
+FILE *fIn = fopen("clsmm_transpose.cl", "r");
+//FILE *fIn = fopen("clsmm_test_kernel.cl", "r");
+fseek(fIn, 0L, SEEK_END);
+size_t sz = ftell(fIn); 
+fprintf(stdout,"SIZE: %lu\n", sz);
+rewind(fIn);
+char *file = (char*) malloc(sizeof(char) * sz + 1);
+fread(file, sizeof(char), sz, fIn);
+const char* cfile = (const char *) file;
+// fprintf(stdout,"%s\n", file);
+fclose(fIn);
+
+fprintf(stdout,"building transpose kernel ...\n");
+cl_program opencl_program = clCreateProgramWithSource(opencl_ctx, 1, &cfile, &sz, &cl_error);
+if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
+cl_error = clBuildProgram(opencl_program, 1, (const cl_device_id *) &opencl_dev, "-D__ACC", NULL, NULL); // hard coded -D__ACC
+if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clBuildProgram %d\n", (int) cl_error);
+//cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_kernel", &cl_error);
+cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_d", &cl_error);
+//cl_kernel opencl_kernel = clCreateKernel(opencl_program, "test_kernel", &cl_error);
+if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
+
 fprintf(stdout,"calling transpose kernel ...\n");
 
       return 0;
@@ -163,15 +194,13 @@ int libsmm_acc_process (int *param_stack, int stack_size, int nparams, int datat
 #ifdef __cplusplus
 extern "C" {
 #endif
-int libsmm_acc_transpose (int *trs_stack, int offset, int nblks, void *buffer,int datatype, int m, int n, void* stream){
+int libsmm_acc_transpose (int *trs_stack, int offset, int nblks, void *buffer,int datatype, int m, int n, void *stream){
   // debug info
   if (verbose_print) fprintf(stdout,"entering libsmm_acc_transpose ...\n");
 
-  // local queue pointer 
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
-  if(datatype != dbcsr_type_real_8)
+  if (datatype != dbcsr_type_real_8)
     return 0; //transpose not needed
-  return libclsmm_transpose_d(trs_stack, offset, nblks, (double*) buffer, m, n, (*clstream).queue);
+  return libclsmm_transpose_d(trs_stack, offset, nblks, (double*) buffer, m, n, stream);
 
   return -1;
 }

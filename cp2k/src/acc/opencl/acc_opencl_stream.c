@@ -63,10 +63,13 @@ extern "C" {
 // NOTE: 'priority' and 'name' are ignored.
 int acc_stream_create (void** stream_p, char* name, int priority){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_stream_create.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n +++ STREAM CREATION +++ \n");
+    fprintf(stdout, " ---> Entering: acc_stream_create.\n");
+  }
 
   // get memory on pointer
-  *stream_p = malloc(sizeof(acc_opencl_stream_type));
+  *stream_p = (void *) malloc(sizeof(acc_opencl_stream_type));
 
   // local queue pointer 
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) *stream_p;
@@ -74,12 +77,19 @@ int acc_stream_create (void** stream_p, char* name, int priority){
 
   // create a command queue
   cl_command_queue_properties queue_properties = 0;
-  (*clstream).queue = clCreateCommandQueue((*acc_opencl_my_device).ctx, (*acc_opencl_my_device).device_id, queue_properties, &cl_error);
+  (*clstream).queue = (cl_command_queue) clCreateCommandQueue(
+                                           (*acc_opencl_my_device).ctx,       // cl_context                  context
+                                           (*acc_opencl_my_device).device_id, // cl_device_id                device
+                                           queue_properties,                  // cl_command_queue_properties properties
+                                           &cl_error);                        // cl_int                      *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__))
     return -1;
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_create.\n");
+  if (verbose_print){
+    fprintf(stdout, "      STREAM address:  HEX=%p INT=%ld\n", &((*clstream).queue), (uintptr_t) &((*clstream).queue));
+    fprintf(stdout, " ---> Leaving: acc_stream_create.\n");
+  }
 
   // assign return value
   return 0;

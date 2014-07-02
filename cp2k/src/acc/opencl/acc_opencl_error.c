@@ -15,7 +15,9 @@ int acc_opencl_error_check (cl_int cl_error, int line){
 
   if (cl_error != CL_SUCCESS) {
     pid = getpid();
-    fprintf(stderr, "%d OPENCL RT Error line: %d\n", pid, line);
+    fprintf(stderr, "%d OPENCL RT Error line: %d, ERROR_CODE: %d\n", pid, line, cl_error);
+    fflush(stdout);
+    fflush(stderr);
     return -1;
   }
   return 0;
