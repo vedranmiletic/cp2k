@@ -49,7 +49,9 @@ DFLAGS   = -D__GFORTRAN \
            -D__LIBXC2 \
            -D__LIBINT -D__LIBINT_MAX_AM=6 -D__LIBDERIV_MAX_AM1=5 \
            -D__USE_CP2K_TRACE \
-           -D__HAS_ISO_C_BINDING
+           -D__HAS_ISO_C_BINDING #\
+#                                 \
+#           -D__USE_INTEL_CL
 
 CPPFLAGS = $(DFLAGS) -traditional -C
 #CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
