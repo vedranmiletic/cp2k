@@ -149,13 +149,13 @@ MODULE dbcsr_mm_accdrv
     INTEGER, INTENT(IN)                      :: output_unit
     TYPE(dbcsr_error_type), INTENT(INOUT)    :: error
 
-   CALL deallocate_streams(error)
-
    IF(ASSOCIATED(stack_buffers)) &
      CALL deallocate_stackbuffers(error)
 
    IF(ASSOCIATED(memtype_cbuffer%pool))&
      CALL dbcsr_mempool_destruct(memtype_cbuffer%pool, error)
+
+   CALL deallocate_streams(error)
 
    !How much memory is still allocated on the card?
    !istat = dbcsr_acc_dev_mem_info(mem_free, mem_avail)
@@ -366,7 +366,7 @@ MODULE dbcsr_mm_accdrv
 
    DO i=1, SIZE(stack_buffers)
       CALL acc_devmem_deallocate(stack_buffers(i)%devmem)
-      CALL acc_hostmem_deallocate(stack_buffers(i)%hostmem)
+      CALL acc_hostmem_deallocate(stack_buffers(i)%hostmem, stack_buffers(i)%stream)
       CALL acc_event_destroy(stack_buffers(i)%ready)
       CALL acc_event_destroy(stack_buffers(i)%calculated)
    END DO

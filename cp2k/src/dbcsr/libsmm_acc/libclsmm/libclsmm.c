@@ -21,7 +21,7 @@
 #define dbcsr_type_complex_8  7
 
 // debug flag
-static const int verbose_print = 1;
+static const int verbose_print = 0;
 
 // struct definitions
 typedef struct {
@@ -119,12 +119,12 @@ int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer,
 // CUDA code
 //    transpose_d<23,23> <<<nblks, 128, 0, *stream>>>(trs_stack+offset, nblks, buffer);
 // OpenCL code
-fprintf(stdout,"reading transpose kernel ...\n");
+if (verbose_print) fprintf(stdout,"reading transpose kernel ...\n");
 FILE *fIn = fopen("clsmm_transpose.cl", "r");
 //FILE *fIn = fopen("clsmm_test_kernel.cl", "r");
 fseek(fIn, 0L, SEEK_END);
 size_t sz = ftell(fIn); 
-fprintf(stdout,"SIZE: %lu\n", sz);
+if (verbose_print) fprintf(stdout,"SIZE: %lu\n", sz);
 rewind(fIn);
 char *file = (char*) malloc(sizeof(char) * sz + 1);
 fread(file, sizeof(char), sz, fIn);
@@ -132,7 +132,7 @@ const char* cfile = (const char *) file;
 // fprintf(stdout,"%s\n", file);
 fclose(fIn);
 
-fprintf(stdout,"building transpose kernel ...\n");
+if (verbose_print) fprintf(stdout,"building transpose kernel ...\n");
 cl_program opencl_program = clCreateProgramWithSource(opencl_ctx, 1, &cfile, &sz, &cl_error);
 if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
 cl_error = clBuildProgram(opencl_program, 1, (const cl_device_id *) &opencl_dev, "-D__ACC", NULL, NULL); // hard coded -D__ACC
@@ -142,7 +142,7 @@ cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_d", &cl_erro
 //cl_kernel opencl_kernel = clCreateKernel(opencl_program, "test_kernel", &cl_error);
 if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
 
-fprintf(stdout,"calling transpose kernel ...\n");
+if (verbose_print) fprintf(stdout,"calling transpose kernel ...\n");
 
       return 0;
     break;

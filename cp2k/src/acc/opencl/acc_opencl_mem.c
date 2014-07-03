@@ -13,6 +13,11 @@
 // defines 'acc_opencl_my_device' and some default lenghts
 #include "acc_opencl_dev.h"
 
+// defines 'acc_opencl_host_buffer_node_type'
+#include "acc_opencl_mem.h"
+acc_opencl_host_buffer_node_type *host_buffer_list_head = NULL;
+acc_opencl_host_buffer_node_type *host_buffer_list_tail = NULL;
+
 // defines 'acc_opencl_stream_type'
 #include "acc_opencl_stream.h"
 
@@ -25,7 +30,7 @@
 #define ALIGN_DOWN(x,size) ( ((size_t)x - (size-1))&(~(size-1)) )
 #define SHIFT_BY(x,size)   ( ((size_t)x + size) )
 
-static const int verbose_print = 0;
+static const int verbose_print = 1;
 
 
 /****************************************************************************/
@@ -151,6 +156,24 @@ int acc_host_mem_allocate (void **host_mem, size_t n, void *stream){
                          &cl_error);                    // error
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
+  // keep 'buffer' and 'host_mem' information for deletion
+  if (host_buffer_list_head == NULL){
+    // create linked list and add 'buffer' as head node
+    acc_opencl_host_buffer_node_type *buffer_node = (acc_opencl_host_buffer_node_type *) malloc(sizeof(acc_opencl_host_buffer_node_type));
+    buffer_node->buffer = buffer;
+    buffer_node->host_mem = (void *) *host_mem;
+    buffer_node->next = NULL;
+    host_buffer_list_head = host_buffer_list_tail = buffer_node;
+  } else {
+    // add to end of linked list of buffers
+    acc_opencl_host_buffer_node_type *buffer_node = (acc_opencl_host_buffer_node_type *) malloc(sizeof(acc_opencl_host_buffer_node_type));
+    buffer_node->buffer = buffer;
+    buffer_node->host_mem = (void *) *host_mem;
+    buffer_node->next = NULL;
+    host_buffer_list_tail->next = buffer_node;
+    host_buffer_list_tail = buffer_node;
+  }
+
   // debug infos
   if (verbose_print){
     fprintf(stdout, "      HOST memory address:  HEX=%p INT=%ld\n", *host_mem, (uintptr_t) *host_mem);
@@ -169,10 +192,7 @@ int acc_host_mem_allocate (void **host_mem, size_t n, void *stream){
 #ifdef __cplusplus
 extern "C" {
 #endif
-int acc_host_mem_deallocate (void *host_mem){
-
-  // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_host_mem_deallocate.\n");
+int acc_host_mem_deallocate (void *host_mem, void *stream){
 
   // debug infos
   if (verbose_print){
@@ -180,9 +200,45 @@ int acc_host_mem_deallocate (void *host_mem){
     fprintf(stdout, " ---> Entering: acc_host_mem_deallocate.\n");
     fprintf(stdout, "      HOST memory address:  HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
   }
+fflush(stdout);
+fflush(stderr);
 
-  // free the memory (Todo: we need queue to clUnmap the associated buffer)
-//  free(host_mem);
+  // local stream object and memory object pointers
+  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+
+  // find corresponding 'buffer' object in host_buffer list
+  acc_opencl_host_buffer_node_type *buffer_node_ptr = host_buffer_list_head;
+  acc_opencl_host_buffer_node_type *buffer_node_prev = NULL;
+  while (buffer_node_ptr != NULL){
+    if (buffer_node_ptr->host_mem == host_mem){
+      fprintf(stdout, "FOUND\n");
+      // extract node
+      if (buffer_node_prev != NULL) buffer_node_prev->next = buffer_node_ptr->next;
+      if (buffer_node_ptr == host_buffer_list_tail){
+        host_buffer_list_tail = buffer_node_prev;
+      } else if (buffer_node_ptr == host_buffer_list_head){
+        host_buffer_list_head = buffer_node_ptr->next;
+      }
+      // unmap buffer
+      cl_error = clEnqueueUnmapMemObject(
+                   (*clstream).queue,       // cl_command_queue command_queue
+                   buffer_node_ptr->buffer, // cl_mem           memobj
+                   host_mem,                // void             *mapped_ptr
+                   (cl_uint) 0,             // cl_uint          num_evenets_in_wait_list
+                   NULL,                    // cl_event         *event_wait_list
+                   NULL);                   // cl_event         *event
+      if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
+      // release buffer object
+      cl_error = clReleaseMemObject(buffer_node_ptr->buffer);
+      if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
+      // free buffer node
+      free(buffer_node_ptr);
+      buffer_node_ptr = NULL;
+    } else {
+      buffer_node_prev = buffer_node_ptr;
+      buffer_node_ptr = buffer_node_ptr->next;
+    }
+  }
 
   // debug info
   if (verbose_print){
@@ -203,7 +259,10 @@ extern "C" {
 #endif
 int acc_memcpy_h2d (const void *host_mem, void *dev_mem, size_t count, void *stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_memcpy_h2d.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n === DATA TRANSFER (H2D) === \n");
+    fprintf(stdout, " ---> Entering: acc_memcpy_h2d.\n");
+  }
 
   // local buffer object pointer 
   cl_mem *buffer  = (cl_mem *) dev_mem;
@@ -226,9 +285,10 @@ int acc_memcpy_h2d (const void *host_mem, void *dev_mem, size_t count, void *str
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "Copying %d bytes from host address %p to device address %p \n",
-      count, host_mem, buffer);
-    fprintf(stdout, "Leaving: acc_memcpy_h2d.\n");
+    fprintf(stdout, "      HOST memory address:   HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
+    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "      SIZE [bytes]:          INT=%ld\n", count);
+    fprintf(stdout, " <--- Leaving: acc_memcpy_h2d.\n");
   }
 
   // assign return value
@@ -245,7 +305,10 @@ extern "C" {
 #endif
 int acc_memcpy_d2h (const void *dev_mem, void *host_mem, size_t count, void *stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_memcpy_d2h.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n === DATA TRANSFER (D2H) === \n");
+    fprintf(stdout, " ---> Entering: acc_memcpy_d2h.\n");
+  }
 
   // local buffer object pointer 
   const cl_mem *buffer = (const cl_mem *) dev_mem;
@@ -268,9 +331,10 @@ int acc_memcpy_d2h (const void *dev_mem, void *host_mem, size_t count, void *str
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "Copying %d bytes from device address %p to host address %p\n",
-      count, buffer, host_mem);
-    fprintf(stdout, "Leaving: acc_memcpy_d2h.\n");
+    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "      HOST memory address:   HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
+    fprintf(stdout, "      SIZE [bytes]:          INT=%ld\n", count);
+    fprintf(stdout, " <--- Leaving: acc_memcpy_d2h.\n");
   }
 
   // assign return value
@@ -287,7 +351,10 @@ extern "C" {
 #endif
 int acc_memcpy_d2d (const void *devmem_src, void *devmem_dst, size_t count, void *stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_memcpy_d2d.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n === DATA TRANSFER (D2D) === \n");
+    fprintf(stdout, " ---> Entering: acc_memcpy_d2d.\n");
+  }
 
   // local buffer object pointer 
   cl_mem *buffer_src = (cl_mem *) devmem_src;
@@ -314,6 +381,12 @@ int acc_memcpy_d2d (const void *devmem_src, void *devmem_dst, size_t count, void
     fprintf(stdout, "Coping %d bytes from device address %p to device address %p \n",
       count, buffer_src, buffer_dst);
     fprintf(stdout, "Leaving: acc_memcpy_d2d.\n");
+  }
+  if (verbose_print){
+    fprintf(stdout, "      DEVICE buffer src address: HEX=%p INT=%ld\n", buffer_src, (uintptr_t) buffer_src);
+    fprintf(stdout, "      DEVICE buffer dst address: HEX=%p INT=%ld\n", buffer_dst, (uintptr_t) buffer_dst);
+    fprintf(stdout, "      SIZE [bytes]:          INT=%ld\n", count);
+    fprintf(stdout, " <--- Leaving: acc_memcpy_d2d.\n");
   }
 
   // assign return value

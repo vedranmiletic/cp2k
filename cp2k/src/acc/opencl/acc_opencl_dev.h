@@ -19,9 +19,6 @@ typedef struct {
 } acc_opencl_dev_type;
 
 // global (per MPI) device information
-//static uint acc_opencl_ndevices;
-//static acc_opencl_dev_type *acc_opencl_devices;
-//static acc_opencl_dev_type *acc_opencl_my_device;
 extern uint acc_opencl_ndevices;
 extern acc_opencl_dev_type *acc_opencl_devices;
 extern acc_opencl_dev_type *acc_opencl_my_device;
