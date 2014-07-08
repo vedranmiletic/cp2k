@@ -57,11 +57,11 @@ int acc_dev_mem_allocate (void **dev_mem, size_t n){
 
   // get a device buffer object
   *buffer = (cl_mem) clCreateBuffer(
-                       (*acc_opencl_my_device).ctx,                 // device context
-                       (CL_MEM_READ_WRITE),                         // flags
-                       (size_t) n,                                  // number of bytes
-                       NULL,                                        // host pointer
-                       &cl_error);                                  // error
+                       (*acc_opencl_my_device).ctx,                 // cl_context   context
+                       (CL_MEM_READ_WRITE),                         // cl_mem_flags flags
+                       (size_t) n,                                  // size_t       size [bytes]
+                       NULL,                                        // void         *host_ptr
+                       &cl_error);                                  // cl_int       *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // debug info
@@ -135,27 +135,27 @@ int acc_host_mem_allocate (void **host_mem, size_t n, void *stream){
   }
 
   cl_mem buffer = clCreateBuffer(
-                   (*acc_opencl_my_device).ctx,                 // device context
-                   (CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR), // flags
-                   (size_t) n,                                  // number of bytes
-                   NULL,                                        // host pointer
-                   &cl_error);                                  // error
+                   (*acc_opencl_my_device).ctx,                 // cl_context   context
+                   (CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR), // cl_mem_flags flags
+                   (size_t) n,                                  // size_t       size [bytes]
+                   NULL,                                        // void         *host_ptr
+                   &cl_error);                                  // cl_int       *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // local stream object and memory object pointers
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
 
   *host_mem = (void *) clEnqueueMapBuffer(
-                         (*clstream).queue,             // stream
-                         buffer,                        // host buffer
-                         CL_TRUE,                       // blocking
-                         (CL_MAP_READ | CL_MAP_WRITE),  // flags
-                         (size_t) 0,                    // offset
-                         (size_t) n,                    // number of bytes
-                         (cl_uint) 0,                   // num_evenets_in_wait_list
-                         NULL,                          // event_wait_list
-                         NULL,                          // event
-                         &cl_error);                    // error
+                         (*clstream).queue,             // cl_command_queue command_queue
+                         buffer,                        // cl_mem           buffer
+                         CL_TRUE,                       // cl_bool          blocking_map
+                         (CL_MAP_READ | CL_MAP_WRITE),  // cl_map_flags     map_flags
+                         (size_t) 0,                    // size_t           offset
+                         (size_t) n,                    // size_t           cb [bytes]
+                         (cl_uint) 0,                   // cl_uint          num_events_in_wait_list
+                         NULL,                          // const cl_event   *event_wait_list
+                         NULL,                          // cl_event         *event
+                         &cl_error);                    // cl_int           *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // keep 'buffer' and 'host_mem' information for deletion
@@ -421,9 +421,16 @@ int acc_memset_zero (void *dev_mem, size_t offset, size_t length, void *stream){
 #ifdef CL_VERSION_1_2
   const cl_uchar zero = (cl_uchar) 0;
 
-  cl_error = clEnqueueFillBuffer((*clstream).queue,
-               *clmem, &zero, (size_t) sizeof(cl_uchar), (size_t) offset, (size_t) length,
-               (cl_uint) 0, NULL, NULL);
+  cl_error = clEnqueueFillBuffer(
+               (*clstream).queue,         // cl_command_queue command_queue
+               *clmem,                    // cl_mem           buffer
+               &zero,                     // const void       *pattern
+               (size_t) sizeof(cl_uchar), // size_t           pattern_size
+               (size_t) offset,           // size_t           offset
+               (size_t) length,           // size_t           size [bytes]
+               (cl_uint) 0,               // cl_uint          num_events_in_wait_list
+               NULL,                      // const cl_event   *event_wait_list
+               NULL);                     // cl_event         *event
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 #else
   size_t i;
