@@ -236,12 +236,12 @@ def gen_transpose(plan):
     output += "}\n\n\n"
 
     output += 'extern "C" int libsmm_acc_transpose '
-    output += '(int *trs_stack, int offset, int nblks, void *buffer,'
+    output += '(void *trs_stack, int offset, int nblks, void *buffer,'
     output += 'int datatype, int m, int n, void* stream) {\n'
     output += 'cudaStream_t* custream = (cudaStream_t*) stream;\n'
     output += 'if(datatype != dbcsr_type_real_8)\n'
     output += '  return 0; //transpose not needed\n'
-    output += 'return libcusmm_transpose_d(trs_stack, offset, nblks, (double*) buffer, m, n, custream);\n'
+    output += 'return libcusmm_transpose_d((int *) trs_stack, offset, nblks, (double *) buffer, m, n, custream);\n'
     output += '};\n'
 
     return(output)
