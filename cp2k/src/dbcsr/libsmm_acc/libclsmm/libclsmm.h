@@ -6,7 +6,7 @@
 #ifndef LIBCLSMM_H
 #define LIBCLSMM_H
 
-#if defined (__ACC)
+#if defined (__ACC) && defined (__OPENCL)
 int libclsmm_process_d (int *param_stack, int stack_size,
     void stream, int m, int n, int k,
     double * a_data, double * b_data, double * c_data);
@@ -17,5 +17,6 @@ int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer,
 void libclsmm_list_blocksizes_d (const int **list, int *length);
 
 #endif
+
 #endif
 //EOF
