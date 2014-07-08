@@ -6,7 +6,7 @@
 #ifndef ACC_OPENCL_DEV_H
 #define ACC_OPENCL_DEV_H
 
-#if defined (__ACC)
+#if defined (__ACC) && defined (__OPENCL)
 
 // maximum information line lenght
 #define MAX_DEV_TYPE_LEN 3

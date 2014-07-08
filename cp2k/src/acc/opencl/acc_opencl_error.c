@@ -3,6 +3,8 @@
  *  Copyright (C) 2000 - 2014 the CP2K developers group                      *
  *****************************************************************************/
 
+#if defined (__ACC) && defined (__OPENCL)
+
 #include <CL/cl.h>
 #include <stdio.h>
 
@@ -23,4 +25,5 @@ int acc_opencl_error_check (cl_int cl_error, int line){
   return 0;
 }
 
+#endif
 //EOF

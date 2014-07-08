@@ -14,6 +14,8 @@
  *       match the ACC interface.
  */
 
+#if defined (__ACC) && defined (__OPENCL)
+
 #include <CL/cl.h>
 #include <string.h>
 #include <stdio.h>
@@ -158,4 +160,5 @@ int acc_stream_sync (void* stream){
 }
 #endif
 
+#endif
 //EOF

@@ -3,6 +3,8 @@
  *  Copyright (C) 2000 - 2014 the CP2K developers group                      *
  *****************************************************************************/
 
+#if defined (__ACC) && defined (__OPENCL)
+
 #include <CL/cl.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,7 +21,7 @@ acc_opencl_dev_type *acc_opencl_my_device;
 // defines the ACC interface
 #include "../include/acc.h"
 
-static const int verbose_print = 1;
+static const int verbose_print = 0;
 
 /****************************************************************************/
 #ifdef __cplusplus
@@ -262,4 +264,5 @@ int acc_set_active_device (int device_id){
 }
 #endif
 
+#endif
 //EOF

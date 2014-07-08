@@ -6,7 +6,7 @@
 #ifndef ACC_OPENCL_STREAM_H
 #define ACC_OPENCL_STREAM_H
 
-#if defined (__ACC)
+#if defined (__ACC) && defined (__OPENCL)
 
 // struct definitions
 typedef struct {
@@ -15,5 +15,6 @@ typedef struct {
 } acc_opencl_stream_type;
 
 #endif
+
 #endif
 //EOF

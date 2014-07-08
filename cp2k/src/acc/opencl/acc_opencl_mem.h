@@ -6,7 +6,7 @@
 #ifndef ACC_OPENCL_MEM_H
 #define ACC_OPENCL_MEM_H
 
-#if defined (__ACC)
+#if defined (__ACC) && defined (__OPENCL)
 
 // struct definition of linked list
 typedef struct buffer_node {
@@ -19,5 +19,6 @@ extern acc_opencl_host_buffer_node_type *host_buffer_list_head;
 extern acc_opencl_host_buffer_node_type *host_buffer_list_tail;
 
 #endif
+
 #endif
 //EOF

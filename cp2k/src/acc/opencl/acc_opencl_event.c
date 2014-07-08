@@ -3,6 +3,8 @@
  *  Copyright (C) 2000 - 2014 the CP2K developers group                      *
  *****************************************************************************/
 
+#if defined (__ACC) && defined (__OPENCL)
+
 #include <CL/cl.h>
 #include <string.h>
 #include <stdio.h>
@@ -216,4 +218,5 @@ int acc_event_synchronize (void* event){
 }
 #endif
 
+#endif
 //EOF

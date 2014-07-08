@@ -3,6 +3,8 @@
  *  Copyright (C) 2000 - 2014 the CP2K developers group                      *
  *****************************************************************************/
 
+#if defined (__ACC) && defined (__OPENCL)
+
 #include <CL/cl.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,7 +32,7 @@ acc_opencl_host_buffer_node_type *host_buffer_list_tail = NULL;
 #define ALIGN_DOWN(x,size) ( ((size_t)x - (size-1))&(~(size-1)) )
 #define SHIFT_BY(x,size)   ( ((size_t)x + size) )
 
-static const int verbose_print = 1;
+static const int verbose_print = 0;
 
 
 /****************************************************************************/
@@ -211,7 +213,6 @@ fflush(stderr);
   acc_opencl_host_buffer_node_type *buffer_node_prev = NULL;
   while (buffer_node_ptr != NULL){
     if (buffer_node_ptr->host_mem == host_mem){
-      fprintf(stdout, "FOUND\n");
       // extract node
       if (buffer_node_prev != NULL) buffer_node_prev->next = buffer_node_ptr->next;
       if (buffer_node_ptr == host_buffer_list_tail){
@@ -478,4 +479,5 @@ int acc_dev_mem_info (size_t *free, size_t *avail){
 }
 #endif
 
+#endif
 //EOF

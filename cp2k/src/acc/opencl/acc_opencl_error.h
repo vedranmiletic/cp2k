@@ -6,6 +6,7 @@
 #ifndef ACC_OPENCL_ERROR_H
 #define ACC_OPENCL_ERROR_H
 
+#if defined (__ACC) && defined (__OPENCL)
 // define global error variables
 cl_int cl_error;
 
@@ -14,4 +15,5 @@ int acc_opencl_error_check (cl_int cl_error, int line);
 
 #endif
 
+#endif
 //EOF
