@@ -1,4 +1,4 @@
-# - OpenSUSE Linux 12.3 (x86_64) [ module load gfortran-suite/4.8.2 ]
+# - CentOS 6.5 (x86_64) [ module load gfortran-suite/4.8.2 ]
 # - gcc            4.8.2
 # - gfortran       4.8.2
 # - Intel MKL      Parallel Studio XE v2011-08-23
@@ -10,7 +10,7 @@
 #
 
 # LIB's ################################################################
-LIBS     = -L${FFTW3_PATH}/lib64 \
+LIBS     = -L${FFTW3_PATH}/lib \
              -lfftw3 \
            -L$(INTEL_MKL_LIB) \
              -lmkl_gf_lp64 \
@@ -18,10 +18,10 @@ LIBS     = -L${FFTW3_PATH}/lib64 \
              -lmkl_sequential \
              -lpthread \
              -lm \
-           -L$(LIBINT_PATH)/lib64 \
+           -L$(LIBINT_PATH)/lib \
              -lderiv \
              -lint \
-           -L$(LIBXC_PATH)/lib64 \
+           -L$(LIBXC_PATH)/lib \
              -lxc \
            -L/usr/lib64 \
              -lOpenCL -lrt
@@ -40,7 +40,7 @@ AR       = ar -r
 # FLAG's ###############################################################
 DFLAGS   = -D__GFORTRAN \
            -D__FFTSG -D__FFTW3 \
-           -D__ACC -D__DBCSR_ACC \
+           -D__ACC -D__DBCSR_ACC -D__OPENCL \
            -D__LIBXC2 \
            -D__LIBINT -D__LIBINT_MAX_AM=6 -D__LIBDERIV_MAX_AM1=5 \
            -D__USE_CP2K_TRACE \
