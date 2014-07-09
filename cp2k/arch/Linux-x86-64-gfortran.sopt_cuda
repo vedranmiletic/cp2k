@@ -1,0 +1,53 @@
+# - CentOS 6.5 (x86_64) [ module load gfortran-suite/4.8.2 ]
+# - gcc            4.8.2
+# - gfortran       4.8.2
+# - Intel MKL      Parallel Studio XE v2011-08-23
+# - FFTW3          3.3.3
+# - LIBXC          2.0.3
+# - LIBINT         1.1.5 (with non default: --with-libint-max-am=5
+#                                           --with-libderiv-max-am1=4)
+# - CUDA           6.0 (device type: SM 3.5)
+#
+
+# LIB's ################################################################
+LIBS     = -L${FFTW3_PATH}/lib \
+             -lfftw3 \
+           -L$(INTEL_MKL_LIB) \
+             -lmkl_gf_lp64 \
+             -lmkl_core \
+             -lmkl_sequential \
+             -lpthread \
+             -lm \
+           -L$(LIBINT_PATH)/lib \
+             -lderiv \
+             -lint \
+           -L$(LIBXC_PATH)/lib \
+             -lxc \
+           -L$(CUDA_PATH)/lib64 \
+             -lcudart -lcublas
+
+# PROG's ###############################################################
+PERL     = perl
+CPP      =
+CC       = gcc -g
+FC       = gfortran -g -fbacktrace
+LD       = gfortran -g
+NVCC     = nvcc -pg -G
+AR       = ar -r
+
+# FLAG's ###############################################################
+DFLAGS   = -D__GFORTRAN \
+           -D__FFTSG -D__FFTW3 \
+           -D__ACC -D__DBCSR_ACC \
+           -D__LIBXC2 \
+           -D__LIBINT -D__LIBINT_MAX_AM=6 -D__LIBDERIV_MAX_AM1=5 \
+           -D__USE_CP2K_TRACE \
+           -D__HAS_ISO_C_BINDING
+
+CPPFLAGS = $(DFLAGS) -traditional -C
+CFLAGS   = $(DFLAGS) -O0
+FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
+NVFLAGS  = $(DFLAGS) -O0 -gencode arch=compute_35,code=sm_35
+LDFLAGS  = $(FCFLAGS)
+
+OBJECTS_ARCHITECTURE = machine_gfortran.o
