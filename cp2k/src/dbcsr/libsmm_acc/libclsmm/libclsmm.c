@@ -49,8 +49,10 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (int *param_stac
 
 
   // CUDA code !!!!
-  //clsmm_dnt_largeDB<23,23,23,2,3,10,12,96,16,12> <<< ((stack_size + 16 - 1) / 16), 96, shared_size, stream >>> (param_stack, careful, nruns, a_data, b_data, c_data);
-  return 0;
+  // clsmm_dnt_largeDB<23,23,23,2,3,10,12,96,16,12> <<< ((stack_size + 16 - 1) / 16), 96, shared_size, stream >>> (param_stack, careful, nruns, a_data, b_data, c_data);
+  // return 0;
+fprintf(stdout, "OpenCL Kernel not implemented ---> implement!\n");
+  return -1;
 }
 
 
@@ -198,11 +200,11 @@ void libclsmm_list_blocksizes_d (const int **list, int *length){
 
 
 /****************************************************************************/
-// Interface for Fortran side
+// Kernel interface for Fortran side
 #ifdef __cplusplus
 extern "C" {
 #endif
-int libsmm_acc_process (int *param_stack, int stack_size, int nparams, int datatype, void *a_data, void *b_data, void *c_data, int m_max, int n_max, int k_max, int def_mnk, void *stream){
+int libsmm_acc_process (void *param_stack, int stack_size, int nparams, int datatype, void *a_data, void *b_data, void *c_data, int m_max, int n_max, int k_max, int def_mnk, void *stream){
   // debug info
   if (verbose_print) fprintf(stdout,"entering libsmm_acc_process ...\n");
 
@@ -212,7 +214,7 @@ int libsmm_acc_process (int *param_stack, int stack_size, int nparams, int datat
   if (def_mnk != 1)
     return -1; // inhomogenous stacks not supported
   if (datatype == dbcsr_type_real_8)
-    return libclsmm_process_d(param_stack, stack_size, (*clstream).queue, m_max, n_max, k_max,(double *) a_data, (double *) b_data, (double *) c_data);
+    return libclsmm_process_d((int *) param_stack, stack_size, (*clstream).queue, m_max, n_max, k_max,(double *) a_data, (double *) b_data, (double *) c_data);
 
   return -1; // datatype not supported
 }
@@ -221,6 +223,7 @@ int libsmm_acc_process (int *param_stack, int stack_size, int nparams, int datat
 #endif
 
 /****************************************************************************/
+// Transpose kernel interface for Fortran side
 #ifdef __cplusplus
 extern "C" {
 #endif
