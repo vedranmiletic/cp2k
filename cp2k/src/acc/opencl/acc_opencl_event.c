@@ -29,7 +29,10 @@ extern "C" {
 #endif
 int acc_event_create (void** event_p){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_event_create.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n ... EVENT CREATION ... \n");
+    fprintf(stdout, " ---> Entering: acc_event_create.\n");
+  }
 
   // local event object pointer
   *event_p = malloc(sizeof(cl_event));
@@ -42,8 +45,7 @@ int acc_event_create (void** event_p){
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "acc_event_create:  %p -> %d\n", *event_p, *clevent);
-    fprintf(stdout, "Leaving: acc_event_create.\n");
+    fprintf(stdout, " ---> Leaving: acc_event_create.\n");
   }
 //foxtest
 cl_error = clSetUserEventStatus(*clevent, CL_COMPLETE);
@@ -63,7 +65,10 @@ extern "C" {
 #endif
 int acc_event_destroy (void* event){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_event_destroy.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n ... EVENT DESTRUCTION ... \n");
+    fprintf(stdout, " ---> Entering: acc_event_destroy.\n");
+  }
 
   // local event object pointer
   cl_event *clevent = (cl_event *) event;
@@ -75,7 +80,9 @@ int acc_event_destroy (void* event){
   free(clevent);
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_event_destroy.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_event_destroy.\n");
+  }
 
   // assign return value
   return 0;
@@ -91,7 +98,10 @@ extern "C" {
 #endif
 int acc_event_record (void* event, void* stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_event_record.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n ... EVENT RECORDING ... \n");
+    fprintf(stdout, " ---> Entering: acc_event_record.\n");
+  }
 
   // local event and queue pointers
   cl_event *clevent = (cl_event *) event;
@@ -104,8 +114,7 @@ int acc_event_record (void* event, void* stream){
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "acc_event_record: %p -> %d,  %p -> %d\n", clevent, *clevent,  clstream, *clstream);
-    fprintf(stdout, "Entering: acc_event_record.\n");
+    fprintf(stdout, " ---> Leaving: acc_event_record.\n");
   }
 
   // assign return value
@@ -120,25 +129,26 @@ int acc_event_record (void* event, void* stream){
 #ifdef __cplusplus
 extern "C" {
 #endif
-int acc_event_query (void* event, int* has_occured){
-  // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_event_query.\n");
-
+int acc_event_query (void *event, int *has_occured){
   //declarations
-  char *param_value = NULL;
-  size_t param_value_size;
+  cl_int param_value;
+
+  // debug info
+  if (verbose_print){
+    fprintf(stdout, "\n ... EVENT QUERYING ... \n");
+    fprintf(stdout, " ---> Entering: acc_event_query.\n");
+  }
 
   // local event pointer
   cl_event *clevent = (cl_event *) event;
 
   // get event status
-  cl_error = clGetEventInfo(*clevent, CL_EVENT_COMMAND_EXECUTION_STATUS,
-              0, NULL, &param_value_size); // get size of param_value
-  if (acc_opencl_error_check(cl_error, __LINE__))
-    return -1;
-  param_value = (char *) malloc(param_value_size * sizeof(char));
-  cl_error = clGetEventInfo(*clevent, CL_EVENT_COMMAND_EXECUTION_STATUS,
-              param_value_size, param_value, NULL); // get param_value
+  cl_error = clGetEventInfo(
+              *clevent,                          // cl_event      event
+              CL_EVENT_COMMAND_EXECUTION_STATUS, // cl_event_info param_name
+              (size_t) sizeof(cl_int),           // size_t        param_value_size
+              &param_value,                      // void          *param_value
+              NULL);                             // size_t        *param_value_size_ret
   if (acc_opencl_error_check(cl_error, __LINE__))
     return -1;
 
@@ -149,11 +159,12 @@ int acc_event_query (void* event, int* has_occured){
     *has_occured = 0;
   }
 
-  // free memory
-  free(param_value);
-
   // debug info
   if (verbose_print) fprintf(stdout, "Leaving: acc_event_query.\n");
+  if (verbose_print){
+    fprintf(stdout, "      Result: %d\n", *has_occured);
+    fprintf(stdout, " ---> Entering: acc_event_query.\n");
+  }
 
   // assign return value
   return 0;
@@ -169,7 +180,10 @@ extern "C" {
 #endif
 int acc_stream_wait_event (void* stream, void* event){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_stream_wait_event.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n ... STREAM waiting for EVENT ... \n");
+    fprintf(stdout, " ---> Entering: acc_stream_wait_event.\n");
+  }
 
   // local event and queue pointers
   cl_event *clevent = (cl_event *) event;
@@ -182,7 +196,9 @@ int acc_stream_wait_event (void* stream, void* event){
     return -1;
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_wait_event.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_stream_wait_event.\n");
+  }
 
   // assign return value
   return 0;
@@ -198,7 +214,10 @@ extern "C" {
 #endif
 int acc_event_synchronize (void* event){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_event_synchronize.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n ... EVENT SYNCHRONIZATION ... \n");
+    fprintf(stdout, " ---> Entering: acc_event_synchronize.\n");
+  }
 
   // local event and queue pointers
   cl_event *clevent = (cl_event *) event;
@@ -209,7 +228,9 @@ int acc_event_synchronize (void* event){
     return -1;
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_event_synchronize.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_event_synchronize.\n");
+  }
 
   // assign return value
   return 0;
