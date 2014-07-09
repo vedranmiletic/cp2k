@@ -51,7 +51,7 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (int *param_stac
   // CUDA code !!!!
   // clsmm_dnt_largeDB<23,23,23,2,3,10,12,96,16,12> <<< ((stack_size + 16 - 1) / 16), 96, shared_size, stream >>> (param_stack, careful, nruns, a_data, b_data, c_data);
   // return 0;
-fprintf(stdout, "OpenCL Kernel not implemented ---> implement!\n");
+fprintf(stdout, "OpenCL Multiplication kernel not implemented ---> implement!\n");
   return -1;
 }
 
