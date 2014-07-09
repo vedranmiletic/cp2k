@@ -7,7 +7,7 @@
  extern "C" {
 #endif
 
-int libsmm_acc_process (int *param_stack, int stack_size,
+int libsmm_acc_process (void *param_stack, int stack_size,
     int nparams, int datatype, void *a_data, void *b_data, void *c_data,
     int m_max, int n_max, int k_max, int def_mnk, void* stream);
 
