@@ -41,14 +41,19 @@ extern "C" {
 #endif
 int acc_stream_priority_range (int* least, int* greatest){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_stream_priority_range.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n +++ STREAM PRIORITY RANGE SETUP +++ \n");
+    fprintf(stdout, " ---> Entering: acc_stream_priority_range.\n");
+  }
 
   // NOTE: This functionality is not available in OpenCL.
   *least = -1;
   *greatest = -1;
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_priority_range.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_stream_priority_range.\n");
+  }
 
   // assign return value
   return 0;
@@ -107,7 +112,10 @@ extern "C" {
 #endif
 int acc_stream_destroy (void* stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_stream_destroy.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n +++ STREAM DESTRUCTION +++ \n");
+    fprintf(stdout, " ---> Entering: acc_stream_destroy.\n");
+  }
 
   // local queue pointer 
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
@@ -120,7 +128,9 @@ int acc_stream_destroy (void* stream){
   free(clstream);
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_destroy.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_stream_destroy.\n");
+  }
 
   // assign return value
   return 0;
@@ -135,7 +145,10 @@ extern "C" {
 #endif
 int acc_stream_sync (void* stream){
   // debug info
-  if (verbose_print) fprintf(stdout, "Entering: acc_stream_sync.\n");
+  if (verbose_print){
+    fprintf(stdout, "\n +++ STREAM SYNCHRONIZATION +++ \n");
+    fprintf(stdout, " ---> Entering: acc_stream_sync.\n");
+  }
 
   // local queue pointer 
   acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
@@ -151,7 +164,9 @@ int acc_stream_sync (void* stream){
     return -1;
 
   // debug info
-  if (verbose_print) fprintf(stdout, "Leaving: acc_stream_sync.\n");
+  if (verbose_print){
+    fprintf(stdout, " ---> Leaving: acc_stream_sync.\n");
+  }
 
   // assign return value
   return 0;
