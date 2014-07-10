@@ -147,7 +147,7 @@ int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer, 
         fprintf(stdout, "BUILD LOG:\n %s\n", build_log);
       }
 
-      cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_d", &cl_error);
+      cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_23_23_d", &cl_error);
       if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
   
       // set kernel parameters
@@ -158,11 +158,14 @@ int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer, 
       if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(1) %d\n", (int) cl_error);
       cl_error = clSetKernelArg(opencl_kernel, 2, sizeof(cl_mem), (void *) buffer);
       if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(2) %d\n", (int) cl_error);
+      cl_error = clSetKernelArg(opencl_kernel, 3, (23 * 23 * sizeof(double)), NULL); // 23x23 buffer in (local) device memory
+      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(2) %d\n", (int) cl_error);
 
       // submit kernel
       if (verbose_print) fprintf(stdout,"calling transpose kernel ...\n");
-      size_t local_work_size[1] = {128};
-      size_t global_work_size[1] = {nblks * local_work_size[0]};
+      size_t work_items = {128};
+      size_t local_work_size[1] = {work_items};
+      size_t global_work_size[1] = {nblks * work_items};
 
       cl_error = clEnqueueNDRangeKernel(
                    (*opencl_stream).queue, // command_queue

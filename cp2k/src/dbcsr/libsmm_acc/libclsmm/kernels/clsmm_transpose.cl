@@ -12,17 +12,17 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 #endif
 
-__kernel void transpose_d (__global int    *trs_stack,
-                                    int    trs_offset,
-                           __global double *mat){
+__kernel void transpose_23_23_d (__global int    *trs_stack,
+                                          int    trs_offset,
+                                 __global double *mat,
+                                 __local  double *local_buffer){
 
   int m=23;
   int n=23;
-  __local double buf[23 * 23];
 
   int offset = trs_stack[trs_offset + get_group_id(0)];
   for (int i = get_local_id(0); i < m * n; i += get_local_size(0)){
-    buf[i] = mat[offset + i]; 
+    local_buffer[i] = mat[offset + i]; 
   }
 
   barrier(CLK_LOCAL_MEM_FENCE);
@@ -31,7 +31,7 @@ __kernel void transpose_d (__global int    *trs_stack,
     int r_out = i % n;
     int c_out = i / n;
     int idx = r_out * m + c_out;
-    mat[offset + i] = buf[idx];
+    mat[offset + i] = local_buffer[idx];
   }
 }
 #endif
