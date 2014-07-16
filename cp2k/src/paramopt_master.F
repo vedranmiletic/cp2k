@@ -12,10 +12,12 @@ MODULE paramopt_master
   USE cp_lbfgs,                        ONLY: setulb
   USE cp_files,                        ONLY: open_file,&
                                              close_file
-  USE cma_es,                          ONLY: cmaes,gen_pop
+  USE cma_es,                          ONLY: cmaes
   USE cma_es_utils,                    ONLY: a_k_init, &
                                              read_x, &
-                                             a_k_copy
+                                             a_k_copy, &
+                                             gen_pop, &
+                                             gen_init_x
   USE cma_es_types,                    ONLY: individual_type, &
                                              individual_type_p, &
                                              cmaes_opt_type
@@ -107,11 +109,11 @@ MODULE paramopt_master
     CALL section_vals_val_get(paramopt_section,"NUM_VAR", i_val=this%num_var, error=error)
     CALL section_vals_val_get(paramopt_section,"SEED", i_val=this%input_seed, error=error)
     CALL section_vals_val_get(paramopt_section,"BENCHMARK", l_val=this%benchmark, error=error)
-
     if (this%run_type_id .eq. paramopt_cmaes_run) then
       cmaes_section => section_vals_get_subs_vals(paramopt_section, "CMAES_OPT", error=error)
       CALL section_vals_val_get(cmaes_section,"LAMBDA_MO",i_val=this%num_para_set,error=error)
       CALL section_vals_val_get(cmaes_section,"ADDITIONAL_CONS",l_val=this%additional_constrain,error=error)
+      CALL section_vals_val_get(cmaes_section,"KERNEL_DENSITY", l_val=this%kernel_density, error=error)
       CALL section_vals_val_get(cmaes_section,"VARIANCE_SORTING",l_val=this%variance_sorting,error=error)
       CALL section_vals_val_get(cmaes_section,"PENALTY",r_val=this%penalty_alpha,error=error)
     endif
@@ -142,6 +144,7 @@ MODULE paramopt_master
             this%lbfgs_opt,this%cmaes_opt)
     !-------------------
     allocate(this%E_res(this%num_para_set))
+    allocate(this%charge_err(this%num_para_set))
     allocate(this%rmsd(this%num_inp,this%num_para_set))
     allocate(this%dipole(2,this%num_para_set))
     allocate(this%force(this%num_inp,this%num_para_set))
@@ -367,6 +370,7 @@ MODULE paramopt_master
       !---yannick this is a dummy at the moment the fmax gets overwritten...
       !this%cmaes_opt%fmax = (/10_dp,1_dp/)
       !this%cmaes_opt%fmin = (/0_dp,0_dp/)
+      this%cmaes_opt%kernel_density = this%kernel_density
      !--------------init population-----------------
      this%cmaes_opt%insigma = this%cmaes_opt%insigma*this%step_size
      do k=1,this%cmaes_opt%lambda_mo
@@ -380,11 +384,9 @@ MODULE paramopt_master
       ! fix sigma for first generation so better distr
       ini_sigma = this%step_size
       a_k%x = this%x
-      a_k%sigma = 0._dp
-      !a_k%sigma = ini_sigma
-      CALL gen_pop(a_k,this%cmaes_opt)
-      a_k%sigma = ini_sigma
-
+      if (this%rand_inp) then
+            CALL gen_init_x(a_k,this%cmaes_opt)
+      endif
       !----init parents too---------------
       this%cmaes_opt%population_p(k+this%cmaes_opt%lambda_mo)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
       this%cmaes_opt%a_k_parents(k)%p => this%cmaes_opt%population(k+this%cmaes_opt%lambda_mo)
@@ -393,6 +395,7 @@ MODULE paramopt_master
                     this%step_size,this%cmaes_opt%insigma,this,k+this%cmaes_opt%lambda_mo,a_k%x)
       CALL a_k_copy(a_k_parents,a_k)
       a_k_parents%f = huge(1._dp)
+      print *,'additonal const',this%cmaes_opt%additional_constrain
       print *,'initial x from a_k',a_k%x
      enddo
      nullify(a_k,a_k_parents)
@@ -497,14 +500,13 @@ MODULE paramopt_master
        CALL swarm_message_get(report, "conv", this%converged(i,j))    
        !CALL swarm_message_get(report, "force", this%force(i,j))
        CALL swarm_message_get(report, "rmsd", this%rmsd(i,j))
-       if (i_inp .eq. 1 .or. i_inp .eq. 31) then
            ! Water H2O or O3 Ozone
            if (i_inp .eq. 1) then
             CALL swarm_message_get(report, "dipole", this%dipole(1,j))
-            else
+            CALL swarm_message_get(report, "charge_err", this%charge_err(j))
+           else if (i_inp .eq. 31) then
             CALL swarm_message_get(report, "dipole", this%dipole(2,j))
-            endif
-       endif
+           endif
        CALL swarm_message_get(report, "Epot", this%Epot(i,j))
        !this%function_matrix(i,j) = this%rmsd(j)
        !------------change status---------------------------------
@@ -558,31 +560,21 @@ MODULE paramopt_master
                  !---this is error ^2-------
                  !a_k%f(1) = a_k%f(1)**2
                  !a_k%f(2) = (sum(this%rmsd(:,j)))**2 + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
                  !a_k%f(3) = this%dipole(1,j)**2 + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
                  !a_k%f(4) = this%dipole(2,j)**2 + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
                  !a_k%f(5) = (this%rmsd(1,j)) + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
                  !a_k%f(6) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(5) = huge(1._dp)
                  !a_k%f(7) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
-                 !if (a_k%f(1) == huge(1._dp) ) a_k%f(6) = huge(1._dp)
                  !---this is normal error-------
                  a_k%f(1) = a_k%f(1)
                  a_k%f(2) = (sum(this%rmsd(:,j))) + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(2) = huge(1._dp)
                  a_k%f(3) = this%dipole(1,j) + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
-                 a_k%f(4) = this%dipole(2,j) + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(3) = huge(1._dp)
-                 a_k%f(5) = (this%rmsd(1,j)) + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(4) = huge(1._dp)
-                 a_k%f(6) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(5) = huge(1._dp)
-                 a_k%f(7) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
-                 if (a_k%f(1) == huge(1._dp) ) a_k%f(6) = huge(1._dp)
+                 !a_k%f(4) = this%dipole(2,j) + a_k%penalty
+                 a_k%f(4) = (this%rmsd(1,j)) + a_k%penalty
+                 a_k%f(5) = this%rmsd(this%num_ref+2,j)  + a_k%penalty
+                 a_k%f(6) = this%rmsd(this%num_ref+1,j)  + a_k%penalty
+                 a_k%f(7) = this%charge_err(j)
+                 if (any(a_k%f(:) .eq. huge(1._dp))) a_k%f(:) = huge(1._dp)
                ! rmsd is also per atom 
              else
              !-----------------for the rest???--------------------------------

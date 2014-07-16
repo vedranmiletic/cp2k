@@ -78,6 +78,7 @@ MODULE paramopt_types
    REAL(KIND=dp),POINTER                                 :: res(:)
    REAL(KIND=dp),POINTER                                 :: rmsd(:,:)
    REAL(KIND=dp),POINTER                                 :: dipole(:,:)
+   REAL(KIND=dp),POINTER                                 :: charge_err(:) 
    REAL(KIND=dp),POINTER                                 :: force(:,:)
    REAL(KIND=dp),POINTER                                 :: function_matrix(:,:)
    REAL(KIND=dp),POINTER                                 :: obj_f(:)
@@ -106,6 +107,7 @@ MODULE paramopt_types
    LOGICAL                                               :: variance_sorting
    LOGICAL                                               :: additional_constrain
    LOGICAL                                               :: restart
+   LOGICAL                                               :: kernel_density
    REAL(KIND=dp)                                         :: step_size
    REAL(KIND=dp),POINTER                                 :: weights(:)
    TYPE(opt_state_type),POINTER                          :: powell_opt

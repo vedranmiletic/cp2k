@@ -309,7 +309,7 @@ CONTAINS
        CASE (do_method_rm1)
           CALL rm1_default_parameter(sep,z,error)
        CASE (do_method_pm3)
-          CALL pm3_default_parameter(sep,z,error)
+          CALL pm3_default_parameter(sep,z,error,optim_vars)
        CASE (do_method_pm6)
           CALL pm6_default_parameter(sep,z,error)
        CASE (do_method_pdg)

@@ -502,6 +502,7 @@ END SUBROUTINE rf_deriv_check
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(semi_empirical_mpole_type), POINTER :: mpole
     TYPE(semi_empirical_type), POINTER       :: se_kind_a
+    
 
     nspin=SIZE(p_matrix)
     CALL cp_dbcsr_get_info(s_matrix,nblkrows_total=nblock)
@@ -528,9 +529,10 @@ END SUBROUTINE rf_deriv_check
 
           CALL cp_dbcsr_get_block_p(matrix=p_matrix(ispin)%matrix,&
                row=iatom,col=iatom,BLOCK=p_block,found=found)
+          if (associated(pscp)) then
           CALL cp_dbcsr_get_block_p(matrix=pscp,&
                row=iatom,col=iatom,BLOCK=pscp_block,found=found)
-
+          endif
           charge(iatom)=charge(iatom)+se_kind_a%zeff
           size_1c_int = SIZE(se_kind_a%w_mpole)
           DO jint = 1, size_1c_int
@@ -543,15 +545,15 @@ END SUBROUTINE rf_deriv_check
 
              IF(mpole%task(1))THEN
                charge(iatom) = charge(iatom)       + fac*p_block(indi,indj)*mpole%c
-               charge(iatom) = charge(iatom)       + fac*pscp_block(indi,indj)*mpole%c
+               if (associated(pscp)) charge(iatom) = charge(iatom)       + fac*pscp_block(indi,indj)*mpole%c
              END IF
              IF(mpole%task(2))THEN
                dipole(:,iatom) = dipole(:,iatom)   + fac*p_block(indi,indj)*mpole%d(:)
-               dipole(:,iatom) = dipole(:,iatom)   + fac*pscp_block(indi,indj)*mpole%d(:)
+               if (associated(pscp)) dipole(:,iatom) = dipole(:,iatom)   + fac*pscp_block(indi,indj)*mpole%d(:)
              END IF
              IF(mpole%task(3))THEN
                quadrupole(:,:,iatom) = quadrupole(:,:,iatom) + fac*p_block(indi,indj)*mpole%qc(:,:)/3.0_dp
-               quadrupole(:,:,iatom) = quadrupole(:,:,iatom) + fac*pscp_block(indi,indj)*mpole%qc(:,:)/3.0_dp
+               if (associated(pscp))  quadrupole(:,:,iatom) = quadrupole(:,:,iatom) + fac*pscp_block(indi,indj)*mpole%qc(:,:)/3.0_dp
              END IF
 
              END DO

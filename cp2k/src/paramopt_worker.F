@@ -69,7 +69,8 @@ MODULE paramopt_worker
   USE mathconstants,                   ONLY: pi
   USE message_passing,                 ONLY: mp_comm_split,&
                                              mp_sum
-  USE mulliken,                        ONLY: compute_multipoles
+  USE mulliken,                        ONLY: compute_multipoles, &
+                                             mulliken_charges
   USE particle_types,                  ONLY: particle_type
   USE physcon,                         ONLY: angstrom,&
                                              debye
@@ -148,7 +149,6 @@ MODULE paramopt_worker
    INTEGER                                          :: converged
    INTEGER                                          :: nkind
    INTEGER, DIMENSION(0:3)                          :: norb
-
  END TYPE paramopt_worker_type
 
 
@@ -280,9 +280,11 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "iter", iter)
         CALL swarm_message_add(report, "conv", 0) 
         CALL swarm_message_add(report, "rmsd", huge(1._dp))
-        if (coord_file .eq. 'WATER27structures/H2O.xyz' .or. &
-            coord_file .eq. 'WATER27structures/O3.xyz') THEN
-           CALL swarm_message_add(report, "dipole",huge(1._dp) )
+        if (coord_file .eq. 'WATER27structures/H2O.xyz')  THEN
+           CALL swarm_message_add(report, "dipole", huge(1._dp))
+           CALL swarm_message_add(report, "charge_err", huge(1._dp))
+        else if (coord_file .eq. 'WATER27structures/O3.xyz')  THEN
+           CALL swarm_message_add(report, "dipole", huge(1._dp))
         endif
         CALL swarm_message_add(report, "Epot", huge(1._dp)) 
    END SUBROUTINE paramopt_skip
@@ -303,6 +305,7 @@ MODULE paramopt_worker
     INTEGER                                  :: iter,i_inp,charge,i
     REAL(KIND=dp),DIMENSION(:),POINTER       :: x
     REAL(KIND=dp)                            :: energy
+    REAL(KIND=dp)                            :: charge_error
     REAL(KIND=dp)                            :: dummy
     REAL(KIND=dp),DIMENSION(:),ALLOCATABLE   :: forces
     REAL(KIND=dp),DIMENSION(:),ALLOCATABLE   :: dipole
@@ -440,12 +443,25 @@ MODULE paramopt_worker
         !------------------------------------------------ 
         if (coord_file .eq. 'WATER27structures/H2O.xyz') then
           !-----------calculate dipole--------------------------
+          this%dipole = 0._dp
           CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
-          dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9)  
+          dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) + this%charge(3)*this%pos2(7:9) 
+          !print *,'charge',this%charge(1),this%charge(2),this%charge(3)
+          !print *,'dipole',this%dipole(:,1),this%dipole(:,2),this%dipole(:,3)
           do i = 1,3
             dipole=dipole + this%dipole(:,i)
           enddo
+          write(this%iw,*) 'h2o dipole',sqrt(sum(dipole**2))*angstrom/debye_conv
           this%dipole_error = abs(1.86_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+        !  if (this%dipole_error .lt. 0.2_dp) this%dipole_error = 0._dp
+          !------------
+          if (this%charge(2) .lt. 0.1_dp) then
+              charge_error = 0.1_dp - this%charge(2)
+          else if (this%charge(2) .gt. 0.45_dp) then
+              charge_error = this%charge(2) - 0.45_dp
+          else
+              charge_error = 0._dp
+          endif
           deallocate(dipole)
         else if (coord_file .eq. 'WATER27structures/O3.xyz') then
           !-----------calculate dipole--------------------------
@@ -454,8 +470,22 @@ MODULE paramopt_worker
           do i = 1,3
             dipole=dipole + this%dipole(:,i)
           enddo
+          write(this%iw,*) 'o3 dipole',sqrt(sum(dipole**2))*angstrom/debye_conv
           this%dipole_error = abs(0.53_dp-sqrt(sum(dipole**2))*angstrom/debye_conv)
+          if (this%dipole_error .lt. 0.1_dp) this%dipole_error = 0._dp
           deallocate(dipole)
+       
+       
+        !else if (coord_file .eq. 'WATER27structures/H2.xyz') then
+        !  !-----------calculate dipole--------------------------
+        !  CALL calc_multipole(this%f_env_id,this%charge,this%dipole,ierr)
+        !  dipole=this%charge(1)*this%pos2(1:3) + this%charge(2)*this%pos2(4:6) 
+        !  do i = 1,2
+        !    dipole=dipole + this%dipole(:,i)
+        !  enddo
+        !  this%dipole_error = abs(sqrt(sum(dipole**2))*angstrom/debye_conv)
+        !  print *,'h2 dipole should be 0',this%dipole_error
+        !  deallocate(dipole)
         endif
         !!---------------cleanup-----------------------------
           deallocate(this%pos,this%pos2,this%g)!
@@ -473,8 +503,10 @@ MODULE paramopt_worker
         CALL swarm_message_add(report, "conv", this%converged) 
         !CALL swarm_message_add(report, "force", this%force)
         CALL swarm_message_add(report, "rmsd", this%rmsd)
-        if (coord_file .eq. 'WATER27structures/H2O.xyz' .or. &
-            coord_file .eq. 'WATER27structures/O3.xyz')  THEN
+        if (coord_file .eq. 'WATER27structures/H2O.xyz')  THEN
+           CALL swarm_message_add(report, "dipole", this%dipole_error)
+           CALL swarm_message_add(report, "charge_err", charge_error)
+        else if (coord_file .eq. 'WATER27structures/O3.xyz')  THEN
            CALL swarm_message_add(report, "dipole", this%dipole_error)
         endif
         CALL swarm_message_add(report, "Epot", energy)
@@ -526,9 +558,9 @@ MODULE paramopt_worker
     !    tmp = 1_dp + 9_dp*tmp/(size(this%x)-1._dp)
     !    this%rmsd = tmp*(1_dp - sqrt(h(this%x(1),size(this%x))/tmp))
         !Zitzler¿Deb¿Thiele's function N. 1
-        tmp = g(this%x)
-        energy = this%x(1)
-        this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp))
+    !    tmp = g(this%x)
+    !    energy = this%x(1)
+    !    this%rmsd = tmp * (1_dp - sqrt(this%x(1)/tmp))
         !Zitzler¿Deb¿Thiele's function N. 2
     !    tmp = g(this%x)
     !    energy = this%x(1)
@@ -547,8 +579,8 @@ MODULE paramopt_worker
     !    this%rmsd = tmp * (1_dp - sqrt(energy/tmp))
        ! Fonesca and Fleming function
        ! DOESN NOT WORK
-    !   energy = 1._dp - exp(-sum((this%x-1._dp/sqrt(n))**2))
-    !   this%rmsd = 1._dp - exp(-sum((this%x+1._dp/sqrt(n))**2))
+       energy = 1._dp - exp(-sum((this%x-1._dp/sqrt(real(n)))**2))
+       this%rmsd = 1._dp - exp(-sum((this%x+1._dp/sqrt(real(n)))**2))
     END SUBROUTINE
 !-----------------------------------------------------------------------
 REAL FUNCTION g(x)
@@ -1150,7 +1182,9 @@ END FUNCTION pythag
     INTEGER                                  :: handle, nblock, nspin
     LOGICAL                                  :: failure
     REAL(KIND=dp), DIMENSION(:),TARGET       :: charge
+    REAL(KIND=dp), DIMENSION(:,:),ALLOCATABLE,TARGET       :: charge2
     REAL(KIND=dp), DIMENSION(:), POINTER     :: charge_ptr
+    REAL(KIND=dp), DIMENSION(:,:), POINTER     :: charge_ptr2
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: dipole_ptr
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: quadrupole
@@ -1172,9 +1206,8 @@ END FUNCTION pythag
     INTEGER                                  :: iatom
 
 !-------------------------------------------------------------
-
     failure=.FALSE.
-    NULLIFY(f_env, force_env, globenv, matrix_p, rho, qs_env, dipole_ptr)
+    NULLIFY(f_env, force_env, globenv, matrix_p, rho, qs_env, dipole_ptr, pscp)
     CALL f_env_get_from_id(f_env_id,f_env,error) 
     IF (.not.failure) THEN
     force_env  => f_env%force_env
@@ -1186,26 +1219,37 @@ END FUNCTION pythag
                     scp_env=scp_env, &
                     para_env=para_env, &
                     error=error)
-    pscp => scp_env%pscp
+    if (associated(scp_env)) pscp => scp_env%pscp
     CALL calc_energy_force(f_env_id,.TRUE.,ierr)
     CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
                     rho=rho,matrix_s=matrix_s,&
-                    para_env=para_env,error=error)
+                    para_env=para_env, &
+                    error=error)
     CALL cp_error_check(error,failure)
+    if (failure) STOP "multipole error"
     matrix_p   => rho%rho_ao
 
     ! here we get the numbers for charges
     nspin=SIZE(matrix_p)
     CALL cp_dbcsr_get_info(matrix_s(1)%matrix,nblkrows_total=nblock)
     ALLOCATE(quadrupole(3,3,nblock))
+    ALLOCATE(charge2(3,3))
     dipole_ptr => dipole
     charge_ptr => charge
+    charge_ptr2 => charge2
     CALL compute_multipoles(atomic_kind_set,particle_set,&
                                 matrix_p,pscp,matrix_s(1)%matrix,charge_ptr,dipole_ptr,quadrupole,para_env)
+!    CALL  mulliken_charges(matrix_p,matrix_s(1)%matrix,para_env,charge_ptr2,error)   
+!    charge_ptr(1) = charge_ptr2(1,1)                  
+!    charge_ptr(2) = charge_ptr2(2,1)                  
+!    charge_ptr(3) = charge_ptr2(3,1)                  
+
 !    do iatom=1,3
 !          WRITE(*,'(a, f20.10)') 'charge =     ',charge_ptr(iatom)
 !          WRITE(*,'(a,3f20.10)') 'dipole =     ',dipole_ptr(:,iatom)
+!          print *,'charge',charge_ptr2(:,iatom)
 !    enddo
+    DEALLOCATE(charge2)
     DEALLOCATE(quadrupole)
     ELSE
        PRINT *,'dipole failure'

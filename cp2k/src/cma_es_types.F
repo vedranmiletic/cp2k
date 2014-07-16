@@ -33,6 +33,7 @@ MODULE cma_es_types
    !REAL(KIND=dp),DIMENSION(:,:),POINTER            :: multmp_mN,multmp_mMU,multmp_mN2,mutmp
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xold 
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: x 
+   REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: xtrans 
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: z 
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: Az
    REAL(KIND=dp),DIMENSION(:),ALLOCATABLE          :: w 
@@ -99,6 +100,7 @@ MODULE cma_es_types
    TYPE(cp_error_type),POINTER                          :: error
    LOGICAL                                              :: additional_constrain
    LOGICAL                                              :: variance_sorting 
+   LOGICAL                                              :: kernel_density   
  END TYPE cmaes_opt_type
 !================================================================================
  PUBLIC :: cmaes_opt_type,individual_type,individual_type_p 

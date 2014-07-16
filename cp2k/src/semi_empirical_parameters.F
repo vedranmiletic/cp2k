@@ -1801,11 +1801,11 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Default parameter sets for semi empirical models: PM3
 ! *****************************************************************************
-  SUBROUTINE pm3_default_parameter ( sep, z, error)
+  SUBROUTINE pm3_default_parameter ( sep, z, error, optim_vars)
     TYPE(semi_empirical_type), POINTER       :: sep
     INTEGER                                  :: z
     TYPE(cp_error_type), INTENT(inout)       :: error
-
+    REAL(KIND=dp),DIMENSION(:),POINTER,OPTIONAL    :: optim_vars
     CHARACTER(len=*), PARAMETER :: routineN = 'pm3_default_parameter', &
       routineP = moduleN//':'//routineN
 
@@ -1833,6 +1833,21 @@ CONTAINS
        sep%ass=1.0e-10_dp
        sep%asp=3.13469_dp
        sep%app=0.604262_dp
+       IF (present(optim_vars)) THEN
+          !----------yannick------------------------------
+          sep%uss              =   optim_vars(1)
+          sep%sto_exponents(0) =   optim_vars(2)
+          sep%beta(0)          =   optim_vars(3)
+          sep%alp              =   optim_vars(4)
+          sep%gss              =   optim_vars(5)
+          !------------------------------------
+          sep%fn1(1)           =   optim_vars(6) 
+          sep%fn2(1)           =   optim_vars(7) 
+          sep%fn3(1)           =   optim_vars(8) 
+          sep%fn1(2)           =   optim_vars(9) 
+          sep%fn2(2)           =   optim_vars(10)
+          sep%fn3(2)           =   optim_vars(11)
+       ENDIF
     CASE (2)
     CASE (3)
        !Lithium
@@ -1939,6 +1954,28 @@ CONTAINS
        sep%ass=1.0e-10_dp
        sep%asp=6.906169_dp
        sep%app=0.911779_dp
+          IF (present(optim_vars)) THEN
+          !----------yannick------------------------------
+          sep%uss              =   optim_vars(12)
+          sep%upp              =   optim_vars(13)
+          sep%sto_exponents(0) =   optim_vars(14) 
+          sep%sto_exponents(1) =   optim_vars(15) 
+          sep%beta(0)          =   optim_vars(16)
+          sep%beta(1)          =   optim_vars(17)
+          sep%alp              =   optim_vars(18)
+          sep%gss              =   optim_vars(19)
+          sep%gpp              =   optim_vars(20)
+          sep%gsp              =   optim_vars(21)
+          sep%gp2              =   optim_vars(22)
+          sep%hsp              =   optim_vars(23)
+          !-------------------------------------
+          sep%fn1(1)           =   optim_vars(24) 
+          sep%fn2(1)           =   optim_vars(25) 
+          sep%fn3(1)           =   optim_vars(26) 
+          sep%fn1(2)           =   optim_vars(27) 
+          sep%fn2(2)           =   optim_vars(28)
+          sep%fn3(2)           =   optim_vars(29)
+       ENDIF
     CASE (9)
        !Fluorine
        sep%defined = .TRUE.

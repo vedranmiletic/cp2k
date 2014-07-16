@@ -485,16 +485,16 @@ MODULE paramopt_utils
 40       CONTINUE
         R2 = (2.D0*S)/((XN**2)*(A**5)*RT2PI)
         R2 = R2 + 3.D0/(RT2PI*XN*(A**5))
-!-                                                                     
 !-------  Estimate bandwidth by asymptotic formula
-!-
-         H=(CONST/(R2*XN))**(.2D0)                                    
+         H=(CONST/(R2*XN))**(.2D0)               
          A=CO1*H**(5./7.)
 100     CONTINUE
 !-
 !------- Estimate density with plugin bandwidth
 !-            
       if (h .eq. 0 .or. isnan(h)) then
+          !STOP "something with kernel density h is wrong"
+          print *,'h warning...using different estimation'
           !practical estimation of the bandwidth see wikipedia :)
           var = variance(X)
           H = (4._dp*var**(5._dp/2._dp)/3._dp*size(x))**1._dp/5._dp
@@ -524,7 +524,7 @@ MODULE paramopt_utils
 !-                         
 200      CONTINUE                                             
       RETURN                                                            
-      END SUBROUTINE          
-
+      END SUBROUTINE    
+            
 END MODULE paramopt_utils
 

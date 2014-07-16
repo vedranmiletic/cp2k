@@ -30,6 +30,7 @@ MODULE cma_es_utils
     CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cma_es_utils'
     public :: mrgrnk,tool_symmatrix,tool_eigendecomp,a_k_copy
     public :: gen_pop
+    public :: gen_init_x
     public :: a_k_init
     public :: write_x
     public :: read_x
@@ -42,6 +43,36 @@ MODULE cma_es_utils
          module procedure gen_pop1
       end interface
       contains
+!===========================================================================
+    subroutine gen_init_x(a_k,cmaes_opt)
+        type(cmaes_opt_type),target                               :: cmaes_opt
+        type(individual_type),POINTER                             :: a_k
+        TYPE(cp_error_type),POINTER                               :: error
+         REAL(Kind=dp),ALLOCATABLE,DIMENSION(:)                   :: tmp_x,tmp
+         integer                                                  :: gen_count,i
+         allocate(tmp_x(size(a_k%xtrans)))
+         allocate(tmp(size(a_k%xtrans)))
+       !  gen_count = 0
+       ! print *,'generating random x gen_init_x'
+       ! a_k%penalty = 1._dp
+        !do while (a_k%penalty .ne. 0._dp)
+        !    tmp = 0._dp
+            do i=1,cmaes_opt%n; a_k%xtrans(i) = next_random_number(cmaes_opt%rng_uniform_stream,error=error); enddo           
+            call var_back_trans(a_k%xtrans,tmp_x,cmaes_opt%l_bound,cmaes_opt%u_bound)
+        !    gen_count = gen_count + 1
+            if (cmaes_opt%additional_constrain) then
+                !print *,'additional const'
+                CALL param_const(tmp_x,tmp)
+                !a_k%penalty = norm2(tmp)
+                !if (a_k%penalty .ne. 0._dp) then 
+                !!    print *,'add const not fullfilled',gen_count,tmp_x
+                !else
+                !endif 
+            endif
+            a_k%x = tmp_x
+        !enddo    
+        deallocate(tmp_x) 
+    end subroutine gen_init_x
 !===========================================================================
     subroutine gen_pop4(a_k,cmaes_opt)
     implicit none
@@ -93,11 +124,24 @@ MODULE cma_es_utils
     ! resample till in region !!!!
     a_k%penalty = 1._dp
     do while (a_k%penalty .ne. 0._dp)
-    tmp=0._dp
-    do i=1,n; a_k%z(i) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
-    CALL DGEMV('N',N,N,1.0d0,a_k%A,n,a_k%z,1,0.0d0,a_k%Az,1) 
-    tmp_x = a_k%x + a_k%sigma * a_k%Az  
-    ! check if x in boundaries...set to bound limit otherwiese
+         tmp=0._dp
+         do i=1,n; a_k%z(i) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
+         CALL DGEMV('N',N,N,1.0d0,a_k%A,n,a_k%z,1,0.0d0,a_k%Az,1) 
+         tmp_x = a_k%x + a_k%sigma * a_k%Az  
+            gen_count = gen_count + 1
+         ! check if x in boundaries...set to bound limit otherwiese
+            if (cmaes_opt%additional_constrain) then
+                CALL param_const(tmp_x,tmp)
+                a_k%Az = (tmp_x - a_k%x)/a_k%sigma
+                !if (norm2(tmp) .ne. 0._dp) then 
+                !   print *,'add const not fullfilled',gen_count,tmp_x
+                !   CYCLE
+                !endif
+                ! the eq. constr are handled and positions swaped
+                ! set tmp to zero 
+                tmp = 0._dp
+            endif
+
             do i=1,n
                     if (tmp_x(i) .lt. cmaes_opt%l_bound(i)) then
                         tmp(i) = abs(tmp_x(i) - cmaes_opt%l_bound(i))
@@ -106,10 +150,10 @@ MODULE cma_es_utils
                         tmp(i) = abs(tmp_x(i) - cmaes_opt%u_bound(i))
                     endif
             enddo
-            if (a_k%sigma .eq. 0._dp) a_k%Az = 0._dp
-            a_k%penalty = alpha*norm2(tmp)**2
-            gen_count = gen_count + 1
-            if (gen_count .ge. 200) then
+            !a_k%penalty = alpha*norm2(tmp)**2
+            a_k%penalty = norm2(tmp)
+            if (gen_count .gt. 200) then
+                gen_count = 0
                 a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ 
                 a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
                          (a_k%damps*(1._dp-a_k%p_target)))
@@ -123,8 +167,10 @@ MODULE cma_es_utils
                 a_k%x = tmp_x
             endif
 
-            print *,'iter gen',gen_count,a_k%sigma
+            print *,'iter gen',gen_count,a_k%penalty,a_k%sigma,tmp_x
     enddo
+   ! print *,'x is',a_k%x
+    a_k%conv = norm2(a_k%x - a_k%xold)
     deallocate(tmp,tmp_x)  
    end subroutine gen_pop4
 !===========================================================================
@@ -280,16 +326,16 @@ MODULE cma_es_utils
             if (a_k%sigma .eq. 0._dp) a_k%Az = 0._dp
             a_k%penalty = alpha*norm2(tmp)**2
             gen_count = gen_count + 1
-            !if (gen_count .ge. 200) then
-            !    a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ 
-            !    a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
-            !             (a_k%damps*(1._dp-a_k%p_target)))
-            !    inner_count = inner_count + 1
-            !    if (inner_count .ge. 1000) then
-            !    print *,'sigma probably to big :('
-            !        STOP
-            !    endif
-            !endif
+            if (gen_count .ge. 20) then
+                a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ 
+                a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
+                         (a_k%damps*(1._dp-a_k%p_target)))
+                inner_count = inner_count + 1
+                if (inner_count .ge. 1000) then
+                print *,'sigma probably to big :('
+                    STOP
+                endif
+            endif
             if (a_k%penalty .eq. 0._dp) then
                 a_k%x = tmp_x
             endif
@@ -371,20 +417,22 @@ MODULE cma_es_utils
     CALL DGEMV('N',N,N,1.0d0,tmp_A,N,a_k%z,1,0.0d0,tmp_z,1)
     !print *,'old x',a_k%x
     tmp_x = a_k%x + a_k%sigma * tmp_z
-
+    !   if (cmaes_opt%additional_constrain) CALL param_const(tmp_x,tmp)
             do i=1,n
                     if (tmp_x(i) .lt. cmaes_opt%l_bound(i)) then
+                        print *,i,tmp_x(i),"is lower then",cmaes_opt%l_bound(i),'sigma',a_k%sigma
                         tmp(i) = abs(tmp_x(i) - cmaes_opt%l_bound(i))
-                        v(i,:) = (1._dp - cc)*v(i,:) + cc*tmp_z
                         rcount = rcount + 1._dp
                     endif
                     if (tmp_x(i) .gt. cmaes_opt%u_bound(i)) then
+                        print *,i,tmp_x(i),"is greater then",cmaes_opt%u_bound(i),'sigma',a_k%sigma
                         tmp(i) = abs(tmp_x(i) - cmaes_opt%u_bound(i))
-                        v(i,:) = (1._dp - cc)*v(i,:) + cc*tmp_z
                         rcount = rcount + 1._dp
                     endif
+
+                    if (tmp(i) .ne. 0._dp) v(i,:) = (1._dp - cc)*v(i,:) + cc*tmp_z 
             enddo
-            !if (cmaes_opt%additional_constrain) CALL param_const(a_k,tmp)
+     
             !---------------------------------
             !a_k%ccovm = min(0.4_dp/(n**1.6_dp+1._dp),1._dp/(2._dp*norm2(a_k%y)**2-1._dp))
             tmp_mat = 0._dp
@@ -407,9 +455,21 @@ MODULE cma_es_utils
                  CALL dgemv('N',n,n,1._dp,tmp_Ainv,n,v(i,:),1,0._dp,tmp_w,1)
                  if (any(isNaN(tmp_w))) STOP "w is NaN" 
                  dotpro =  dot_product(tmp_w,tmp_w)
+                 if (isNaN(dotpro)) STOP "dotpro is NaN"
+                 if (dotpro .lt. 1e-16_dp) then 
+                     print *, dotpro,"dotpro too small" ,tmp_w
+                     print *, "v vector",v(i,:) 
+                     STOP
+                 endif 
                  !tmp_mat3 = 0._dp
                  !CALL dger(n,n,1._dp,v(i,:),n,tmp_w,n,tmp_mat3,n)
                  CALL dgemm('N','T',n,n,1,1.0d0,v(i,:),n,tmp_w,n,0.0d0,tmp_mat3,n)
+                 if (any(isNaN(tmp_mat3))) then
+                   DO k=1,n
+                     WRITE(*,*) (tmp_mat3(k,j), j=1,n)
+                   END DO
+                   STOP "tmp_mat3 is NaN"
+                endif
                  !if (minval(tmp_mat3) .gt. tiny(1._dp) .and. dotpro .gt. 1e-16_dp) then
                    tmp_mat = tmp_mat + 1._dp/(dotpro)*tmp_mat3
                  !endif
@@ -519,7 +579,20 @@ MODULE cma_es_utils
             !print *,'some stuff',beta,dotpro
             !print *,'yannick',gen_count,det(n,tmp_A),det(n,tmp_Ainv)
             gen_count = gen_count + 1
-            if (gen_count .ge. 100000) then 
+
+            ! decrease sigma ?---------------------------
+            if (gen_count .ge. 20) then
+                gen_count = 0
+                a_k%p_succ = (1._dp-a_k%cp)*a_k%p_succ 
+                a_k%sigma = a_k%sigma*exp((a_k%p_succ - a_k%p_target)/ &
+                         (a_k%damps*(1._dp-a_k%p_target)))
+                inner_count = inner_count + 1
+                if (inner_count .ge. 1000) then
+                print *,'sigma probably to big :('
+                    STOP
+                endif
+            endif
+            if (gen_count .ge. 100000000) then 
                 print *,tmp_x,a_k%det
                 STOP "generation not possible"
             endif
@@ -531,6 +604,183 @@ MODULE cma_es_utils
                   tmp_ainv,aw,wta,tmp_mat3,tmp_mat)
 
     end subroutine gen_pop1
+!===========================================================================
+    SUBROUTINE param_const(tmpx,tmp)
+       IMPLICIT NONE
+       REAL(Kind=dp),DIMENSION(:)                       :: tmp
+       REAL(Kind=dp),DIMENSION(:)                       :: tmpx
+       REAL(kind=dp)                                    :: tmp2
+!       TYPE(individual_type),POINTER                    :: a_k,a_k2
+     !========================================================================================== 
+!            !-----------yannick----Gss and gpp sepcial conditions!-------------
+!            ! constrains on variables go here ---------------------------------
+!        if (cmaes_opt%additional_constrain) then
+!         if (size(a_k%x) .eq. 20) then
+            ! Uss lower then upp
+            if (tmpx(11) .lt. tmpx(10))  then
+                tmp(11) = tmp(11) +  tmpx(10) - tmpx(11) 
+                tmp2 = tmpx(10)
+                tmpx(10) = tmpx(11) 
+                tmpx(11) = tmp2
+            endif
+            ! beta_s lower than beta_p
+            if (tmpx(13) .lt. tmpx(12))  then
+                tmp(13) = tmp(13) +  abs(tmpx(12) - tmpx(13))
+                tmp2 = tmpx(12)
+                tmpx(12) = tmpx(13) 
+                tmpx(13) = tmp2
+            endif
+            ! sigma should be bigger than gss
+           ! if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+           !     tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+           !     tmp2 = a_k%arx(7,j)
+           !     a_k%arx(7,j) = a_k%arx(1,j) 
+           !     a_k%arx(1,j) = tmp2
+           ! endif
+            ! sigma should be bigger than gss
+           ! if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+           !     tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+           !     tmp2 = a_k%arx(21,j)
+           !     a_k%arx(21,j) = a_k%arx( 9,j) 
+           !     a_k%arx( 9,j) = tmp2
+           ! endif
+
+            ! exponents ??
+            if (tmpx(15) .lt. tmpx(16))  then
+                tmp(15) = tmp(15) +  tmpx(16) - tmpx(15) 
+                tmp2 = tmpx(15)
+                tmpx(15) = tmpx(16) 
+                tmpx(16) = tmp2
+            endif
+            ! exponents ??
+            if (tmpx(4) .lt. tmpx(5))  then
+                tmp(4) = tmp(4) +  tmpx(5) - tmpx(4) 
+                tmp2 = tmpx(4)
+                tmpx(4) = tmpx(5) 
+                tmpx(5) = tmp2
+            endif
+
+!         endif 
+!          ! for scp-------------
+!          if (n .eq. 26) then
+!            ! Gss gibber then gsp
+!          !  if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+!          !      tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+!          !      tmp2 = a_k%arx(11,j)
+!          !      a_k%arx(11,j) = a_k%arx(12,j) 
+!          !      a_k%arx(12,j) = tmp2
+!          !  endif
+!            ! Gpp bigger then gp2
+!            if (a_k%arx(13,j) .lt. a_k%arx(14,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(13,j) 
+!                tmp2 = a_k%arx(13,j)
+!                a_k%arx(13,j) = a_k%arx(14,j) 
+!                a_k%arx(14,j) = tmp2
+!            endif
+!            ! Uss lower then upp
+!            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(17,j) 
+!                tmp2 = a_k%arx(16,j)
+!                a_k%arx(16,j) = a_k%arx(17,j) 
+!                a_k%arx(17,j) = tmp2
+!            endif
+!            ! beta_s lower than beta_p
+!            if (a_k%arx(19,j) .lt. a_k%arx(18,j))  then
+!                tmp(1) = tmp(1) +  abs(a_k%arx(18,j) - a_k%arx(19,j))
+!                tmp2 = a_k%arx(18,j)
+!                a_k%arx(18,j) = a_k%arx(19,j) 
+!                a_k%arx(19,j) = tmp2
+!            endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+!         !       tmp2 = a_k%arx(7,j)
+!         !       a_k%arx(7,j) = a_k%arx(1,j) 
+!         !       a_k%arx(1,j) = tmp2
+!         !   endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(23,j) - a_k%arx(11,j) 
+!         !       tmp2 = a_k%arx(23,j)
+!         !       a_k%arx(23,j) = a_k%arx(11,j) 
+!         !       a_k%arx(11,j) = tmp2
+!         !   endif
+!
+!            ! exponents ??
+!            if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(22,j) - a_k%arx(21,j) 
+!                tmp2 = a_k%arx(21,j)
+!                a_k%arx(21,j) = a_k%arx(22,j) 
+!                a_k%arx(22,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+!                tmp2 = a_k%arx(5,j)
+!                a_k%arx(5,j) = a_k%arx(6,j) 
+!                a_k%arx(6,j) = tmp2
+!            endif
+!        ! without scp-------------------------------------------    
+!      else if (n .eq. 22) then
+!            ! Gss gibber then gsp
+!         !   if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
+!         !       tmp2 = a_k%arx( 9,j)
+!         !       a_k%arx( 9,j) = a_k%arx(10,j) 
+!         !       a_k%arx(10,j) = tmp2
+!         !   endif
+!            ! Gpp bigger then gp2
+!            if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+!                tmp2 = a_k%arx(11,j)
+!                a_k%arx(11,j) = a_k%arx(12,j) 
+!                a_k%arx(12,j) = tmp2
+!            endif
+!            ! Uss lower then upp
+!            if (a_k%arx(15,j) .lt. a_k%arx(14,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(15,j) 
+!                tmp2 = a_k%arx(14,j)
+!                a_k%arx(14,j) = a_k%arx(15,j) 
+!                a_k%arx(15,j) = tmp2
+!            endif
+!            ! beta_s lower than beta_p
+!            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+!                tmp(1) = tmp(1) +  abs(a_k%arx(16,j) - a_k%arx(17,j))
+!                tmp2 = a_k%arx(16,j)
+!                a_k%arx(16,j) = a_k%arx(17,j) 
+!                a_k%arx(17,j) = tmp2
+!            endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+!         !       tmp2 = a_k%arx(7,j)
+!         !       a_k%arx(7,j) = a_k%arx(1,j) 
+!         !       a_k%arx(1,j) = tmp2
+!         !   endif
+!         !   ! sigma should be bigger than gss
+!         !   if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+!         !       tmp2 = a_k%arx(21,j)
+!         !       a_k%arx(21,j) = a_k%arx( 9,j) 
+!         !       a_k%arx( 9,j) = tmp2
+!         !   endif
+!
+!            ! exponents ??
+!            if (a_k%arx(19,j) .lt. a_k%arx(20,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(20,j) - a_k%arx(19,j) 
+!                tmp2 = a_k%arx(19,j)
+!                a_k%arx(19,j) = a_k%arx(20,j) 
+!                a_k%arx(20,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+!                tmp2 = a_k%arx(5,j)
+!                a_k%arx(5,j) = a_k%arx(6,j) 
+!                a_k%arx(6,j) = tmp2
+!            endif
+    !enddo
+    END SUBROUTINE
 !=============================================================================
  SUBROUTINE a_k_init(a_k,lambda_mo,num_obj,step_size,insigma,this,k,x)
     IMPLICIT NONE
@@ -571,14 +821,19 @@ MODULE cma_es_utils
                !      a_k%A(i,i) = 1._dp          
                !   enddo
                !a_k%Ainv = A_k%A
-                  tmp = 1._dp
+               !   tmp = 1._dp
+               !   do i=1,n
+               !      tmp = tmp*insigma(i)
+               !   enddo
+               !   do i=1,n
+               !      a_k%A(i,i)=sqrt(insigma(i)*1._dp/tmp**(1._dp/n))
+               !      a_k%A(i,i)=1._dp/a_k%A(i,i)
+               !   enddo
                   do i=1,n
-                     tmp = tmp*insigma(i)
+                     a_k%A(i,i)=insigma(i)
                   enddo
-                  do i=1,n
-                     a_k%A(i,i)=sqrt(insigma(i)*1._dp/tmp**(1._dp/n))
-                     a_k%A(i,i)=1._dp/a_k%A(i,i)
-                  enddo
+                
+
                  !  DO i=1,n
                  !   WRITE(*,*) (a_k%A(i,j), j=1,n)
                  !  END DO
@@ -639,6 +894,7 @@ MODULE cma_es_utils
              !ALLOCATE(a_k%arx(n,a_k%lambda),stat=allocStat)
              ALLOCATE(a_k%xold(n),stat=allocStat)
              ALLOCATE(a_k%x(n),stat=allocStat)
+             ALLOCATE(a_k%xtrans(n),stat=allocStat)
              ALLOCATE(a_k%Az(n),stat=allocStat)
              ALLOCATE(a_k%z(n),stat=allocStat)
              a_k%xold=0._dp

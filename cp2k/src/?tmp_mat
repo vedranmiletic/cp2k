@@ -14,7 +14,6 @@ MODULE cma_es
                                              tool_symmatrix, &
                                              tool_eigendecomp, &
                                              a_k_copy, &
-                                             gen_pop, &
                                              write_x
   USE cma_es_types,                    ONLY: individual_type,individual_type_p,cmaes_opt_type
   USE parallel_rng_types,              ONLY: rng_stream_type, &
@@ -24,15 +23,14 @@ MODULE cma_es
                                              GAUSSIAN, &
                                              UNIFORM
    USE paramopt_utils,                 ONLY: deviation, &
-                                             plugin,&
-                                             det
+                                             plugin
 #include "cp_common_uses.h"
     implicit none
     private 
     
     CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cma_es'
 
-    public :: cmaes
+    public :: cmaes,gen_pop
 
     contains
 
@@ -89,33 +87,15 @@ MODULE cma_es
                   !CALL new_mean(a_k) !only for the offspring this is adpoted
                   !-----update covariance---------
                       !call update_path(a_k)   
-                      if (p_succ .gt. 0._dp) then
-                          call update_cholesky(a_k)
-                          a_k%C = matmul(a_k%A,transpose(a_k%A))
-                          a_k%det = det(n,a_k%C)
-                      endif
-                      !          ! normalize??? ---> should be no neeed actualllly
-                      ! if (any(isnan(a_k%A))) STOP "isnan A"
-                      ! a_k%det = det(n,a_k%A)
-                      ! if (isnan(a_k%det)) STOP "isnan det"
-                      ! if (a_k%det .ne. 0._dp) a_k%A = a_k%det**(-1._dp/n)*a_k%A
-                      ! a_k%det = det(n,a_k%A)
-                      !if (p_succ .gt. 0._dp) call adapt_cov(a_k) 
+                      call update_cholesky(a_k) 
+                      !call adapt_cov(a_k) 
           !---------Update B and D from C-------------------------------------------
                   !-----------------------------------------------------------------------
                   !  Enforce symmetry
                   !-----------------------------------------------------------------------
-                  !CALL tool_symmatrix(a_k%C,n,a_k%triuC)
-                  !     !normalize ???
-                  !     if (any(isnan(a_k%C))) STOP "isnan C"
-                  !     a_k%det = det(n,a_k%C)
-                  !     if (isnan(a_k%det)) STOP "isnan det"
-                  !     !if (a_k%det .ne. 1._dp) a_k%C = a_k%det**(-1._dp/n)*a_k%C
-                  !     !a_k%det = det(n,a_k%C)
-                  !!a_k%triuC = a_k%C
-                  !call DPBTRF( 'L', n, 1, a_k%triuC, n, INFO )
+                  !CALL tool_symmatrix(a_k%C,cmaes_opt%n,a_k%triuC)
+                  !call DPBTRF( 'L', cmaes_opt%n, 1, a_k%triuC, cmaes_opt%n, INFO ) 
                   !a_k%A = a_k%triuC                
-                  !a_k%det = det(n,a_k%A)
                   !-----------------------------------------------------------------------
                   !  Eigen decomposition, D=diagonal matrix of eigenvalues, 
                   !  B=normalized eigenvectors
@@ -150,13 +130,13 @@ MODULE cma_es
                   !CALL DGEMM('N','T',n,n,n,1.0d0,a_k%BD,n,a_k%BD,n,0.0d0,a_k%C,n)
                   !-------get trace and determinant
                   a_k%trace = 0.0_dp
+                  a_k%det = 1.0_dp
                   DO i = 1,n    
-                      a_k%trace = a_k%trace+a_k%C(i,i)**2
+                      a_k%trace = a_k%trace+a_k%A(i,i)**2
+                      a_k%det = a_k%det*a_k%A(i,i)**2
                   END DO    
               !print *,'a_k',a_k%Id,a_k%front,a_k%I_dist,a_k%sigma
-              !print *,'a_k%x',a_k%x
               !print *,'a_k_parents',a_k_parents%Id,a_k_parents%front,a_k_parents%I_dist,a_k_parents%sigma
-              !print *,'a_k_parents%x',a_k_parents%x
               nullify(a_k,a_k_parents)
          enddo 
          
@@ -170,7 +150,7 @@ MODULE cma_es
          a_k => cmaes_opt%population(k)
          call cp_assert( a_k%id .ne. 0 ,cp_failure_level,cp_assertion_failed,&
                             routineP, cp_to_string(k)//" id is wrong...something is strange ", &
-                            cmaes_opt%error)
+                            cmaes_opt%error) 
          enddo
 !--------output---------------------------------------------------------------
          call write_x(cmaes_opt)
@@ -185,15 +165,13 @@ MODULE cma_es
              call a_k_copy(a_k,a_k_parents)
              !cmaes_opt%a_k(k) = cmaes_opt%a_k_parents(k)
              !print *,'old f',cmaes_opt%a_k_parents(k)%f
-             print *,'before gen_popt'
              CALL gen_pop(a_k,cmaes_opt)
-             print *,'gen_pop done',k
              a_k%id = k
+             !----this is just a random x !!!----------
+             x = a_k%x
              !print *,'x should not be the same!',a_k_parents%arx(1,1),a_k%arx(1,1)
          !print *,'selected',cmaes_opt%a_k(k)%f,cmaes_opt%a_k_parents(k)%f,cmaes_opt%a_k(k)%s_iu
          END DO
-             !----this is just a random x !!!----------
-             x = a_k%x
          nullify(a_k,a_k_parents)
          print *,'===========================MO-CMAES-SUMMARY============================'
          print *,'number of accepted offspring',accepted
@@ -263,7 +241,7 @@ MODULE cma_es
     implicit none
     type(individual_type),POINTER                             :: a_k
     TYPE(cp_error_type),POINTER                               :: error
-    INTEGER                                                   :: n,k,i,j
+    INTEGER                                                   :: n,k,i
     real(kind=dp),dimension(:,:),allocatable                  :: tmp
     real(kind=dp),dimension(:,:),allocatable                  :: tmp3
     real(kind=dp),dimension(:),allocatable                    :: tmp2
@@ -275,50 +253,25 @@ MODULE cma_es
     allocate(tmp2(n))
        if (a_k%p_succ .lt. a_k%p_tresh) then
          a_k%pc = (1._dp - a_k%cc)*a_k%pc + sqrt(a_k%cc*(2_dp-a_k%cc))* &
-                           a_k%Az 
+                           a_k%z 
          alpha = (1._dp-a_k%ccov)
        else
          a_k%pc = (1._dp - a_k%cc)*a_k%pc
          alpha = (1._dp-a_k%ccov)+a_k%ccov*a_k%cc*(2._dp-a_k%cc)
        endif
       beta = a_k%ccov
-      !print *,'this is Ainv ',a_k%Ainv(1,1),a_k%pc(1)
-      if(any(isNaN(a_k%pc))) STOP "a_k%pc is NaN"
       CALL dgemm('N','N',n,1,n,1.0d0,a_k%Ainv,n,a_k%pc,n,0.0d0,a_k%w,n)
-      ! hmmm...not so sure if that is okay
-      where(isNaN(a_k%pc)) a_k%pc= 0._dp
-      where(isNaN(a_k%w)) a_k%w= 0._dp
-      !CALL dgemv('N',n,n,1._dp,a_k%Ainv,n,a_k%pc,1,0._dp,a_k%w,1)
-      !print *,'this is x',a_k%x
-      !print *,'this is xold',a_k%xold
-      !print *, 'this is w',a_k%w
-      !print *, 'this is pc',a_k%pc
-      !
       CALL dgemm('N','T',n,n,1,1.0d0,a_k%pc,n,a_k%w,n,0.0d0,tmp,n)
-      !tmp = 0._dp
-      !CALL dger(n,n,1._dp,a_k%pc,n,a_k%w,n,tmp,n)
-      
       CALL dgemm('T','N',1,1,n,1.0d0,a_k%w,n,a_k%Ainv,n,0.0d0,tmp2,n)
-      
-      !CALL dgemm('N','T',n,n,1,1.0d0,a_k%w,n,tmp2,n,0.0d0,tmp3,n)
-      tmp3 = 0._dp
-      CALL dger(n,n,1._dp,a_k%w,n,tmp2,n,tmp3,n)
-      
+      CALL dgemm('N','T',n,n,1,1.0d0,a_k%w,n,tmp2,n,0.0d0,tmp3,n)
       !print *,'a und b',alpha,beta
-       !          print *,'-----tmp------'
-       !          DO i=1,n
-       !              WRITE(*,*) (tmp(i,j), j=1,n)
-       !          END DO
-    !  print *,'tmp2',tmp2
-    !  print *,'tmp3',tmp3
-    !  print *,'w',a_k%w
-    !  print *,'pc',a_k%pc
-    !             print *,'-----a------'
-    !             DO i=1,n
-    !                 WRITE(*,*) (a_k%A(i,j), j=1,n)
-    !             END DO
+      !print *,'tmp',tmp
+      !print *,'tmp2',tmp2
+      !print *,'tmp3',tmp3
+      !print *,'w',a_k%w
+      !print *,'pc',a_k%pc
       !--------------update matrix------------------------------------------------------------
-      if (norm2(a_k%w) .ne. 0._dp .and. norm2(a_k%w) .lt. 1.e10_dp) then
+      if (norm2(a_k%w) .ne. 0._dp) then
       a_k%A = sqrt(alpha)*a_k%A + sqrt(alpha)/norm2(a_k%w)**2._dp * &
           (sqrt(1._dp+beta/alpha*norm2(a_k%w)**2._dp)-1._dp) * &
           tmp 
@@ -326,43 +279,7 @@ MODULE cma_es
           (1._dp - 1._dp/sqrt(1._dp+beta/alpha*norm2(a_k%w)**2._dp)) * &
           tmp3
       endif
-      where(isNaN(a_k%Ainv)) a_k%Ainv= 0._dp
-      a_k%det = det(n,a_k%a)
-      !print *,'chlesk update'
-      !do i=1,n;print *,a_k%A(i,:);enddo;print *,'det',det(n,a_k%A)
-      !do i=1,n;print *,a_k%Ainv(i,:);enddo;print *,'det',det(n,a_k%Ainv)
-      if (any(isNaN(a_k%A))) then
-          print *,'alpha',alpha,'beta',beta
-          print *,'w',a_k%w
-          print *,'norm',norm2(a_k%w)
-          print *,'pc',a_k%pc
-          print *,'-----tmp------'
-          DO i=1,n
-              WRITE(*,*) (tmp(i,j), j=1,n)
-          END DO
-          print *,'-----A------'
-          DO i=1,n
-              WRITE(*,*) (a_k%A(i,j), j=1,n)
-          END DO
-
-         STOP 'NaN update_chlesky A'
-      endif
-      if (any(isNaN(a_k%Ainv))) then
-          print *,'error in',a_k%Id
-          print *,'w',a_k%w
-                    DO i=1,n
-              WRITE(*,*) (a_k%Ainv(i,j), j=1,n)
-          END DO
-          STOP 'NaN update_chlesky Ainv'
-      endif
-  !    if (det(n,a_k%A) .gt. 1.01_dp .or. det(n,a_K%A) .lt. 0.99_dp) then
-  !                  print *,'-----a------'
-  !               DO i=1,n
-  !                   WRITE(*,*) (a_k%A(i,j), j=1,n)
-  !               END DO
-  !        print *,det(n,a_k%A)
-  !        STOP "det is wroing in update cholesk"
-  !    endif
+      !print *,'NaN',any(isNaN(a_k%A))
       deallocate(tmp,tmp2,tmp3)
 
     end subroutine update_cholesky
@@ -397,8 +314,7 @@ MODULE cma_es
       !END DO   
       !a_k%mutmp = (a_k%arx(:,int(a_k%idxsel(1:a_k%mu))) - a_k%tempMat) 
       !a_k%mutmp = (a_k%arx - a_k%tempMat) 
-      !CALL dgemm('N','T',n,n,1,1.0d0,colVec,n,rowVec,n,0.0d0,multmp_mN,n) 
-      CALL dgemm('N','T',n,n,1,1.0d0,a_k%pc,n,a_k%pc,n,0.0d0,multmp_mN,n) 
+      CALL dgemm('N','T',n,n,1,1.0d0,colVec,n,rowVec,n,0.0d0,multmp_mN,n) 
       !------------calculate BDz and matrix for active covariance control--------------------
       !CALL dgemv('N',n,n,1.0d0,a_k%A,n,a_k%z,1,0.0d0,bdz,1)
       !DO i = 1,n 
@@ -433,7 +349,7 @@ MODULE cma_es
       !a_k%C = (1._dp-a_k%ccovm)*a_k%C & ! old matrix
       !             - a_k%ccovm*(a_k%multmp_mN2) ! plus rank one update
       endif
-      !print *,'yannick',multmp_mN
+
       !if(any(isNaN(a_k%C))) then
       !  print *,'yannick Covariance Matrix is NaN'
       !  STOP
@@ -548,7 +464,7 @@ MODULE cma_es
 !        print * ,'id',i,'fronts',cmaes_opt%population(i)%front,'s_i_count',cmaes_opt%population(i)%s_i_count
 !        do j = 1,cmaes_opt%population(i)%s_i_count; print *,'s_i',cmaes_opt%population(i)%s_i(j)%p%id; enddo
 !    enddo
-    CALL crowding_distance(new_set,cmaes_opt%kernel_density)
+    CALL crowding_distance(new_set)
     !CALL kernel_distance(new_set,cmaes_opt%error)
           !====ad front to Q
           do i = 1,size(new_set)
@@ -569,7 +485,7 @@ MODULE cma_es
         enddo
 !        print *,'size',size(tmp_set),size(sel_set)
         CALL new_front(tmp_set,sel_set,new_set)
-        CALL crowding_distance(new_set,cmaes_opt%kernel_density)
+        CALL crowding_distance(new_set)
         !CALL kernel_distance(new_set,cmaes_opt%error)
         !print *,'size new set', size(new_set)
         tmp_off = tmp_off + size(new_set)
@@ -584,7 +500,7 @@ MODULE cma_es
           !   print *,'offspring',offspring
          !print *,'front',j,'done'
      enddo
-    deallocate(new_set)
+
     print *,'init_selection done'
     !-------there should be everythin in a_k and a_k_parents
     end subroutine init_selection
@@ -731,12 +647,257 @@ MODULE cma_es
             endif
     else
         boolean = .false.   
-    endif
-    ! ugly hack 
-    if (any(a_k%f .gt. 1.e100_dp) ) boolean = .false.
+    endif 
     end subroutine dominates
 !===========================================================================
-     SUBROUTINE crowding_distance(input_set,kernel_density)
+    subroutine gen_pop(a_k,cmaes_opt)
+    implicit none
+    type(cmaes_opt_type),target                               :: cmaes_opt
+    type(individual_type),POINTER                             :: a_k
+    TYPE(cp_error_type),POINTER                               :: error
+    INTEGER                                                   :: n,k,i,j
+    INTEGER                                                   :: gen_count
+    REAL(kind=dp)                                             :: alpha
+    REAL(Kind=dp),ALLOCATABLE,DIMENSION(:)                    :: tmp
+    REAL(Kind=dp),ALLOCATABLE,DIMENSION(:,:)                  :: tmp_a  
+    REAL(Kind=dp),ALLOCATABLE,DIMENSION(:,:)                  :: tmp_mat2
+    REAL(kind=dp)                                             :: ccovm
+    REAL(kind=dp)                                             :: beta 
+    INTEGER,ALLOCATABLE,DIMENSION(:)                          :: ipiv
+
+    ! input:
+    ! n, lambda, BD, xmean, sigma
+    ! output:
+    ! arx,arz
+    n = cmaes_opt%n
+    gen_count = 0
+    ccovm = 0.4_dp/(n**1.6_dp+1._dp)
+    !ccovm = 0.01_dp
+    beta  = sqrt(1._dp+ccovm)
+    allocate(tmp(n))
+    allocate(tmp_a(n,n))
+    allocate(tmp_mat2(n,n))
+    allocate(ipiv(n))
+    tmp_mat = a_k%A
+    a_k%penalty = 1._dp
+    alpha = cmaes_opt%penalty_alpha
+    !CALL reset_to_next_rng_substream(cmaes_opt%rng_normal_stream, error=error)
+    !do j=1,a_k%lambda
+    do while (a_k%penalty .ne. 0._dp)
+        tmp=0._dp
+    !    do i=1,n; a_k%arz(i,j) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
+        do i=1,n; a_k%y(i) = next_random_number(cmaes_opt%rng_normal_stream,error=error); enddo
+    CALL DGEMV('N',N,N,1.0d0,tmp_mat,N,a_k%y,1,0.0d0,a_k%z,1)
+    !print *,'old x',a_k%x
+    a_k%x = a_k%x + a_k%sigma * a_k%z
+    CALL dgemm('N','T',n,n,1,1.0d0,a_k%z,n,a_k%y,n,0.0d0,tmp_mat2,n)
+    !print *,'new x',a_k%x
+    !print *,'sigma',a_k%sigma
+    !print *,'Az',a_k%z
+    !if (cmaes_opt%generation .eq. 1) a_k%arx(:,j) = a_k%xmean
+    ! check if x in boundaries...set to bound limit otherwiese
+            do i=1,n
+                    if (a_k%x(i) .lt. cmaes_opt%l_bound(i)) then
+                        tmp(i) = abs(a_k%x(i) - cmaes_opt%l_bound(i))
+                        a_k%x(i) = cmaes_opt%l_bound(i)
+                    endif
+                    if (a_k%x(i) .gt. cmaes_opt%u_bound(i)) then
+                        tmp(i) = abs(a_k%x(i) - cmaes_opt%u_bound(i))
+                        a_k%x(i) = cmaes_opt%u_bound(i)
+                    endif
+            enddo
+            a_k%penalty = alpha*norm2(tmp)**2
+            gen_count = gen_count + 1
+            if (a_k%penalty .ne. 0._dp) then
+            tmp_mat = beta*tmp_mat +  beta/norm2(a_k%y)**2* & 
+                      (sqrt(1._dp-ccovm*norm2(a_k%y)**2/beta**2)-1._dp) * &
+                       tmp_mat2
+            else
+                print *,'gen done in',gen_count,'iterations'
+                a_k%A = tmp_mat
+                a_k%Ainv = tmp_mat
+            endif
+     enddo 
+!            !-----------yannick----Gss and gpp sepcial conditions!-------------
+!            ! constrains on variables go here ---------------------------------
+!        if (cmaes_opt%additional_constrain) then 
+!          ! for scp-------------
+!          if (n .eq. 26) then
+!            ! Gss gibber then gsp
+!          !  if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+!          !      tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+!          !      tmp2 = a_k%arx(11,j)
+!          !      a_k%arx(11,j) = a_k%arx(12,j) 
+!          !      a_k%arx(12,j) = tmp2
+!          !  endif
+!            ! Gpp bigger then gp2
+!            if (a_k%arx(13,j) .lt. a_k%arx(14,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(13,j) 
+!                tmp2 = a_k%arx(13,j)
+!                a_k%arx(13,j) = a_k%arx(14,j) 
+!                a_k%arx(14,j) = tmp2
+!            endif
+!            ! Uss lower then upp
+!            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(17,j) 
+!                tmp2 = a_k%arx(16,j)
+!                a_k%arx(16,j) = a_k%arx(17,j) 
+!                a_k%arx(17,j) = tmp2
+!            endif
+!            ! beta_s lower than beta_p
+!            if (a_k%arx(19,j) .lt. a_k%arx(18,j))  then
+!                tmp(1) = tmp(1) +  abs(a_k%arx(18,j) - a_k%arx(19,j))
+!                tmp2 = a_k%arx(18,j)
+!                a_k%arx(18,j) = a_k%arx(19,j) 
+!                a_k%arx(19,j) = tmp2
+!            endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+!         !       tmp2 = a_k%arx(7,j)
+!         !       a_k%arx(7,j) = a_k%arx(1,j) 
+!         !       a_k%arx(1,j) = tmp2
+!         !   endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(23,j) .lt. a_k%arx(11,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(23,j) - a_k%arx(11,j) 
+!         !       tmp2 = a_k%arx(23,j)
+!         !       a_k%arx(23,j) = a_k%arx(11,j) 
+!         !       a_k%arx(11,j) = tmp2
+!         !   endif
+!
+!            ! exponents ??
+!            if (a_k%arx(21,j) .lt. a_k%arx(22,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(22,j) - a_k%arx(21,j) 
+!                tmp2 = a_k%arx(21,j)
+!                a_k%arx(21,j) = a_k%arx(22,j) 
+!                a_k%arx(22,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+!                tmp2 = a_k%arx(5,j)
+!                a_k%arx(5,j) = a_k%arx(6,j) 
+!                a_k%arx(6,j) = tmp2
+!            endif
+!        ! without scp-------------------------------------------    
+!      else if (n .eq. 22) then
+!            ! Gss gibber then gsp
+!         !   if (a_k%arx( 9,j) .lt. a_k%arx(10,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx( 9,j) 
+!         !       tmp2 = a_k%arx( 9,j)
+!         !       a_k%arx( 9,j) = a_k%arx(10,j) 
+!         !       a_k%arx(10,j) = tmp2
+!         !   endif
+!            ! Gpp bigger then gp2
+!            if (a_k%arx(11,j) .lt. a_k%arx(12,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(12,j) - a_k%arx(11,j) 
+!                tmp2 = a_k%arx(11,j)
+!                a_k%arx(11,j) = a_k%arx(12,j) 
+!                a_k%arx(12,j) = tmp2
+!            endif
+!            ! Uss lower then upp
+!            if (a_k%arx(15,j) .lt. a_k%arx(14,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(14,j) - a_k%arx(15,j) 
+!                tmp2 = a_k%arx(14,j)
+!                a_k%arx(14,j) = a_k%arx(15,j) 
+!                a_k%arx(15,j) = tmp2
+!            endif
+!            ! beta_s lower than beta_p
+!            if (a_k%arx(17,j) .lt. a_k%arx(16,j))  then
+!                tmp(1) = tmp(1) +  abs(a_k%arx(16,j) - a_k%arx(17,j))
+!                tmp2 = a_k%arx(16,j)
+!                a_k%arx(16,j) = a_k%arx(17,j) 
+!                a_k%arx(17,j) = tmp2
+!            endif
+!            ! sigma should be bigger than gss
+!         !   if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+!         !       tmp2 = a_k%arx(7,j)
+!         !       a_k%arx(7,j) = a_k%arx(1,j) 
+!         !       a_k%arx(1,j) = tmp2
+!         !   endif
+!         !   ! sigma should be bigger than gss
+!         !   if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+!         !       tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+!         !       tmp2 = a_k%arx(21,j)
+!         !       a_k%arx(21,j) = a_k%arx( 9,j) 
+!         !       a_k%arx( 9,j) = tmp2
+!         !   endif
+!
+!            ! exponents ??
+!            if (a_k%arx(19,j) .lt. a_k%arx(20,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(20,j) - a_k%arx(19,j) 
+!                tmp2 = a_k%arx(19,j)
+!                a_k%arx(19,j) = a_k%arx(20,j) 
+!                a_k%arx(20,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(5,j) .lt. a_k%arx(6,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(6,j) - a_k%arx(5,j) 
+!                tmp2 = a_k%arx(5,j)
+!                a_k%arx(5,j) = a_k%arx(6,j) 
+!                a_k%arx(6,j) = tmp2
+!            endif
+!      else if (n .eq. 20) then
+!            ! Uss lower then upp
+!            if (a_k%arx(11,j) .lt. a_k%arx(10,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(10,j) - a_k%arx(11,j) 
+!                tmp2 = a_k%arx(10,j)
+!                a_k%arx(10,j) = a_k%arx(11,j) 
+!                a_k%arx(11,j) = tmp2
+!            endif
+!            ! beta_s lower than beta_p
+!            if (a_k%arx(13,j) .lt. a_k%arx(12,j))  then
+!                tmp(1) = tmp(1) +  abs(a_k%arx(12,j) - a_k%arx(13,j))
+!                tmp2 = a_k%arx(12,j)
+!                a_k%arx(12,j) = a_k%arx(13,j) 
+!                a_k%arx(13,j) = tmp2
+!            endif
+!            ! sigma should be bigger than gss
+!           ! if (a_k%arx(7,j) .lt. a_k%arx(1,j))  then
+!           !     tmp(1) = tmp(1) +  a_k%arx(7,j) - a_k%arx(1,j) 
+!           !     tmp2 = a_k%arx(7,j)
+!           !     a_k%arx(7,j) = a_k%arx(1,j) 
+!           !     a_k%arx(1,j) = tmp2
+!           ! endif
+!            ! sigma should be bigger than gss
+!           ! if (a_k%arx(21,j) .lt. a_k%arx( 9,j))  then
+!           !     tmp(1) = tmp(1) +  a_k%arx(21,j) - a_k%arx( 9,j) 
+!           !     tmp2 = a_k%arx(21,j)
+!           !     a_k%arx(21,j) = a_k%arx( 9,j) 
+!           !     a_k%arx( 9,j) = tmp2
+!           ! endif
+!
+!            ! exponents ??
+!            if (a_k%arx(15,j) .lt. a_k%arx(16,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(16,j) - a_k%arx(15,j) 
+!                tmp2 = a_k%arx(15,j)
+!                a_k%arx(15,j) = a_k%arx(16,j) 
+!                a_k%arx(16,j) = tmp2
+!            endif
+!            ! exponents ??
+!            if (a_k%arx(4,j) .lt. a_k%arx(5,j))  then
+!                tmp(1) = tmp(1) +  a_k%arx(5,j) - a_k%arx(4,j) 
+!                tmp2 = a_k%arx(4,j)
+!                a_k%arx(4,j) = a_k%arx(5,j) 
+!                a_k%arx(5,j) = tmp2
+!            endif
+!
+!           endif
+!         endif
+    !enddo
+    !---yannick this is stupid
+    !print *,'new generating x...'
+    !do k=1,a_k%lambda
+    !    print *,a_k%arx(:,k)
+    !    print *,a_k%arz(:,k)
+    !enddo
+    a_k%penalty = alpha*norm2(tmp)**2
+    deallocate(tmp,tmp_mat,tmp_mat2,ipiv)
+    end subroutine gen_pop
+!=====================================================================================
+     SUBROUTINE crowding_distance(input_set)
          IMPLICIT NONE
          TYPE(individual_type_p),DIMENSION(:)        :: input_Set
          REAL(kind=dp),DIMENSION(:,:),ALLOCATABLE    :: newsort
@@ -752,7 +913,6 @@ MODULE cma_es
          INTEGER                                     :: i,j,k,n 
          INTEGER                                     :: j_m,j_p
          LOGICAL                                     :: variance_sorting
-         LOGICAL                                     :: kernel_density
          !--------kernel density estim----------
          REAL(kind=dp),DIMENSION(:),ALLOCATABLE :: x,f
          REAL(kind=dp)                          :: h
@@ -762,15 +922,9 @@ MODULE cma_es
          !------depends which crowding distance is used
          !  a) crowding dist 1.0_Dp
          !  b) kernel dist 0._dp
-         if (kernel_density)then
-            do i = 1,nondominated_size
-                input_set(i)%p%I_dist = 1._dp
-            enddo
-         else
-            do i = 1,nondominated_size
-                input_set(i)%p%I_dist = 0._dp
-            enddo       
-         endif
+         do i = 1,nondominated_size
+             input_set(i)%p%I_dist = 1._dp
+         enddo
          !------------------------------------------------
          allocate(newsort(nondominated_size,numcols))
          allocate(idxsel(nondominated_size))
@@ -782,80 +936,94 @@ MODULE cma_es
          do i = 1,nondominated_size
              newsort(i,:) = input_set(i)%p%f(:)
          enddo
-        !-----------------------------------------------
-         do k = 1,numcols     ! num objectives
-           x = newsort(:,k)
-           !print *,'this is old x',x 
-           CALL mrgrnk(x,idxsel)
-           f = x
-           do i=1,size(x)
-               x(i)=f(idxsel(i))
-           enddo
-           if (kernel_density) then
-           !============calculate using plugin density (kernel density estimation)
-                m = size(x)
-                if (m .gt. 3) then
-                  if (all(x .lt. huge(1._dp))) then
-                    call plugin(x,m,x,m,f,h)
-                    !f = f/(maxval(f)-minval(f))
-                    do i = 1,nondominated_size 
-                       j = idxsel(i)
-                       if (f(i) .ne. 0._dp ) then
-                            if( .not. isnan(f(i))) then
-                            input_set(j)%p%I_dist = input_set(j)%p%I_dist * (f(i))
-                            endif
-                       endif
-                    enddo
-                   else
-                     do i=1,m 
-                     input_set(m)%p%I_dist = huge(1._dp)
-                     enddo
-                   endif
-                endif
-                !print *,'this is idxsel',idxsel
-                !print *,'this is f',f 
-                !print *,'-----tmp_mat------'
-                !DO i=1,nondominated_size
-                !    WRITE(*,*) input_set(i)%p%I_dist 
-                !END DO
-           !input_set(idxsel(1))%p%I_dist = huge(1._dp) 
-           !input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp)
-           else
+        
+        do k = 1,numcols     ! num objectives 
+           CALL mrgrnk(newsort(:,k),idxsel)
+
            !============calculate using crowding dist NAGA-II===========
-            input_set(idxsel(1))%p%I_dist = huge(1._dp) 
-            input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
-            mymax = maxval(x)
-            mymin = minval(x)
-            mydev = mymax - mymin 
-             do i = 2,nondominated_size-1
+           input_set(idxsel(1))%p%I_dist = huge(1._dp) 
+           input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp) 
+           do i = 2,nondominated_size-1
                j = idxsel(i)
                j_p = idxsel(i+1)
                j_m = idxsel(i-1)
+               mymax = maxval(newsort(:,k))
+               mymin = minval(newsort(:,k))
+               mydev = mymax - mymin
                if (mydev .gt. huge(1._dp)) mydev = 1._dp
-               input_set(j)%p%I_dist = input_set(j)%p%I_dist + & 
+               !if (isnan(mydev)) mydev = 1._dp
+               !if (mydev .eq. 0_dp) mydev = 1._dp
+               input_set(j)%p%I_dist = input_set(j)%p%I_dist * & 
                                 (input_set(j_p)%p%f(k)- &
                                  input_set(j_m)%p%f(k))/& 
                                 mydev
-             if (isNaN(input_set(j)%p%I_dist)) input_set(j)%p%I_dist = 0.0_dp
-             if ((input_set(j)%p%I_dist) .gt. huge(1._dp)) input_set(j)%p%I_dist = 0.0_dp
-             !print *,'Idist'  ,(input_set(j)%p%I_dist)
-             enddo
-           endif
-           !=================================================================
-         enddo
-         !----------------------------------------
-         if (kernel_density) then
-            do i=1,nondominated_size
-                if (input_set(i)%p%I_dist .lt. huge(1._dp)) then
-                 input_set(i)%p%I_dist = 1._dp/input_set(i)%p%I_dist
-                endif
-            enddo
-           deallocate(x,f)
-           deallocate(newsort,idxsel) 
-         else 
-           deallocate(x,f,newsort,idxsel) 
-         endif
-    END SUBROUTINE crowding_distance
+               !print *,mydev,input_set(j_p)%p%f(k),input_set(j_m)%p%f(k)
+             !(fmax(numcols)-fmin(numcols)) !---yannick doesnt know what to put here
+                                !(maxval(newsort(:,numcols))-minval(newsort(:,numcols)))
+           !-------------check I_dist for NaN and Inf----------------------------------------
+           !!if (isnan( input_set(j)%p%I_dist)) input_set(j)%p%I_dist = tiny(1._dp)
+           !!if (( input_set(j)%p%I_dist) .gt. huge(1._dp) ) input_set(j)%p%I_dist = tiny(1._dp)
+           enddo           
+           !!============calculate using plugin density (kernel density estimation)
+           !input_set(idxsel(1))%p%I_dist = huge(1._dp) 
+           !input_set(idxsel(nondominated_size))%p%I_dist = huge(1._dp)
+           !     x = newsort(:,k)
+           !     m = size(x)
+           !     call plugin(x,m,x,m,f,h)
+           !     do i = 2,nondominated_size-1 
+           !        j = idxsel(i)
+           !        if (f(i) .ne. 0._dp) then
+           !        !print *,'this is f and h',f(i),1._dp/(f(i)),h
+           !        input_set(j)%p%I_dist = input_set(j)%p%I_dist + 1._dp/(f(i))
+           !        endif
+           !     enddo
+        enddo
+        deallocate(x,f)
+        deallocate(newsort,idxsel) 
+        
+
+     !if (variance_sorting) then
+     !   !------use standard deviation as crowding distance---------------------
+     !   n = size(input_set(1)%p%x)
+     !   allocate(tmp(nondominated_size))
+     !   allocate(mydeviation(nondominated_size))
+     !   mydeviation =0._dp
+     !      do i = 1,n
+     !          do k =1,nondominated_size
+     !          tmp(k) = input_set(k)%p%x
+     !          enddo
+     !          call deviation(tmp)
+     !          ! deviation is already normalized...it is a realtive standard error
+     !          mydeviation(:) = mydeviation(:) + tmp(:)**2 
+     !      enddo
+     !   deallocate(tmp)
+     !   !-------sqrt and normalize----------
+     !   mydeviation(:) = sqrt(mydeviation(:))
+     !   !mydeviation(:) = mydeviation(:)/maxval(mydeviation(:))
+     !   do i = 1,nondominated_size
+     !        input_set(i)%p%I_dist = -mydeviation(i)
+     !   enddo
+     !   
+
+     !   deallocate(mydeviation)
+
+     !  endif
+!         do i = 1,nondominated_size
+
+!         enddo
+!        !---------this is a version where dipole error is used as criteria------
+!         do i = 1,nondominated_size
+!             if (input_set(i)%p%I_dist .eq. huge(1._dp)) then
+!             else
+!                 if (input_set(i)%p%dipole .eq. huge(1._dp)) then
+!                    input_set(i)%p%I_dist =  tiny(1._dp)
+!                 else 
+!                    input_set(i)%p%I_dist =  1._dp/input_set(i)%p%dipole
+!                 endif
+!             endif
+!         enddo
+!
+       END SUBROUTINE crowding_distance
 !===========================================================================
     SUBROUTINE new_front(global_set,input_set,output_set)
        IMPLICIT NONE
@@ -902,5 +1070,123 @@ MODULE cma_es
 !       print *,size(output_set)
        deallocate(tmp_set)
     END SUBROUTINE
+
+!===========================================================================
+!    subroutine err_mng(population,n)
+!    TYPE(individual_type_p),DIMENSION(:)              :: population
+!    integer                                           :: n
+!    real(kind=dp),allocatable(:)                      :: diag
+!    TYPE(individual_type),POINTER                     :: a_k
+!
+!    allocate(diag(n))
+!      
+!    do i=1,asdfadfa  
+!          a_k => population(i)%p
+!
+!      !-------------------------------------------------------------------------
+!      !  NUMERICAL ERROR MANAGEMENT
+!      !-------------------------------------------------------------------------	  
+!      DO j = 1, n
+!        diag(i) = a_k%C(j,j) ! Get diagonal vector of C
+!      END DO
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust maximal coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      IF(any(sigma*sqrt(diag) .GT. maxdx)) sigma = minval(maxdx/sqrt(diag))
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust minimal coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      IF(any(sigma*sqrt(diag) .LT. mindx)) &
+!        sigma = maxval(mindx/sqrt(diag)) * exp(0.05+cs/damps)
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust too low coordinate axis deviations
+!      !-------------------------------------------------------------------------
+!      mask = .FALSE.
+!      tempMat2 = 0._MK
+!      DO i = 1, input%N
+!        IF(xmean(i) .EQ. xmean(i) + 0.2_MK*sigma*sqrt(diag(i))) &
+!                                                        mask(i,i) = .TRUE.
+!        tempMat2(i,i) = diag(i)
+!      END DO
+!      
+!      IF(any(mask)) THEN
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnnoeffectcoord'
+!        ELSE
+!            WRITE(*,*) 'Warning: Iteration ', countIter, &
+!                            ': Coordinate axis std deviation too low'
+!            WHERE(.NOT. mask)
+!                tempMat2 = 0._MK
+!            END WHERE
+!            C = C + ccov*tempMat2
+!            sigma = sigma*exp(0.05_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of (numerical) precision problem
+!      !-------------------------------------------------------------------------
+!      IF(all(xmean .EQ. xmean + &
+!        0.1_MK*sigma*BD(:,1+int(mod((countIter-lastRestart),input%N))))) THEN
+!        i = 1+int(mod((countIter-lastRestart),input%N))
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnnoeffectaxis'
+!        ELSE
+!            WRITE(*,*) 'Warning: Iteration ', countIter, &
+!                            ': Main axis std deviation ', sigma*D(i,i), &
+!                            ' has no effect'
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!            
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of equal function values (flat fitness)
+!      !-------------------------------------------------------------------------
+!      temp = int(0.1_MK+lambda/4._MK)				! Little hack to round up
+!      IF(real(temp) .NE. (0.1_MK+lambda/4._MK)) &
+!        temp = temp + 1._MK
+!      IF(fitness%sel(1) .EQ. fitness%sel(1+int(temp))) THEN
+!        IF(options%WarnOnEqualFunctionValues .AND. options%stopOnWarnings) THEN
+!            stopflag = 'warnequalfunvals'
+!        ELSE
+!            IF(options%WarnOnEqualFunctionValues) THEN
+!            DO i = 1, input%N
+!                diag(i) = D(i,i)
+!            END DO
+!            WRITE(*,*) &
+!                'Warning: Iteration ', countIter, ': Equal function values f=',&
+!                fitness%sel(1), ' at maximal main axis sigma ', &
+!                sigma*maxval(diag)
+!            END IF
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      !-------------------------------------------------------------------------
+!      !  Adjust step size in case of equal function values
+!      !-------------------------------------------------------------------------
+!      temp = tool_myrange(fitness%hist,size(fitness%hist),fitness%sel(1),1,posInf)
+!      IF((countIter - lastRestart .GT. 2) .AND. (temp .EQ. 0.)) THEN
+!        IF(options%stopOnWarnings) THEN
+!            stopflag = 'warnequalfunvalhist'
+!        ELSE
+!            DO i = 1, input%N
+!                diag(i) = D(i,i)
+!            END DO
+!            WRITE(*,*) &
+!                'Warning: Iteration ', countIter, ': Equal function values', &
+!                'at maximal main axis sigma ', sigma*maxval(diag)	  		
+!            sigma = sigma*exp(0.2_MK+cs/damps)
+!        END IF
+!      END IF
+!      
+!      deallocate(diag)
+!    end subroutine err_mng
+!
+!===========================================================================
 
 END MODULE cma_es
