@@ -1019,7 +1019,7 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%det, &
                           cmaes_opt%population(i)%conv
               !--------------------------------
-              if (i .gt. cmaes_opt%lambda_mo) then
+              if (i .lt. cmaes_opt%lambda_mo) then
               write(unit_number5,*) &
                           cmaes_opt%population(i)%id, &
                           cmaes_opt%population(i)%f, &
