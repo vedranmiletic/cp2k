@@ -984,6 +984,7 @@ MODULE cma_es_utils
     integer                                                   :: unit_number2
     integer                                                   :: unit_number3
     integer                                                   :: unit_number4
+    integer                                                   :: unit_number5
            ! do not print file if trace is not valid
            call system('cp fort.13 fort.13.bkp')
            n = cmaes_opt%n
@@ -1000,6 +1001,9 @@ MODULE cma_es_utils
            !open(12,position='append')
            call open_file(file_name="fort.13",unit_number=unit_number1, &
                           file_action='write',file_status='replace')
+           call open_file(file_name="fort.1",unit_number=unit_number5, &
+                          file_action='write',file_status='unknown',file_position='append')
+
            do i = 1,2*cmaes_opt%lambda_mo
              write(unit_number1,*) &
                           cmaes_opt%population(i)%id, &
@@ -1014,7 +1018,22 @@ MODULE cma_es_utils
                           cmaes_opt%population(i)%trace, &
                           cmaes_opt%population(i)%det, &
                           cmaes_opt%population(i)%conv
-
+              !--------------------------------
+              if (i .gt. cmaes_opt%lambda_mo) then
+              write(unit_number5,*) &
+                          cmaes_opt%population(i)%id, &
+                          cmaes_opt%population(i)%f, &
+                          cmaes_opt%population(i)%sigma, &
+                          cmaes_opt%population(i)%p_succ, &
+                          cmaes_opt%generation, &
+                          cmaes_opt%population(i)%x, &
+                          cmaes_opt%population(i)%penalty, &
+                          cmaes_opt%population(i)%front, &
+                          cmaes_opt%population(i)%I_dist, &
+                          cmaes_opt%population(i)%trace, &
+                          cmaes_opt%population(i)%det, &
+                          cmaes_opt%population(i)%conv
+              endif
               t = cmaes_opt%population(i)%id
               call open_file(file_name="A_"//trim(str(t)),unit_number=unit_number2, &
               file_action='write',file_status='replace')
@@ -1050,6 +1069,7 @@ MODULE cma_es_utils
                 !================================
            enddo
            call close_file(unit_number1)
+           call close_file(unit_number5)
 
     end subroutine write_x
 !===========================================================================
