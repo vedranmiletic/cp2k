@@ -28,7 +28,6 @@ MODULE et_coupling
   USE cp_gemm_interface,               ONLY: cp_gemm
   USE cp_output_handling,              ONLY: cp_print_key_finished_output,&
                                              cp_print_key_unit_nr
-  USE cp_subsys_types,                 ONLY: cp_subsys_get
   USE f77_blas
   USE input_constants,                 ONLY: do_spin_density
   USE input_section_types,             ONLY: section_vals_get_subs_vals,&
@@ -48,6 +47,7 @@ MODULE et_coupling
   USE qs_matrix_pools,                 ONLY: mpools_get
   USE qs_mo_types,                     ONLY: get_mo_set
   USE qs_rho_types,                    ONLY: qs_rho_type
+  USE qs_subsys_types,                 ONLY: qs_subsys_get
   USE termination,                     ONLY: stop_memory
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -334,7 +334,7 @@ CONTAINS
           IF(calc_pot)THEN
 
           NULLIFY(cell,particles,coeff)
-          CALL cp_subsys_get(qs_env%subsys,particles=particles,error=error)
+          CALL qs_subsys_get(qs_env%subsys,particles=particles,error=error)
           becke_const%pw%cr3d=0.0_dp
 
           CALL get_qs_env(qs_env,cell=cell,error=error)
@@ -512,7 +512,7 @@ CONTAINS
        strength=qs_env%dft_control%qs_control%becke_control%strength
 
        NULLIFY(cell,particles)
-       CALL cp_subsys_get(qs_env%subsys,particles=particles,error=error)
+       CALL qs_subsys_get(qs_env%subsys,particles=particles,error=error)
 
        CALL get_qs_env(qs_env, atomic_kind_set=atomic_kind_set,&
                        particle_set=particle_set,&

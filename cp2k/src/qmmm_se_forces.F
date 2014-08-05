@@ -33,6 +33,7 @@ MODULE qmmm_se_forces
                                              qs_environment_type
   USE qs_ks_qmmm_types,                ONLY: qs_ks_qmmm_env_type
   USE qs_rho_types,                    ONLY: qs_rho_type
+  USE qs_subsys_types,                 ONLY: qs_subsys_get
   USE semi_empirical_int_arrays,       ONLY: se_orbital_pointer
   USE semi_empirical_integrals,        ONLY: dcorecore,&
                                              drotnuc
@@ -125,7 +126,7 @@ CONTAINS
                        dft_control=dft_control,&
                        particle_set=particles_qm,&
                        error=error)
-       number_qm_atoms = SIZE(qs_env%subsys%particles%els)
+       CALL qs_subsys_get(qs_env%subsys, nparticle=number_qm_atoms, error=error)
        SELECT CASE (dft_control%qs_control%method_id)
        CASE (do_method_rm1,do_method_am1,do_method_mndo,do_method_pdg,&
              do_method_pm3,do_method_pm6,do_method_mndod,do_method_pnnl)

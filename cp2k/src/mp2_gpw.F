@@ -9,6 +9,7 @@
 !>      10.2011 created [Joost VandeVondele and Mauro Del Ben]
 ! *****************************************************************************
 MODULE mp2_gpw
+  USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_blacs_env,                    ONLY: BLACS_GRID_SQUARE,&
@@ -42,7 +43,6 @@ MODULE mp2_gpw
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
   USE cp_para_types,                   ONLY: cp_para_env_type
-  USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE distribution_1d_types,           ONLY: distribution_1d_release,&
                                              distribution_1d_type
   USE distribution_2d_types,           ONLY: distribution_2d_release,&
@@ -61,6 +61,8 @@ MODULE mp2_gpw
                                              mp_min,&
                                              mp_sendrecv,&
                                              mp_sum
+  USE mol_kind_new_list_types,         ONLY: mol_kind_new_list_type
+  USE mol_new_list_types,              ONLY: mol_new_list_type
   USE molecule_kind_types,             ONLY: molecule_kind_type
   USE molecule_types_new,              ONLY: molecule_type
   USE mp2_cphf,                        ONLY: solve_z_vector_eq
@@ -68,6 +70,7 @@ MODULE mp2_gpw
                                              mp2_ri_gpw_compute_in
   USE mp2_ri_grad,                     ONLY: calc_ri_mp2_nonsep
   USE mp2_types,                       ONLY: mp2_type
+  USE particle_list_types,             ONLY: particle_list_type
   USE particle_types,                  ONLY: get_particle_set,&
                                              particle_type
   USE pw_env_methods,                  ONLY: pw_env_create
@@ -101,6 +104,7 @@ MODULE mp2_gpw
                                              build_neighbor_lists,&
                                              local_atoms_type,&
                                              pair_radius_setup
+  USE qs_subsys_types,                 ONLY: qs_subsys_get
   USE rpa_ri_gpw,                      ONLY: rpa_ri_compute_en
   USE task_list_methods,               ONLY: generate_qs_task_list
   USE task_list_types,                 ONLY: allocate_task_list,&
@@ -185,6 +189,7 @@ MODULE mp2_gpw
       DIMENSION(:, :, :)                     :: BIb_C, BIb_C_beta
     REAL(KIND=dp), DIMENSION(:), POINTER     :: mo_eigenvalues
     TYPE(array_i1d_obj)                      :: row_blk_sizes
+    TYPE(atomic_kind_list_type), POINTER     :: atomic_kind_list
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -196,7 +201,6 @@ MODULE mp2_gpw
     TYPE(cp_fm_type), POINTER                :: mo_coeff, mo_coeff_beta
     TYPE(cp_logger_type), POINTER            :: logger, logger_sub
     TYPE(cp_para_env_type), POINTER          :: para_env_sub
-    TYPE(cp_subsys_type), POINTER            :: subsys
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist_sub
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(distribution_1d_type), POINTER      :: local_molecules_sub, &
@@ -204,12 +208,15 @@ MODULE mp2_gpw
     TYPE(distribution_2d_type), POINTER      :: distribution_2d_sub
     TYPE(local_atoms_type), ALLOCATABLE, &
       DIMENSION(:)                           :: atom2d
+    TYPE(mol_kind_new_list_type), POINTER    :: molecule_kind_list
+    TYPE(mol_new_list_type), POINTER         :: molecule_list
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
       POINTER                                :: molecule_set
     TYPE(neighbor_list_set_p_type), &
       DIMENSION(:), POINTER                  :: sab_orb_sub
+    TYPE(particle_list_type), POINTER        :: particles_list
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env_sub
@@ -277,11 +284,14 @@ MODULE mp2_gpw
                              blacs_repeatable,error=error_sub)
 
     ! get stuff
-    subsys=>qs_env%subsys
-    particle_set => subsys%particles%els
-    atomic_kind_set => subsys%atomic_kinds%els
-    molecule_set => subsys%molecules_new%els
-    molecule_kind_set => subsys%molecule_kinds_new%els
+    CALL qs_subsys_get(qs_env%subsys, particles=particles_list, error=error)
+    particle_set => particles_list%els
+    CALL qs_subsys_get(qs_env%subsys, atomic_kinds=atomic_kind_list, error=error)
+    atomic_kind_set => atomic_kind_list%els
+    CALL qs_subsys_get(qs_env%subsys, molecules_new=molecule_list, error=error)
+    molecule_set => molecule_list%els
+    CALL qs_subsys_get(qs_env%subsys, molecule_kinds_new=molecule_kind_list, error=error)
+    molecule_kind_set => molecule_kind_list%els
 
     ! re-init the radii to be able to generate pair lists with MP2-appropriate screening
     eps_pgf_orb_old=qs_env%dft_control%qs_control%eps_pgf_orb

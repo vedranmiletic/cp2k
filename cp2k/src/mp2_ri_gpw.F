@@ -9,6 +9,7 @@
 !>      06.2012 created [Mauro Del Ben]
 ! *****************************************************************************
 MODULE mp2_ri_gpw
+  USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
@@ -43,7 +44,6 @@ MODULE mp2_ri_gpw
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
   USE cp_para_types,                   ONLY: cp_para_env_type
-  USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE gaussian_gridlevels,             ONLY: gaussian_gridlevel
   USE input_constants,                 ONLY: use_orb_basis_set,&
                                              use_ri_aux_basis_set
@@ -58,11 +58,14 @@ MODULE mp2_ri_gpw
                                              mp_sendrecv,&
                                              mp_sum,&
                                              mp_sync
+  USE mol_kind_new_list_types,         ONLY: mol_kind_new_list_type
+  USE mol_new_list_types,              ONLY: mol_new_list_type
   USE molecule_kind_types,             ONLY: molecule_kind_type
   USE molecule_types_new,              ONLY: molecule_type
   USE mp2_ri_grad_util,                ONLY: complete_gamma
   USE mp2_types,                       ONLY: mp2_type
   USE orbital_pointers,                ONLY: ncoset
+  USE particle_list_types,             ONLY: particle_list_type
   USE particle_types,                  ONLY: particle_type
   USE pw_env_types,                    ONLY: pw_env_get,&
                                              pw_env_type
@@ -81,6 +84,7 @@ MODULE mp2_ri_gpw
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace,&
                                              integrate_v_rspace
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
+  USE qs_subsys_types,                 ONLY: qs_subsys_get
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
                                              realspace_grid_p_type,&
                                              rs_grid_release,&
@@ -669,6 +673,7 @@ MODULE mp2_ri_gpw
     REAL(KIND=dp), DIMENSION(3)              :: ra, rab
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, rpgfa, sphi_a, zeta
+    TYPE(atomic_kind_list_type), POINTER     :: atomic_kind_list
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -676,12 +681,14 @@ MODULE mp2_ri_gpw
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
     TYPE(cp_fm_type), POINTER                :: fm_matrix_L_diag
     TYPE(cp_para_env_type), POINTER          :: para_env_exchange
-    TYPE(cp_subsys_type), POINTER            :: subsys
     TYPE(gto_basis_set_type), POINTER        :: basis_set_a
+    TYPE(mol_kind_new_list_type), POINTER    :: molecule_kind_list
+    TYPE(mol_new_list_type), POINTER         :: molecule_list
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
       POINTER                                :: molecule_set
+    TYPE(particle_list_type), POINTER        :: particles_list
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(realspace_grid_desc_p_type), &
@@ -694,11 +701,15 @@ MODULE mp2_ri_gpw
 
 
     ! get stuff
-    subsys=>qs_env%subsys
-    particle_set => subsys%particles%els
-    atomic_kind_set => subsys%atomic_kinds%els
-    molecule_set => subsys%molecules_new%els
-    molecule_kind_set => subsys%molecule_kinds_new%els
+    CALL qs_subsys_get(qs_env%subsys, particles=particles_list, error=error)
+    particle_set => particles_list%els
+    CALL qs_subsys_get(qs_env%subsys, atomic_kinds=atomic_kind_list, error=error)
+    atomic_kind_set => atomic_kind_list%els
+    CALL qs_subsys_get(qs_env%subsys, molecules_new=molecule_list, error=error)
+    molecule_set => molecule_list%els
+    CALL qs_subsys_get(qs_env%subsys, molecule_kinds_new=molecule_kind_list, error=error)
+    molecule_kind_set => molecule_kind_list%els
+
     ! blacs_env => qs_env%blacs_env
     cell=>qs_env%cell
 

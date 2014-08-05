@@ -13,7 +13,6 @@
 !> \author fawzi
 ! *****************************************************************************
 MODULE force_env_methods
-
   USE atprop_types,                    ONLY: atprop_create,&
                                              atprop_init,&
                                              atprop_type
@@ -137,6 +136,8 @@ MODULE force_env_methods
                                              set_qs_env
   USE qs_force,                        ONLY: qs_forces
   USE qs_ks_qmmm_methods,              ONLY: ks_qmmm_env_rebuild
+  USE qs_subsys_types,                 ONLY: qs_subsys_get,&
+                                             qs_subsys_type
   USE restraint,                       ONLY: restraint_control
   USE se_ga_tools,                     ONLY: se_ga_release
   USE string_utilities,                ONLY: compress
@@ -727,10 +728,11 @@ CONTAINS
     LOGICAL                                  :: atomic_energy, atomic_stress, &
                                                 failure, pv_availability, &
                                                 pv_diagonal, pv_numerical
-    TYPE(cp_subsys_type), POINTER            :: subsys
+    TYPE(cp_subsys_type), POINTER            :: cp_subsys
     TYPE(qs_environment_type), POINTER       :: ep_main_qs_env
+    TYPE(qs_subsys_type), POINTER            :: qs_subsys
 
-    NULLIFY(ep_main_qs_env)
+    NULLIFY(ep_main_qs_env, cp_subsys, qs_subsys)
 
     failure=.FALSE.
 
@@ -888,25 +890,28 @@ CONTAINS
           NULLIFY(force_env%meta_env)
        END IF
        CALL cp_result_create(results=force_env%results,error=error)
+       STOP "TODO: force_env_methods"
        SELECT CASE(force_env%in_use)
        CASE(use_fist_force)
           CALL fist_env_get (force_env%fist_env, subsys=force_env%subsys, error=error)
           CALL cp_subsys_retain (force_env%subsys, error=error)
        CASE(use_qs_force)
-          CALL get_qs_env(force_env%qs_env, subsys=force_env%subsys,error=error)
+          CALL get_qs_env(force_env%qs_env, subsys=qs_subsys,error=error)
+          CALL qs_subsys_get(qs_subsys, cp_subsys=force_env%subsys, error=error)
           CALL cp_subsys_retain(force_env%subsys,error=error)
        CASE(use_ep_force)
           CALL ep_f77_get_main_qs_env(force_env%ep_env_id, ep_main_qs_env)
-          CALL get_qs_env(ep_main_qs_env,subsys=force_env%subsys,error=error)
+          CALL get_qs_env(ep_main_qs_env, subsys=qs_subsys,error=error)
+          CALL qs_subsys_get(qs_subsys, cp_subsys=force_env%subsys, error=error)
           CALL cp_subsys_retain(force_env%subsys,error=error)
           NULLIFY(ep_main_qs_env)
        CASE(use_eip_force)
           CALL eip_env_get(force_env%eip_env,subsys=force_env%subsys,error=error)
           CALL cp_subsys_retain(force_env%subsys, error=error)
        CASE(use_qmmm)
-          subsys => force_env%sub_force_env(primary_subsys)%force_env%subsys
-          force_env%subsys => subsys
-          CALL cp_subsys_retain(subsys,error=error)
+          cp_subsys => force_env%sub_force_env(primary_subsys)%force_env%subsys
+          force_env%subsys => cp_subsys
+          CALL cp_subsys_retain(cp_subsys,error=error)
        CASE(use_mixed_force)
           CALL get_mixed_env (force_env%mixed_env,subsys=force_env%subsys,error=error)
           CALL cp_subsys_retain (force_env%subsys, error=error)

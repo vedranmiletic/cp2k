@@ -38,7 +38,6 @@ MODULE mp2_ri_grad
   USE cp_para_env,                     ONLY: cp_para_env_create,&
                                              cp_para_env_release
   USE cp_para_types,                   ONLY: cp_para_env_type
-  USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE gaussian_gridlevels,             ONLY: gaussian_gridlevel
   USE input_constants,                 ONLY: use_orb_basis_set,&
                                              use_ri_aux_basis_set
@@ -47,6 +46,8 @@ MODULE mp2_ri_grad
   USE message_passing,                 ONLY: &
        mp_alltoall, mp_comm_split_direct, mp_irecv, mp_isend, &
        mp_request_null, mp_sendrecv, mp_sum, mp_wait, mp_waitall
+  USE mol_kind_new_list_types,         ONLY: mol_kind_new_list_type
+  USE mol_new_list_types,              ONLY: mol_new_list_type
   USE molecule_kind_types,             ONLY: molecule_kind_type
   USE molecule_types_new,              ONLY: molecule_type
   USE mp2_types,                       ONLY: integ_mat_buffer_type,&
@@ -79,6 +80,7 @@ MODULE mp2_ri_grad
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace,&
                                              integrate_v_rspace
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
+  USE qs_subsys_types,                 ONLY: qs_subsys_get
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
                                              realspace_grid_p_type,&
                                              rs_grid_release,&
@@ -202,8 +204,9 @@ MODULE mp2_ri_grad
     TYPE(cp_dbcsr_type), POINTER             :: mo_coeff_o, mo_coeff_v
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct_tmp
     TYPE(cp_fm_type), POINTER                :: L1_mu_i, L2_nu_a
-    TYPE(cp_subsys_type), POINTER            :: subsys
     TYPE(gto_basis_set_type), POINTER        :: basis_set_a
+    TYPE(mol_kind_new_list_type), POINTER    :: molecule_kind_list
+    TYPE(mol_new_list_type), POINTER         :: molecule_list
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
@@ -227,9 +230,10 @@ MODULE mp2_ri_grad
     mo_coeff_o => mp2_env%ri_grad%mo_coeff_o
     mo_coeff_v => mp2_env%ri_grad%mo_coeff_v
     G_P_ia => mp2_env%ri_grad%G_P_ia
-    subsys=>qs_env%subsys
-    molecule_set => subsys%molecules_new%els
-    molecule_kind_set => subsys%molecule_kinds_new%els
+    CALL qs_subsys_get(qs_env%subsys, molecules_new=molecule_list, error=error)
+    molecule_set => molecule_list%els
+    CALL qs_subsys_get(qs_env%subsys, molecule_kinds_new=molecule_kind_list, error=error)
+    molecule_kind_set => molecule_kind_list%els
 
     nkind = SIZE(atomic_kind_set)
     natom = SIZE(particle_set)

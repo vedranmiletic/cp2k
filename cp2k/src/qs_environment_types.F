@@ -46,11 +46,6 @@ MODULE qs_environment_types
   USE cp_result_types,                 ONLY: cp_result_create,&
                                              cp_result_release,&
                                              cp_result_type
-  USE cp_subsys_types,                 ONLY: cp_subsys_create,&
-                                             cp_subsys_get,&
-                                             cp_subsys_release,&
-                                             cp_subsys_retain,&
-                                             cp_subsys_type
   USE distribution_1d_types,           ONLY: distribution_1d_type
   USE distribution_2d_types,           ONLY: distribution_2d_release,&
                                              distribution_2d_retain,&
@@ -161,6 +156,10 @@ MODULE qs_environment_types
                                              qs_scf_env_type,&
                                              scf_env_release,&
                                              scf_env_retain
+  USE qs_subsys_types,                 ONLY: qs_subsys_get,&
+                                             qs_subsys_release,&
+                                             qs_subsys_retain,&
+                                             qs_subsys_type
   USE qs_wf_history_types,             ONLY: qs_wf_history_type,&
                                              wfi_release,&
                                              wfi_retain
@@ -404,7 +403,7 @@ MODULE qs_environment_types
     TYPE(qs_matrix_pools_type), POINTER                   :: mpools_aux_fit
     TYPE(distribution_2d_type), POINTER                   :: distribution_2d
     TYPE(dbcsr_distribution_obj), POINTER                 :: dbcsr_dist
-    TYPE(cp_subsys_type), POINTER                         :: subsys
+    TYPE(qs_subsys_type), POINTER                         :: subsys
     TYPE(oce_matrix_type), POINTER                        :: oce
     TYPE(local_rho_type), POINTER                         :: local_rho_set
     TYPE(hartree_local_type),  POINTER                    :: hartree_local
@@ -695,7 +694,7 @@ CONTAINS
       OPTIONAL, POINTER                      :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: molecule_set
-    TYPE(cp_subsys_type), OPTIONAL, POINTER  :: subsys
+    TYPE(qs_subsys_type), OPTIONAL, POINTER  :: subsys
     TYPE(oce_matrix_type), OPTIONAL, POINTER :: oce
     TYPE(rho_atom_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: rho_atom_set
@@ -917,7 +916,7 @@ CONTAINS
 
     IF(PRESENT(xas_env)) xas_env => qs_env%xas_env
 
-    CALL cp_subsys_get(qs_env%subsys,&
+    CALL qs_subsys_get(qs_env%subsys,&
                       atomic_kinds=atomic_kinds,&
                       local_molecules_new=local_molecules,&
                       local_particles=local_particles,&
@@ -1089,7 +1088,8 @@ CONTAINS
 
     CALL local_rho_set_create(qs_env%local_rho_set, error=error)
     CALL hartree_local_create(qs_env%hartree_local, error=error)
-    CALL cp_subsys_create(qs_env%subsys, para_env=para_env, error=error)
+    STOP "TODO in qs_environment_types"
+    !CALL qs_subsys_create(qs_env%subsys, para_env=para_env, error=error)
     CALL cp_para_env_retain(para_env,error=error)
     qs_env%para_env => para_env
     CALL cp_blacs_env_create(qs_env%blacs_env,qs_env%para_env,&
@@ -1322,7 +1322,7 @@ CONTAINS
       POINTER                                :: dbcsr_dist
     TYPE(section_vals_type), OPTIONAL, &
       POINTER                                :: input
-    TYPE(cp_subsys_type), OPTIONAL, POINTER  :: subsys
+    TYPE(qs_subsys_type), OPTIONAL, POINTER  :: subsys
     TYPE(oce_matrix_type), OPTIONAL, POINTER :: oce
     TYPE(rho_atom_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: rho_atom_set
@@ -1619,8 +1619,8 @@ CONTAINS
     END IF
 
     IF (PRESENT(subsys)) THEN
-       CALL cp_subsys_retain(subsys,error=error)
-       CALL cp_subsys_release(qs_env%subsys,error=error)
+       CALL qs_subsys_retain(subsys,error=error)
+       CALL qs_subsys_release(qs_env%subsys,error=error)
        qs_env%subsys => subsys
     END IF
     IF (PRESENT(distribution_2d)) THEN
@@ -2091,7 +2091,7 @@ CONTAINS
              CALL cp_dbcsr_distribution_release(qs_env%dbcsr_dist)
              DEALLOCATE(qs_env%dbcsr_dist)
           ENDIF
-          CALL cp_subsys_release(qs_env%subsys,error=error)
+          CALL qs_subsys_release(qs_env%subsys,error=error)
           CALL section_vals_release(qs_env%input,error=error)
           CALL cp_ddapc_release(qs_env%cp_ddapc_env, error=error)
           CALL cp_ddapc_ewald_release(qs_env%cp_ddapc_ewald, error=error)

@@ -165,6 +165,8 @@ MODULE qs_environment
   USE qs_rho0_methods,                 ONLY: init_rho0
   USE qs_rho0_types,                   ONLY: rho0_mpole_type
   USE qs_rho_atom_methods,             ONLY: init_rho_atom
+  USE qs_subsys_types,                 ONLY: qs_subsys_create,&
+                                             qs_subsys_type
   USE qs_wf_history_methods,           ONLY: wfi_create
   USE qs_wf_history_types,             ONLY: qs_wf_history_type,&
                                              wfi_release
@@ -546,6 +548,7 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_subsys_type), POINTER            :: qs_subsys
     TYPE(qs_wf_history_type), POINTER        :: wf_history
     TYPE(rel_control_type), POINTER          :: rel_control
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole
@@ -575,6 +578,7 @@ CONTAINS
     END IF
 
     ! Initialise the Quickstep environment
+    NULLIFY (qs_subsys)
     NULLIFY (mos, se_taper, mos_aux_fit)
     NULLIFY (dft_control)
     NULLIFY (energy)
@@ -816,7 +820,8 @@ CONTAINS
     END IF
 
     !   *** Set the current Quickstep environment ***
-    CALL set_qs_env(qs_env,subsys=subsys,error=error)
+    CALL qs_subsys_create(qs_subsys, subsys, error)
+    CALL set_qs_env(qs_env,subsys=qs_subsys,error=error)
     CALL set_qs_env(qs_env=qs_env,&
                     cell=cell,&
                     cell_ref=cell_ref,&
