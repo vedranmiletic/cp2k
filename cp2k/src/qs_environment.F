@@ -166,7 +166,8 @@ MODULE qs_environment
   USE qs_rho0_types,                   ONLY: rho0_mpole_type
   USE qs_rho_atom_methods,             ONLY: init_rho_atom
   USE qs_subsys_types,                 ONLY: qs_subsys_create,&
-                                             qs_subsys_type
+                                             qs_subsys_type,&
+                                             qs_subsys_release
   USE qs_wf_history_methods,           ONLY: wfi_create
   USE qs_wf_history_types,             ONLY: qs_wf_history_type,&
                                              wfi_release
@@ -374,7 +375,7 @@ CONTAINS
 
     IF (.NOT.PRESENT(cell))        CALL cell_release(my_cell,error=error)
     IF (.NOT.PRESENT(cell_ref))    CALL cell_release(my_cell_ref,error=error)
-    IF (.NOT.PRESENT(subsys)) CALL cp_subsys_release(my_subsys,error=error)
+    IF (.NOT.PRESENT(subsys))      CALL cp_subsys_release(my_subsys,error=error)
 
     do_hfx =.FALSE.
     hfx_section => section_vals_get_subs_vals(qs_env%input,"DFT%XC%HF",error=error)
@@ -822,6 +823,7 @@ CONTAINS
     !   *** Set the current Quickstep environment ***
     CALL qs_subsys_create(qs_subsys, subsys, error)
     CALL set_qs_env(qs_env,subsys=qs_subsys,error=error)
+    CALL qs_subsys_release(qs_subsys,error=error)
     CALL set_qs_env(qs_env=qs_env,&
                     cell=cell,&
                     cell_ref=cell_ref,&

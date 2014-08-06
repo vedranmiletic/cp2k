@@ -132,7 +132,6 @@ MODULE force_env_types
 !>        metadynamics
 !> \param fp_env the flexible partitioning environment
 !>      read-only attributes (get them *only* through force_env_get):
-!> \param subsys the fragments that build up the actual system.
 !> \param ep_env_id environment for an ep calculation
 !> \param cell the cell of the actual system
 !> \note
@@ -152,7 +151,6 @@ MODULE force_env_types
      TYPE ( fp_type ), POINTER                           :: fp_env
      TYPE ( qs_environment_type ), POINTER               :: qs_env
      TYPE ( eip_environment_type ), POINTER              :: eip_env
-     TYPE ( cp_subsys_type ), POINTER                    :: subsys
      TYPE ( global_environment_type ), POINTER           :: globenv
      TYPE ( cp_para_env_type ), POINTER                  :: para_env
      TYPE ( force_env_p_type ), DIMENSION(:), POINTER    :: sub_force_env
@@ -236,10 +234,6 @@ CONTAINS
        force_env%ref_count=force_env%ref_count-1
        IF (force_env%ref_count==0) THEN
           force_env%ref_count=1
-          ! Deallocate Subsys
-          IF (ASSOCIATED(force_env%subsys)) THEN
-             CALL cp_subsys_release(force_env%subsys, error=error)
-          END IF
           ! Deallocate SUB_FORCE_ENV
           IF (ASSOCIATED(force_env%sub_force_env)) THEN
              DO i=1,SIZE(force_env%sub_force_env)
@@ -406,6 +400,7 @@ CONTAINS
                           cell_ref=cell_ref,&
                           use_ref_cell=use_ref_cell,&
                           input=input,&
+                          cp_subsys=subsys,&
                           error=error)
           NULLIFY(ep_main_qs_env)
           IF (PRESENT(potential_energy)) potential_energy = ep_f77_get_energy(force_env%ep_env_id)
@@ -420,6 +415,7 @@ CONTAINS
                           cell_ref=cell_ref,&
                           use_ref_cell=use_ref_cell,&
                           input=input,&
+                          cp_subsys=subsys,&
                           error=error)
           IF (PRESENT(potential_energy)) potential_energy = qs_energy%total
           CPPrecondition(.NOT.PRESENT(kinetic_energy),cp_failure_level,routineP,error,failure)
@@ -432,6 +428,7 @@ CONTAINS
                             thermo=thermo,&
                             cell=cell,&
                             cell_ref=cell_ref,&
+                            subsys=subsys,&
                             error=error)
           IF (PRESENT(potential_energy)) potential_energy = thermo%pot
           IF (PRESENT(kinetic_energy)) kinetic_energy = thermo%kin
@@ -448,6 +445,7 @@ CONTAINS
                            use_ref_cell=use_ref_cell,&
                            eip_potential_energy=eip_potential_energy,&
                            eip_kinetic_energy=eip_kinetic_energy,&
+                           subsys=subsys,&
                            error=error)
           IF (PRESENT(potential_energy)) THEN
             potential_energy = eip_potential_energy
@@ -471,6 +469,10 @@ CONTAINS
                                   kinetic_energy=kinetic_energy,&
                                   error=error)
             END IF
+            IF (PRESENT(subsys)) THEN
+                 CALL force_env_get(force_env%sub_force_env(primary_subsys)%force_env,&
+                                    subsys=subsys, error=error)
+            ENDIF
             IF (PRESENT(potential_energy)) THEN
                  ! get the underlying energies from primary subsys.  This is the only subsys
                  ! for conventional QM/MM, and force-mixing knows to put relevant energy there.
@@ -501,6 +503,7 @@ CONTAINS
                             mixed_energy=mixed_energy,&
                             cell=cell,&
                             cell_ref=cell_ref,&
+                            subsys=subsys,&
                             error=error)
           IF (PRESENT(potential_energy)) potential_energy = mixed_energy%pot
           IF (PRESENT(kinetic_energy)) kinetic_energy = mixed_energy%kin
@@ -525,7 +528,6 @@ CONTAINS
           eip_env => force_env%eip_env
        END IF
        IF (PRESENT(results)) results => force_env%results
-       IF (PRESENT(subsys)) subsys => force_env%subsys
        IF (PRESENT(para_env)) para_env => force_env%para_env
        ! adjust the total energy for the metadynamics
        IF (ASSOCIATED(force_env%meta_env)) THEN

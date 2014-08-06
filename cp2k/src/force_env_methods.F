@@ -305,7 +305,8 @@ CONTAINS
           IF (ASSOCIATED(force_env%fp_env)) THEN
              IF (force_env%fp_env%use_fp) THEN
                 CALL force_env_get(force_env,cell=cell,error=error)
-                CALL fp_eval(force_env%fp_env,force_env%subsys,cell,error=error)
+                CALL force_env_get(force_env,subsys=subsys,error=error)
+                CALL fp_eval(force_env%fp_env,subsys,cell,error=error)
              ENDIF
           ENDIF
           ! Constraints ONLY of Fixed Atom type
@@ -728,18 +729,16 @@ CONTAINS
     LOGICAL                                  :: atomic_energy, atomic_stress, &
                                                 failure, pv_availability, &
                                                 pv_diagonal, pv_numerical
-    TYPE(cp_subsys_type), POINTER            :: cp_subsys
     TYPE(qs_environment_type), POINTER       :: ep_main_qs_env
-    TYPE(qs_subsys_type), POINTER            :: qs_subsys
 
-    NULLIFY(ep_main_qs_env, cp_subsys, qs_subsys)
+    NULLIFY(ep_main_qs_env)
 
     failure=.FALSE.
 
     ALLOCATE ( force_env, stat=stat )
     CPPostconditionNoFail(stat==0,cp_fatal_level,routineP,error)
     IF (.NOT. failure) THEN
-       NULLIFY ( force_env%subsys, force_env%fist_env, &
+       NULLIFY (force_env%fist_env, &
             force_env%qs_env,   &
             force_env%para_env, force_env%globenv, &
             force_env%meta_env, force_env%sub_force_env, &
@@ -890,35 +889,6 @@ CONTAINS
           NULLIFY(force_env%meta_env)
        END IF
        CALL cp_result_create(results=force_env%results,error=error)
-       STOP "TODO: force_env_methods"
-       SELECT CASE(force_env%in_use)
-       CASE(use_fist_force)
-          CALL fist_env_get (force_env%fist_env, subsys=force_env%subsys, error=error)
-          CALL cp_subsys_retain (force_env%subsys, error=error)
-       CASE(use_qs_force)
-          CALL get_qs_env(force_env%qs_env, subsys=qs_subsys,error=error)
-          CALL qs_subsys_get(qs_subsys, cp_subsys=force_env%subsys, error=error)
-          CALL cp_subsys_retain(force_env%subsys,error=error)
-       CASE(use_ep_force)
-          CALL ep_f77_get_main_qs_env(force_env%ep_env_id, ep_main_qs_env)
-          CALL get_qs_env(ep_main_qs_env, subsys=qs_subsys,error=error)
-          CALL qs_subsys_get(qs_subsys, cp_subsys=force_env%subsys, error=error)
-          CALL cp_subsys_retain(force_env%subsys,error=error)
-          NULLIFY(ep_main_qs_env)
-       CASE(use_eip_force)
-          CALL eip_env_get(force_env%eip_env,subsys=force_env%subsys,error=error)
-          CALL cp_subsys_retain(force_env%subsys, error=error)
-       CASE(use_qmmm)
-          cp_subsys => force_env%sub_force_env(primary_subsys)%force_env%subsys
-          force_env%subsys => cp_subsys
-          CALL cp_subsys_retain(cp_subsys,error=error)
-       CASE(use_mixed_force)
-          CALL get_mixed_env (force_env%mixed_env,subsys=force_env%subsys,error=error)
-          CALL cp_subsys_retain (force_env%subsys, error=error)
-       CASE default
-          CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
-       END SELECT
-
     END IF
 
   END SUBROUTINE force_env_create

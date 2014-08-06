@@ -10,6 +10,7 @@
 !> \author MK (23.01.2002)
 ! *****************************************************************************
 MODULE qs_environment_types
+  USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE admm_types,                      ONLY: admm_env_release,&
                                              admm_type
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
@@ -620,7 +621,7 @@ CONTAINS
        outer_scf_history,outer_scf_ihistory,ep_qs_env,x_data,et_coupling,dftb_potential,results,&
        scp_env,se_taper,se_store_int_env,se_nddo_mpole,se_nonbond_env, admm_env, &
        lri_env,lri_density,hfx_ri_env,dispersion_env, vee,rho_external,external_vxc,mask,&
-       mp2_env,kg_env,WannierCentres,ga_env,atprop,ls_scf_env,error)
+       mp2_env,kg_env,WannierCentres,ga_env,atprop,ls_scf_env,cp_subsys,error)
     TYPE(qs_environment_type), POINTER       :: qs_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: atomic_kind_set
@@ -695,6 +696,7 @@ CONTAINS
     TYPE(molecule_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: molecule_set
     TYPE(qs_subsys_type), OPTIONAL, POINTER  :: subsys
+    TYPE(cp_subsys_type), OPTIONAL, POINTER  :: cp_subsys
     TYPE(oce_matrix_type), OPTIONAL, POINTER :: oce
     TYPE(rho_atom_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: rho_atom_set
@@ -866,6 +868,7 @@ CONTAINS
     IF (PRESENT(scf_env)) scf_env => qs_env%scf_env
     IF (PRESENT(id_nr)) id_nr=qs_env%id_nr
     IF (PRESENT(subsys)) subsys => qs_env%subsys
+    IF (PRESENT(cp_subsys)) CALL qs_subsys_get(qs_env%subsys, cp_subsys=cp_subsys, error=error)
     IF (PRESENT(para_env)) para_env => qs_env%para_env
     IF (PRESENT(distribution_2d)) distribution_2d => qs_env%distribution_2d
     IF (PRESENT(dbcsr_dist)) dbcsr_dist => qs_env%dbcsr_dist
@@ -1088,8 +1091,6 @@ CONTAINS
 
     CALL local_rho_set_create(qs_env%local_rho_set, error=error)
     CALL hartree_local_create(qs_env%hartree_local, error=error)
-    STOP "TODO in qs_environment_types"
-    !CALL qs_subsys_create(qs_env%subsys, para_env=para_env, error=error)
     CALL cp_para_env_retain(para_env,error=error)
     qs_env%para_env => para_env
     CALL cp_blacs_env_create(qs_env%blacs_env,qs_env%para_env,&

@@ -10,6 +10,8 @@
 !>      11.2007 Teodoro Laino [tlaino] - University of Zurich
 ! *****************************************************************************
 MODULE metadynamics_utils
+  USE force_env_types,                 ONLY: force_env_get
+  USE cp_subsys_types,                 ONLY: cp_subsys_type
   USE cp_files,                        ONLY: close_file,&
                                              open_file
   USE cp_output_handling,              ONLY: cp_print_key_finished_output,&
@@ -100,6 +102,7 @@ CONTAINS
     TYPE(section_vals_type), POINTER         :: md_section, metadyn_section, &
                                                 metavar_section, &
                                                 walkers_section
+    TYPE(cp_subsys_type),          POINTER  :: subsys
 
     CALL timeset(routineN,handle)
 
@@ -107,8 +110,9 @@ CONTAINS
     CALL section_vals_get(fe_section,explicit=explicit,error=error)
     IF (explicit) THEN
        number_allocated_colvars = 0
-       IF (ASSOCIATED(force_env%subsys%colvar_p)) THEN
-          number_allocated_colvars = SIZE(force_env%subsys%colvar_p)
+       CALL force_env_get(force_env, subsys=subsys, error=error)
+       IF (ASSOCIATED(subsys%colvar_p)) THEN
+          number_allocated_colvars = SIZE(subsys%colvar_p)
        END IF
        CALL section_vals_val_get(fe_section,"METHOD",i_val=id_method,error=error)
        IF (id_method/=do_fe_meta) THEN
