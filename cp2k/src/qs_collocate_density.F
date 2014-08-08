@@ -33,9 +33,9 @@
 ! *****************************************************************************
 MODULE qs_collocate_density
   USE ao_util,                         ONLY: exp_radius_very_extended
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -187,9 +187,9 @@ CONTAINS
                                                 pp
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -206,11 +206,11 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(atomic_kind,cell,dft_control,pab,atomic_kind_set,particle_set,&
+    NULLIFY(qs_kind,cell,dft_control,pab,qs_kind_set,particle_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     dft_control=dft_control,&
                     cell=cell,&
                     particle_set=particle_set,&
@@ -223,11 +223,11 @@ CONTAINS
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
-    DO ikind=1,SIZE(atomic_kind_set)
+    DO ikind=1,SIZE(qs_kind_set)
 
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_qs_kind(qs_kind=qs_kind,&
                            natom=natom,atom_list=atom_list,&
                            scptb_parameter=scptb_kind)
       CALL get_scptb_parameter(scptb_kind,defined=defined,lmaxscp=lmaxscp,ag=alpha)
@@ -325,9 +325,9 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:), POINTER     :: alpha_nlcc
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: cval_nlcc, pab
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -344,11 +344,11 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(atomic_kind,cell,dft_control,pab,atomic_kind_set,particle_set,&
+    NULLIFY(qs_kind,cell,dft_control,pab,qs_kind_set,particle_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     particle_set=particle_set,&
@@ -362,11 +362,11 @@ CONTAINS
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
-    DO ikind=1,SIZE(atomic_kind_set)
+    DO ikind=1,SIZE(qs_kind_set)
 
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_qs_kind(qs_kind=qs_kind,&
                            natom=natom,&
                            atom_list=atom_list,&
                            gth_potential=gth_potential)
@@ -519,9 +519,9 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:), POINTER     :: cexp_ppl
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -538,11 +538,11 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(atomic_kind,cell,dft_control,pab,atomic_kind_set,particle_set,&
+    NULLIFY(qs_kind,cell,dft_control,pab,qs_kind_set,particle_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     particle_set=particle_set,&
@@ -556,11 +556,11 @@ CONTAINS
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
-    DO ikind=1,SIZE(atomic_kind_set)
+    DO ikind=1,SIZE(qs_kind_set)
 
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_qs_kind(qs_kind=qs_kind,&
                            natom=natom,&
                            atom_list=atom_list,&
                            gth_potential=gth_potential)
@@ -714,9 +714,9 @@ CONTAINS
     REAL(KIND=dp)                            :: eps_rho_rspace
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab, sphi_a, work, zeta
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cube_info_type), DIMENSION(:), &
@@ -736,7 +736,7 @@ CONTAINS
     TYPE(realspace_grid_p_type), &
       DIMENSION(:), POINTER                  :: rs_rho
 
-    NULLIFY(aux_basis_set, atomic_kind_set, atomic_kind, npgfa, cell, particle_set, &
+    NULLIFY(aux_basis_set, qs_kind_set, qs_kind, npgfa, cell, particle_set, &
             sphi_a, rs_rho, pw_env, cube_info, dft_control, rho_struct, atom_list, &
             first_sgfa, pab, work)
     NULLIFY(gridlevel_info, rs_descs, pw_pools, mgrid_gspace, mgrid_rspace)
@@ -745,7 +745,7 @@ CONTAINS
 
     logger => cp_error_get_logger(error)
 
-    CALL get_qs_env(qs_env=qs_env, atomic_kind_set=atomic_kind_set, cell=cell, &
+    CALL get_qs_env(qs_env=qs_env, qs_kind_set=qs_kind_set, cell=cell, &
                     particle_set=particle_set, pw_env=pw_env, rho=rho_struct, &
                     dft_control=dft_control, error=error)
 
@@ -774,7 +774,7 @@ CONTAINS
       CALL rs_grid_zero(rs_rho(igrid_level)%rs_grid)
     END DO
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set, maxco=maxco)
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set, maxco=maxco)
     ALLOCATE (pab(maxco,1),STAT=ierr)
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
                                     "pab",maxco*dp_size)
@@ -782,12 +782,12 @@ CONTAINS
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
                                     "work",maxco*dp_size)
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
 
     DO ikind = 1,nkind
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind, aux_basis_set=aux_basis_set, natom=natom, &
+      CALL get_qs_kind(qs_kind=qs_kind, aux_basis_set=aux_basis_set, natom=natom, &
                            atom_list=atom_list)
 
       CALL get_gto_basis_set(gto_basis_set=aux_basis_set, lmax=la_max, lmin=la_min, zet=zeta, &
@@ -917,9 +917,9 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:), POINTER     :: aci
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab, sphi_a, work, zeta
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -940,7 +940,7 @@ CONTAINS
       DIMENSION(:), POINTER                  :: rs_rho
     TYPE(realspace_grid_type), POINTER       :: rs_grid
 
-    NULLIFY(aci, atomic_kind, atomic_kind_set, atom_list, cell, cube_info,&
+    NULLIFY(aci, qs_kind, qs_kind_set, atom_list, cell, cube_info,&
             dft_control, first_sgfa, gridlevel_info, la_max, la_min, lri_basis_set,&
             logger, mgrid_gspace, mgrid_rspace, npgfa, nsgfa, pab, para_env,&
             particle_set, pw_env, pw_pools, rs_descs, rs_grid, rs_rho, sphi_a,&
@@ -950,7 +950,7 @@ CONTAINS
     
     logger => cp_error_get_logger(error)
 
-    CALL get_qs_env(qs_env=qs_env, atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_env(qs_env=qs_env, qs_kind_set=qs_kind_set,&
                     cell=cell, particle_set=particle_set, &
                     para_env=para_env, pw_env=pw_env,&
                     dft_control=dft_control, error=error)
@@ -982,22 +982,22 @@ CONTAINS
     END DO
 
     !take maxco from the LRI basis set!
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
                              maxco=maxco,basis_set_id=use_lri_basis_set)
 
     ALLOCATE (pab(maxco,1),STAT=ierr)
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
                                     "pab",maxco*dp_size)
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     offset = 0
     my_pos=mgrid_rspace(1)%pw%pw_grid%para%my_pos
     group_size=mgrid_rspace(1)%pw%pw_grid%para%group_size
 
     DO ikind = 1,nkind
 
-       atomic_kind => atomic_kind_set(ikind)
+       qs_kind => qs_kind_set(ikind)
 
-       CALL get_atomic_kind(atomic_kind=atomic_kind, atom_list=atom_list,&
+       CALL get_qs_kind(qs_kind=qs_kind, atom_list=atom_list,&
                            lri_basis_set=lri_basis_set, natom=natom)
        
        !Take the lri basis set here!
@@ -1139,9 +1139,9 @@ CONTAINS
     REAL(KIND=dp)                            :: alpha, eps_rho_rspace
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -1155,7 +1155,7 @@ CONTAINS
     TYPE(realspace_grid_type), POINTER       :: rs_rho
 
     CALL timeset(routineN,handle)
-    NULLIFY(atomic_kind,cell,dft_control,pab,atomic_kind_set,particle_set,&
+    NULLIFY(qs_kind,cell,dft_control,pab,qs_kind_set,particle_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
     ALLOCATE (pab(1,1),STAT=ierr)
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
@@ -1165,7 +1165,7 @@ CONTAINS
     IF(PRESENT(only_nopaw)) my_only_nopaw = only_nopaw
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     particle_set=particle_set,&
@@ -1179,11 +1179,11 @@ CONTAINS
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
-    DO ikind=1,SIZE(atomic_kind_set)
+    DO ikind=1,SIZE(qs_kind_set)
 
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_qs_kind(qs_kind=qs_kind,&
                            natom=natom,&
                            paw_atom=paw_atom,&
                            atom_list=atom_list,&
@@ -1726,9 +1726,9 @@ END SUBROUTINE calculate_rho_resp_all
                                                 zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: pabt, workt
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: deltap
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -1750,8 +1750,8 @@ END SUBROUTINE calculate_rho_resp_all
 !$  INTEGER :: omp_get_thread_num, omp_get_max_threads
 
     failure=.FALSE.
-    NULLIFY(atomic_kind, cell, dft_control, orb_basis_set, deltap, &
-         atomic_kind_set, particle_set, rs_rho, pw_env, rs_descs, &
+    NULLIFY(qs_kind, cell, dft_control, orb_basis_set, deltap, &
+         qs_kind_set, particle_set, rs_rho, pw_env, rs_descs, &
          para_env, dist_ab, la_max, la_min, &
          lb_max, lb_min, npgfa, npgfb, nsgfa, nsgfb, p_block, &
          sphi_a, sphi_b, zeta, zetb, first_sgfa, first_sgfb, tasks, pabt, &
@@ -1803,7 +1803,7 @@ END SUBROUTINE calculate_rho_resp_all
     SELECT CASE (my_basis_set_id)
     CASE (use_orb_basis_set)
       CALL get_qs_env(qs_env=qs_env,&
-           atomic_kind_set=atomic_kind_set,&
+           qs_kind_set=qs_kind_set,&
            cell=cell,&
            dft_control=dft_control,&
            particle_set=particle_set,&
@@ -1813,7 +1813,7 @@ END SUBROUTINE calculate_rho_resp_all
            pw_env=pw_env,error=error)
     CASE (use_aux_fit_basis_set)
       CALL get_qs_env(qs_env=qs_env,&
-           atomic_kind_set=atomic_kind_set,&
+           qs_kind_set=qs_kind_set,&
            cell=cell,&
            dft_control=dft_control,&
            particle_set=particle_set,&
@@ -1833,29 +1833,29 @@ END SUBROUTINE calculate_rho_resp_all
     !   *** Allocate work storage ***
     nthread = 1
 !$  nthread = omp_get_max_threads()
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
          maxco=maxco,&
          maxsgf=maxsgf,&
          maxsgf_set=maxsgf_set,&
          basis_set_id=my_basis_set_id)
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     CALL reallocate(pabt,1,maxco,1,maxco,0,nthread-1)
     CALL reallocate(workt,1,maxco,1,maxsgf_set,0,nthread-1)
 
     ! find maximum numbers
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     natoms = SIZE( particle_set )
     maxset=0
     maxpgf=0
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
+       qs_kind => qs_kind_set(ikind)
        SELECT CASE( my_basis_set_id)
        CASE (use_orb_basis_set)
-         CALL get_atomic_kind(atomic_kind=atomic_kind,&
+         CALL get_qs_kind(qs_kind=qs_kind,&
               softb = my_soft, &
               orb_basis_set=orb_basis_set)
        CASE (use_aux_fit_basis_set)
-           CALL get_atomic_kind(atomic_kind=atomic_kind,&
+           CALL get_qs_kind(qs_kind=qs_kind,&
               softb = my_soft, &
               aux_fit_basis_set=orb_basis_set,&
               basis_set_id=my_basis_set_id)
@@ -1933,7 +1933,7 @@ END SUBROUTINE calculate_rho_resp_all
 !$omp          shared(rs_rho,lgrid,gridlevel_info,task_list), &
 !$omp          private(igrid_level,iatom,jatom,iset,jset,ipgf,jpgf,ikind,jkind,pab,work), &
 !$omp          private(iatom_old,jatom_old,iset_old,jset_old,ikind_old,jkind_old), &
-!$omp          private(brow,bcol,atomic_kind,orb_basis_set,first_sgfa,la_max,la_min), &
+!$omp          private(brow,bcol,qs_kind,orb_basis_set,first_sgfa,la_max,la_min), &
 !$omp          private(npgfa,nseta,nsgfa,sphi_a,zeta,first_sgfb,lb_max,lb_min,npgfb), &
 !$omp          private(nsetb,nsgfb,sphi_b,zetb,p_block,found), &
 !$omp          private(atom_pair_changed,ncoa,sgfa,ncob,sgfb,rab,rab2,ra,rb,zetp), &
@@ -1982,12 +1982,10 @@ END SUBROUTINE calculate_rho_resp_all
           IF(ikind .NE. ikind_old ) THEN
              SELECT CASE (my_basis_set_id)
                CASE (use_orb_basis_set)
-                 CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                    softb = my_soft, &
+                 CALL get_qs_kind(qs_kind_set(ikind), softb = my_soft, &
                     orb_basis_set=orb_basis_set)
                CASE (use_aux_fit_basis_set)
-                 CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                    softb = my_soft, &
+                 CALL get_qs_kind(qs_kind_set(ikind), softb = my_soft, &
                     aux_fit_basis_set=orb_basis_set,&
                     basis_set_id=my_basis_set_id)
              END SELECT
@@ -2005,12 +2003,10 @@ END SUBROUTINE calculate_rho_resp_all
           IF (jkind .NE. jkind_old ) THEN
              SELECT CASE (my_basis_set_id)
              CASE (use_orb_basis_set)
-               CALL get_atomic_kind(atomic_kind=particle_set(jatom)%atomic_kind,&
-                    softb = my_soft, &
+               CALL get_qs_kind(qs_kind_set(jkind), softb = my_soft, &
                     orb_basis_set=orb_basis_set)
              CASE (use_aux_fit_basis_set)
-               CALL get_atomic_kind(atomic_kind=particle_set(jatom)%atomic_kind,&
-                    softb = my_soft, &
+               CALL get_qs_kind(qs_kind_set(jkind), softb = my_soft, &
                     aux_fit_basis_set=orb_basis_set,&
                     basis_set_id=my_basis_set_id)
              END SELECT
@@ -2276,9 +2272,9 @@ END SUBROUTINE calculate_rho_resp_all
                                                 zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: pabt, workt
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: deltap
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -2299,8 +2295,8 @@ END SUBROUTINE calculate_rho_resp_all
     TYPE(task_list_type), POINTER            :: task_list, task_list_soft
 
     failure=.FALSE.
-    NULLIFY(atomic_kind, cell, dft_control, orb_basis_set, deltap, &
-         atomic_kind_set, sab_orb, particle_set, rs_rho, pw_env, rs_descs, &
+    NULLIFY(qs_kind, cell, dft_control, orb_basis_set, deltap, &
+         qs_kind_set, sab_orb, particle_set, rs_rho, pw_env, rs_descs, &
          para_env, dist_ab, la_max, la_min, &
          lb_max, lb_min, npgfa, npgfb, nsgfa, nsgfb, p_block, &
          sphi_a, sphi_b, zeta, zetb, first_sgfa, first_sgfb, tasks, pabt, &
@@ -2323,7 +2319,7 @@ END SUBROUTINE calculate_rho_resp_all
     SELECT CASE (my_basis_set_id)
     CASE (use_orb_basis_set)
       CALL get_qs_env(qs_env=qs_env,&
-           atomic_kind_set=atomic_kind_set,&
+           qs_kind_set=qs_kind_set,&
            cell=cell,&
            dft_control=dft_control,&
            particle_set=particle_set,&
@@ -2334,7 +2330,7 @@ END SUBROUTINE calculate_rho_resp_all
            pw_env=pw_env,error=error)
     CASE (use_aux_fit_basis_set)
       CALL get_qs_env(qs_env=qs_env,&
-           atomic_kind_set=atomic_kind_set,&
+           qs_kind_set=qs_kind_set,&
            cell=cell,&
            dft_control=dft_control,&
            particle_set=particle_set,&
@@ -2351,29 +2347,29 @@ END SUBROUTINE calculate_rho_resp_all
 
     !   *** Allocate work storage ***
     nthread = 1
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
          maxco=maxco,&
          maxsgf=maxsgf,&
          maxsgf_set=maxsgf_set,&
          basis_set_id=my_basis_set_id)
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     CALL reallocate(pabt,1,maxco,1,maxco,0,nthread-1)
     CALL reallocate(workt,1,maxco,1,maxsgf_set,0,nthread-1)
 
     ! find maximum numbers
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     natoms = SIZE( particle_set )
     maxset=0
     maxpgf=0
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
+       qs_kind => qs_kind_set(ikind)
        SELECT CASE( my_basis_set_id)
        CASE (use_orb_basis_set)
-         CALL get_atomic_kind(atomic_kind=atomic_kind,&
+         CALL get_qs_kind(qs_kind=qs_kind,&
               softb = my_soft, &
               orb_basis_set=orb_basis_set)
        CASE (use_aux_fit_basis_set)
-           CALL get_atomic_kind(atomic_kind=atomic_kind,&
+           CALL get_qs_kind(qs_kind=qs_kind,&
               softb = my_soft, &
               aux_fit_basis_set=orb_basis_set,&
               basis_set_id=my_basis_set_id)
@@ -2464,12 +2460,10 @@ END SUBROUTINE calculate_rho_resp_all
           IF(ikind .NE. ikind_old ) THEN
              SELECT CASE (my_basis_set_id)
                CASE (use_orb_basis_set)
-                 CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                    softb = my_soft, &
+                 CALL get_qs_kind(qs_kind_set(ikind), softb = my_soft, &
                     orb_basis_set=orb_basis_set)
                CASE (use_aux_fit_basis_set)
-                 CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                    softb = my_soft, &
+                 CALL get_qs_kind(qs_kind_set(ikind), softb = my_soft, &
                     aux_fit_basis_set=orb_basis_set,&
                     basis_set_id=my_basis_set_id)
              END SELECT
@@ -2487,12 +2481,10 @@ END SUBROUTINE calculate_rho_resp_all
           IF (jkind .NE. jkind_old ) THEN
              SELECT CASE (my_basis_set_id)
              CASE (use_orb_basis_set)
-               CALL get_atomic_kind(atomic_kind=particle_set(jatom)%atomic_kind,&
-                    softb = my_soft, &
+               CALL get_qs_kind(qs_kind_set(jkind), softb = my_soft, &
                     orb_basis_set=orb_basis_set)
              CASE (use_aux_fit_basis_set)
-               CALL get_atomic_kind(atomic_kind=particle_set(jatom)%atomic_kind,&
-                    softb = my_soft, &
+               CALL get_qs_kind(qs_kind_set(jkind), softb = my_soft, &
                     aux_fit_basis_set=orb_basis_set,&
                     basis_set_id=my_basis_set_id)
              END SELECT
@@ -2639,7 +2631,7 @@ END SUBROUTINE calculate_rho_resp_all
 !> \param ivector ...
 !> \param rho ...
 !> \param rho_gspace ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param cell ...
 !> \param dft_control ...
 !> \param particle_set ...
@@ -2659,14 +2651,14 @@ END SUBROUTINE calculate_rho_resp_all
 !>      i.e. is only correct if the basis functions are localised enough to be just in 1 cell ?
 ! *****************************************************************************
   SUBROUTINE calculate_wavefunction(mo_vectors,ivector,rho,rho_gspace, &
-                   atomic_kind_set,cell,dft_control,particle_set, &
+                   qs_kind_set,cell,dft_control,particle_set, &
                    pw_env,basis_set_id, external_vector, error)
 
     TYPE(cp_fm_type), POINTER                :: mo_vectors
     INTEGER                                  :: ivector
     TYPE(pw_p_type), INTENT(INOUT)           :: rho, rho_gspace
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(particle_type), DIMENSION(:), &
@@ -2681,7 +2673,7 @@ END SUBROUTINE calculate_rho_resp_all
 
     INTEGER :: dir, group, group_size, handle, i, iatom, igrid_level, ipgf, &
       iset, maxco, maxsgf_set, my_basis_set_id, my_pos, na1, na2, nao, natom, &
-      ncoa, nseta, offset, sgfa, stat
+      ncoa, nseta, offset, sgfa, stat, ikind
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: where_is_the_point
     INTEGER, DIMENSION(3)                    :: lb, location, tp, ub
     INTEGER, DIMENSION(:), POINTER           :: la_max, la_min, npgfa, nsgfa
@@ -2755,7 +2747,7 @@ END SUBROUTINE calculate_rho_resp_all
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 !   *** Allocate work storage ***
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
                              maxco=maxco,&
                              natom=natom,&
                              maxsgf_set=maxsgf_set,&
@@ -2775,19 +2767,16 @@ END SUBROUTINE calculate_rho_resp_all
     ALLOCATE(where_is_the_point(0:group_size-1))
 
     DO iatom=1,natom
+      ikind = particle_set(iatom)%atomic_kind%kind_number
       SELECT CASE (my_basis_set_id)
       CASE (use_orb_basis_set)
-        CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                             orb_basis_set=orb_basis_set)
+        CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
       CASE (use_aux_fit_basis_set)
-        CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                             aux_fit_basis_set=orb_basis_set)
+        CALL get_qs_kind(qs_kind_set(ikind), aux_fit_basis_set=orb_basis_set)
       CASE (use_aux_basis_set)
-        CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                             aux_basis_set=orb_basis_set)
+        CALL get_qs_kind(qs_kind_set(ikind), aux_basis_set=orb_basis_set)
       CASE (use_ri_aux_basis_set)
-        CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                             ri_aux_basis_set=orb_basis_set)
+        CALL get_qs_kind(qs_kind_set(ikind), ri_aux_basis_set=orb_basis_set)
       END SELECT
       CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                              first_sgf=first_sgfa,&

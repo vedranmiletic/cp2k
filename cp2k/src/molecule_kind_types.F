@@ -14,6 +14,8 @@
 MODULE molecule_kind_types
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE colvar_types,                    ONLY: &
@@ -858,10 +860,12 @@ CONTAINS
 !> \author  MI
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE num_ao_el_per_molecule(molecule_kind_set,charge_x_mol)
+  SUBROUTINE num_ao_el_per_molecule(molecule_kind_set,qs_kind_set,charge_x_mol)
 
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     INTEGER, DIMENSION(:), OPTIONAL, POINTER :: charge_x_mol
 
     CHARACTER(len=*), PARAMETER :: routineN = 'num_ao_el_per_molecule', &
@@ -869,7 +873,7 @@ CONTAINS
 
     INTEGER                                  :: iatom, imol, my_charge, n_ao, &
                                                 natom, nelectron, nmol_kind, &
-                                                nsgf
+                                                nsgf, ikind
     REAL(KIND=dp)                            :: zeff, zeff_correction
     TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -895,7 +899,8 @@ CONTAINS
       END IF
       DO iatom=1,natom
         atomic_kind => molecule_kind%atom_list(iatom)%atomic_kind
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
+        CALL get_atomic_kind(atomic_kind=atomic_kind,kind_number=ikind)
+        CALL get_qs_kind(qs_kind_set(ikind),&
                              all_potential=all_potential,&
                              gth_potential=gth_potential,&
                              orb_basis_set=orb_basis_set)

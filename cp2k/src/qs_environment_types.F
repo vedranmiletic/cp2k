@@ -10,6 +10,7 @@
 !> \author MK (23.01.2002)
 ! *****************************************************************************
 MODULE qs_environment_types
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE admm_types,                      ONLY: admm_env_release,&
                                              admm_type
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
@@ -599,7 +600,7 @@ CONTAINS
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE get_qs_env(qs_env,atomic_kind_set,cell,super_cell,cell_ref,use_ref_cell,kpoints,&
+  SUBROUTINE get_qs_env(qs_env,atomic_kind_set,qs_kind_set,cell,super_cell,cell_ref,use_ref_cell,kpoints,&
        dft_control,mos,mos_aux_fit,sab_orb,sab_aux_fit,sab_aux_fit_asymm, sab_aux_fit_vs_orb,&
        sab_all,qmmm,qmmm_periodic,sac_ae,sac_ppl,sap_ppnl,sab_vdw,sab_scp,sap_oce,sab_lrc,&
        sab_se,sab_tbe,sab_core,sab_almo,particle_set,energy,force,harris_env,&
@@ -620,6 +621,8 @@ CONTAINS
     TYPE(qs_environment_type), POINTER       :: qs_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       OPTIONAL, POINTER                      :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      OPTIONAL, POINTER                      :: qs_kind_set
     TYPE(cell_type), OPTIONAL, POINTER       :: cell, super_cell, cell_ref
     LOGICAL, OPTIONAL                        :: use_ref_cell
     TYPE(kpoint_type), OPTIONAL, POINTER     :: kpoints
@@ -926,6 +929,7 @@ CONTAINS
                       molecules_new=molecules_new,&
                       error=error)
 
+    IF (PRESENT(qs_kind_set)) STOP "TODO: get_qs_env"
     IF (PRESENT(natom)) natom=SIZE(particles%els)
     IF (PRESENT(nkind)) nkind=SIZE(atomic_kinds%els)
     IF (PRESENT(atomic_kind_set)) atomic_kind_set => atomic_kinds%els

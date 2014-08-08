@@ -211,41 +211,42 @@ CONTAINS
                                                 nparticle, ns
     LOGICAL                                  :: failure
 
-    failure = .FALSE.
-    CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
-
-    nparticle = SIZE(particle_set)
-    IF (PRESENT(first_sgf)) THEN
-      CPPrecondition(SIZE(first_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
-    END IF
-    IF (PRESENT(last_sgf)) THEN
-      CPPrecondition(SIZE(last_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
-    END IF
-    IF (PRESENT(nsgf)) THEN
-      CPPrecondition(SIZE(nsgf) >= nparticle,cp_failure_level,routineP,error,failure)
-    END IF
-
-    IF (PRESENT(first_sgf).OR.PRESENT(last_sgf).OR.PRESENT(nsgf)) THEN
-      isgf = 0
-      DO iparticle=1,nparticle
-        IF (PRESENT(basis)) THEN
-          CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,kind_number=ikind)
-          CALL get_gto_basis_set(gto_basis_set=basis(ikind)%gto_basis_set,nsgf=ns)
-        ELSEIF (PRESENT(basis_set_id)) THEN
-          CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns,&
-                             basis_set_id=basis_set_id)
-        ELSE
-          CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns)
-        END IF
-        IF (PRESENT(nsgf)) nsgf(iparticle) = ns
-        IF (PRESENT(first_sgf)) first_sgf(iparticle) = isgf + 1
-        isgf = isgf + ns
-        IF (PRESENT(last_sgf)) last_sgf(iparticle) = isgf
-      END DO
-    END IF
-    IF (PRESENT(first_sgf)) THEN
-      IF (SIZE(first_sgf) > nparticle) first_sgf(nparticle+1) = isgf + 1
-    END IF
+    STOP "TODO:   get_particle_set"
+   ! failure = .FALSE.
+   ! CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
+   !
+   ! nparticle = SIZE(particle_set)
+   ! IF (PRESENT(first_sgf)) THEN
+   !   CPPrecondition(SIZE(first_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
+   ! END IF
+   ! IF (PRESENT(last_sgf)) THEN
+   !   CPPrecondition(SIZE(last_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
+   ! END IF
+   ! IF (PRESENT(nsgf)) THEN
+   !   CPPrecondition(SIZE(nsgf) >= nparticle,cp_failure_level,routineP,error,failure)
+   ! END IF
+   !
+   ! IF (PRESENT(first_sgf).OR.PRESENT(last_sgf).OR.PRESENT(nsgf)) THEN
+   !   isgf = 0
+   !   DO iparticle=1,nparticle
+   !     IF (PRESENT(basis)) THEN
+   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,kind_number=ikind)
+   !       CALL get_gto_basis_set(gto_basis_set=basis(ikind)%gto_basis_set,nsgf=ns)
+   !     ELSEIF (PRESENT(basis_set_id)) THEN
+   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns,&
+   !                          basis_set_id=basis_set_id)
+   !     ELSE
+   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns)
+   !     END IF
+   !     IF (PRESENT(nsgf)) nsgf(iparticle) = ns
+   !     IF (PRESENT(first_sgf)) first_sgf(iparticle) = isgf + 1
+   !     isgf = isgf + ns
+   !     IF (PRESENT(last_sgf)) last_sgf(iparticle) = isgf
+   !   END DO
+   ! END IF
+   ! IF (PRESENT(first_sgf)) THEN
+   !   IF (SIZE(first_sgf) > nparticle) first_sgf(nparticle+1) = isgf + 1
+   ! END IF
 
   END SUBROUTINE get_particle_set
 

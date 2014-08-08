@@ -14,6 +14,9 @@ MODULE distribution_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -540,7 +543,7 @@ CONTAINS
 !>      be recovered (MK).
 ! *****************************************************************************
   SUBROUTINE distribute_molecules_2d(cell, particle_kind_set,particle_set,&
-                                     molecule_kind_set,molecule_set,&
+                                     qs_kind_set, molecule_kind_set,molecule_set,&
                                      distribution_2d,blacs_env,force_env_section,&
                                      error)
     TYPE(cell_type), POINTER                 :: cell
@@ -548,6 +551,8 @@ CONTAINS
       POINTER                                :: particle_kind_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
@@ -564,7 +569,7 @@ CONTAINS
       iatom_one, imol, imolecule, imolecule_kind, iparticle_kind, ipcol, &
       iprow, istat, iw, kind_a, mypcol, myprow, n, natom, natom_mol, &
       nclusters, nele, nmolecule, nmolecule_kind, nparticle_kind, npcol, &
-      nprow, nsgf, output_unit
+      nprow, nsgf, output_unit, ikind
     INTEGER, ALLOCATABLE, DIMENSION(:) :: cluster_list, cluster_prices, &
       col_ele, nparticle_local_col, nparticle_local_row, row_ele, work
     INTEGER, ALLOCATABLE, DIMENSION(:, :)    :: cost_ele_pair
@@ -677,20 +682,18 @@ CONTAINS
           DO iatom = 1, natom
              CALL cp_assert (iatom .LE. nclusters, cp_fatal_level,&
                   cp_internal_error, routineN, "Bounds error", error=error)
+             CALL get_atomic_kind(particle_set(iatom)%atomic_kind, kind_number=ikind)
              cluster_list(iatom) = iatom
              SELECT CASE (cost_model)
              CASE (model_block_count)
-                CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                     nsgf=nsgf)
+                CALL get_qs_kind(qs_kind_set(ikind),nsgf=nsgf)
                 cluster_price = nsgf
              CASE (model_block_lmax)
-                CALL get_atomic_kind (atomic_kind=particle_set(iatom)%atomic_kind,&
-                     orb_basis_set=orb_basis_set)
+                CALL get_qs_kind(qs_kind_set(ikind),orb_basis_set=orb_basis_set)
                 CALL get_gto_basis_set(orb_basis_set, lmax=lmax_basis)
                 cluster_price = MAXVAL (lmax_basis)
              CASE default
-                CALL get_atomic_kind (atomic_kind=particle_set(iatom)%atomic_kind,&
-                     orb_basis_set=orb_basis_set)
+                CALL get_qs_kind(qs_kind_set(ikind),orb_basis_set=orb_basis_set)
                 CALL get_gto_basis_set(orb_basis_set, lmax=lmax_basis)
                 cluster_price = 8 + (MAXVAL (lmax_basis)**2)
              END SELECT
@@ -707,19 +710,17 @@ CONTAINS
                 cluster_price = 0
                 DO iatom_mol=1,natom_mol
                    iatom = molecule_set(molecule_list(imolecule))%first_atom + iatom_mol - 1
+                   CALL get_atomic_kind(particle_set(iatom)%atomic_kind, kind_number=ikind)
                    SELECT CASE (cost_model)
                    CASE (model_block_count)
-                      CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                           nsgf=nsgf)
+                      CALL get_qs_kind(qs_kind_set(ikind),nsgf=nsgf)
                       cluster_price = cluster_price + nsgf
                    CASE (model_block_lmax)
-                      CALL get_atomic_kind (atomic_kind=particle_set(iatom)%atomic_kind,&
-                           orb_basis_set=orb_basis_set)
+                      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
                       CALL get_gto_basis_set(orb_basis_set, lmax=lmax_basis)
                       cluster_price = cluster_price + MAXVAL (lmax_basis)
                    CASE default
-                      CALL get_atomic_kind (atomic_kind=particle_set(iatom)%atomic_kind,&
-                           orb_basis_set=orb_basis_set)
+                      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
                       CALL get_gto_basis_set(orb_basis_set, lmax=lmax_basis)
                       cluster_price = cluster_price +  8 + (MAXVAL (lmax_basis)**2)
                    END SELECT
@@ -828,7 +829,7 @@ CONTAINS
        output_unit = cp_print_key_unit_nr(logger,force_env_section,"PRINT%DISTRIBUTION",&
                                                             extension=".Log",error=error)
        CALL distribute_2d_cost_model(cost_ele_pair,distribution_section,particle_set,&
-                                     molecule_kind_set,molecule_set,output_unit, error=error)
+                                     qs_kind_set,molecule_kind_set,molecule_set,output_unit, error=error)
        CALL cp_print_key_finished_output(output_unit,logger,force_env_section,&
                                              "PRINT%DISTRIBUTION",error=error)
 
@@ -1030,12 +1031,14 @@ CONTAINS
 !>      04.2007 created [Joost VandeVondele]
 ! *****************************************************************************
   SUBROUTINE distribute_2d_cost_model(cost_ele_pair,distribution_section,particle_set,&
-                                      molecule_kind_set,molecule_set,output_unit, error)
+                                      qs_kind_set,molecule_kind_set,molecule_set,output_unit, error)
 
     INTEGER, DIMENSION(:, :), INTENT(OUT)    :: cost_ele_pair
     TYPE(section_vals_type), POINTER         :: distribution_section
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(molecule_kind_type), DIMENSION(:), &
       POINTER                                :: molecule_kind_set
     TYPE(molecule_type), DIMENSION(:), &
@@ -1051,7 +1054,7 @@ CONTAINS
     INTEGER :: cost_block_ab, cost_model, handle, iatom_a, iatom_b, &
       iatom_mol_a, iatom_mol_b, imol_a, imol_b, imolecule_a, imolecule_b, &
       imolecule_kind_a, imolecule_kind_b, iparticle, natom, natom_mol_a, &
-      natom_mol_b, nmolecule_kind
+      natom_mol_b, nmolecule_kind, ikind
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: lmax, nsgf
     INTEGER, DIMENSION(:), POINTER           :: lmax_basis, molecule_list_a, &
                                                 molecule_list_b
@@ -1103,12 +1106,14 @@ CONTAINS
     CASE(model_block_surface)
        ALLOCATE(nsgf(natom))
        DO iparticle=1,natom
-          CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=nsgf(iparticle))
+          CALL get_atomic_kind(particle_set(iparticle)%atomic_kind, kind_number=ikind)
+          CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf(iparticle))
        ENDDO
     CASE(model_block_lmax)
         ALLOCATE(lmax(natom))
         DO iparticle=1,natom
-           CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,orb_basis_set=orb_basis_set)
+           CALL get_atomic_kind(particle_set(iparticle)%atomic_kind, kind_number=ikind)
+           CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
            CALL get_gto_basis_set(orb_basis_set,lmax=lmax_basis)
            lmax(iparticle)=MAXVAL(lmax_basis)
         ENDDO

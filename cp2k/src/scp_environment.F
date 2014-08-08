@@ -8,9 +8,9 @@
 !> \author CJM
 ! *****************************************************************************
 MODULE scp_environment
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE cp_dbcsr_interface,              ONLY: &
        array_i1d_obj, array_new, array_nullify, array_release, &
        convert_offsets_to_sizes, cp_dbcsr_add_block_node, cp_dbcsr_copy, &
@@ -84,9 +84,9 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(9, 9)           :: a_scp
     REAL(KIND=dp), POINTER                   :: ascp_diag( : ), block( :, : )
     TYPE(array_i1d_obj)                      :: col_blk_sizes, row_blk_sizes
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cp_dbcsr_type), POINTER             :: ks_scp, pscp
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
@@ -105,11 +105,11 @@ CONTAINS
     NULLIFY ( energy )
     NULLIFY ( particle_set )
     NULLIFY ( para_env )
-    NULLIFY ( atomic_kind_set, atomic_kind )
+    NULLIFY ( qs_kind_set, qs_kind )
     NULLIFY ( pscp, ks_scp, block, ascp_diag, se_kind, atom_list )
 
     CALL get_qs_env (qs_env, para_env = para_env, &
-                     atomic_kind_set = atomic_kind_set, &
+                     qs_kind_set = qs_kind_set, &
                      particle_set = particle_set, &
                      neighbor_list_id=neighbor_list_id, &
                      dbcsr_dist=dbcsr_dist, input = input, &
@@ -122,37 +122,37 @@ CONTAINS
     CALL allocate_scp_energy (energy)
     ! set the scp_env
     CALL set_scp_env (scp_env=scp_env,energy=energy,error=error)
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     natom = SIZE(particle_set)
     z = -1
     zeff_correction = 0.0_dp
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
+       qs_kind => qs_kind_set(ikind)
     ! Retrieve information on element
-    !   CALL get_atomic_kind(atomic_kind=atomic_kind, scp_se_parameter=se_kind )
-       CALL get_ptable_info(atomic_kind%element_symbol, ielement=z)
+    !   CALL get_qs_kind(qs_kind=qs_kind, scp_se_parameter=se_kind )
+       CALL get_ptable_info(qs_kind%element_symbol, ielement=z)
    ! Setup proper semiempirical parameters
        check = .NOT.ASSOCIATED(se_kind)
        CPPostcondition(check, cp_failure_level, routineP, error, failure)
-       CALL semi_empirical_create(atomic_kind%scp_se_parameter,error)
+       CALL semi_empirical_create(qs_kind%scp_se_parameter,error)
     ! We allow p-orbitals on H for SCP
        SELECT CASE(z)
        CASE (1)
-         atomic_kind%scp_se_parameter%p_orbitals_on_h=.TRUE.
+         qs_kind%scp_se_parameter%p_orbitals_on_h=.TRUE.
        CASE DEFAULT
           ! No special cases for other elements..
        END SELECT
        ! Set default parameters
        CALL section_vals_val_get(dft_section,"QS%SE%STO_NG",i_val=ngauss,error=error)
-       CALL se_param_set_default(atomic_kind%scp_se_parameter,z,do_method_pnnl,error)
-       CALL init_se_param(atomic_kind%scp_se_parameter,atomic_kind%scp_basis_set,ngauss,error=error)
-!       CALL init_potential ( atomic_kind%all_potential, itype="BARE", &
+       CALL se_param_set_default(qs_kind%scp_se_parameter,z,do_method_pnnl,error)
+       CALL init_se_param(qs_kind%scp_se_parameter,qs_kind%scp_basis_set,ngauss,error=error)
+!       CALL init_potential ( qs_kind%all_potential, itype="BARE", &
 !            zeff=se_kind%zeff,zeff_correction=zeff_correction,error=error)
-       atomic_kind%scp_se_parameter%zeff=atomic_kind%se_parameter%zeff
+       qs_kind%scp_se_parameter%zeff=qs_kind%se_parameter%zeff
     END DO
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,nsgf=nsgf_a,basis_set_id=use_scp_basis_set)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,nsgf=nsgf_b,basis_set_id=use_scp_basis_set)
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,nsgf=nsgf_a,basis_set_id=use_scp_basis_set)
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,nsgf=nsgf_b,basis_set_id=use_scp_basis_set)
 
     ALLOCATE (first_sgf_a(natom),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -197,8 +197,8 @@ CONTAINS
     CALL array_release (col_blk_sizes)
 
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
+       qs_kind => qs_kind_set(ikind)
+       CALL get_qs_kind(qs_kind=qs_kind,&
                             scp_se_parameter=se_kind, &
                             atom_list=atom_list)
        CALL get_se_param(se_kind, ass=ass,app=app,asp=asp,natorb=natorb)

@@ -17,6 +17,14 @@
 ! *****************************************************************************
 MODULE qs_mo_types
 
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
+  USE basis_set_types,                 ONLY: get_gto_basis_set,&
+                                             gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_copy,&
                                              cp_dbcsr_init_p,&
                                              cp_dbcsr_release_p,&
