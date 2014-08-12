@@ -13,6 +13,9 @@ MODULE hfx_types
   USE qs_kind_types,               ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE bibliography,                    ONLY: cite_reference,&
@@ -458,12 +461,14 @@ MODULE hfx_types
 !>      - All POINTERS and ALLOCATABLES are allocated, even if their size is
 !>        unknown at invocation time
 ! *****************************************************************************
-  SUBROUTINE hfx_create(x_data,para_env, hfx_section,natom,qs_kind_set, &
+  SUBROUTINE hfx_create(x_data,para_env, hfx_section,natom,atomic_kind_set, qs_kind_set, &
                         dft_control, cell, error)
     TYPE(hfx_type), DIMENSION(:, :), POINTER :: x_data
     TYPE(cp_para_env_type)                   :: para_env
     TYPE(section_vals_type), POINTER         :: hfx_section
     INTEGER, INTENT(IN)                      :: natom
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -807,8 +812,7 @@ MODULE hfx_types
           CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
           ALLOCATE (atom2kind(nkind),STAT=stat)
           CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-          CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                                   kind_of=kind_of)
+          CALL get_atomic_kind_set(atomic_kind_set, kind_of=kind_of)
 
           atom2kind = 0
           DO iatom=1,natom

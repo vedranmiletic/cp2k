@@ -82,7 +82,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Distribute molecules and particles
-!> \param particle_kind_set particle (atomic) kind information
+!> \param atomic_kind_set particle (atomic) kind information
 !> \param particle_set particle information
 !> \param local_particles distribution of particles created by this routine
 !> \param molecule_kind_set molecule kind information
@@ -99,7 +99,7 @@ CONTAINS
 !>      none
 !> \author MK (Jun. 2003)
 ! *****************************************************************************
-  SUBROUTINE distribute_molecules_1d(particle_kind_set,particle_set,&
+  SUBROUTINE distribute_molecules_1d(atomic_kind_set,particle_set,&
                                      local_particles,&
                                      molecule_kind_set,molecule_set,&
                                      local_molecules, force_env_section, &
@@ -108,7 +108,7 @@ CONTAINS
                                      error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: particle_kind_set
+      POINTER                                :: atomic_kind_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(distribution_1d_type), POINTER      :: local_particles
@@ -185,7 +185,7 @@ CONTAINS
     IF (istat /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
                                      "local_molecule",nmolecule_kind*int_size)
 
-    nparticle_kind = SIZE(particle_kind_set)
+    nparticle_kind = SIZE(atomic_kind_set)
 
     ALLOCATE (nparticle_local(nparticle_kind),STAT=istat)
     IF (istat /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
@@ -518,7 +518,7 @@ CONTAINS
 !> \brief Distributes the particle pairs creating a 2d distribution optimally
 !>      suited for quickstep
 !> \param cell ...
-!> \param particle_kind_set ...
+!> \param atomic_kind_set ...
 !> \param particle_set ...
 !> \param molecule_kind_set ...
 !> \param molecule_set ...
@@ -542,13 +542,13 @@ CONTAINS
 !>      used. The 2d distribution of the molecules is deleted, but may easily
 !>      be recovered (MK).
 ! *****************************************************************************
-  SUBROUTINE distribute_molecules_2d(cell, particle_kind_set,particle_set,&
+  SUBROUTINE distribute_molecules_2d(cell, atomic_kind_set,particle_set,&
                                      qs_kind_set, molecule_kind_set,molecule_set,&
                                      distribution_2d,blacs_env,force_env_section,&
                                      error)
     TYPE(cell_type), POINTER                 :: cell
     TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: particle_kind_set
+      POINTER                                :: atomic_kind_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_kind_type), DIMENSION(:), &
@@ -618,8 +618,8 @@ CONTAINS
     nmolecule_kind = SIZE(molecule_kind_set)
     CALL get_molecule_kind_set(molecule_kind_set,nmolecule=nmolecule)
 
-    nparticle_kind = SIZE(particle_kind_set)
-    CALL get_atomic_kind_set(atomic_kind_set=particle_kind_set,natom=natom)
+    nparticle_kind = SIZE(atomic_kind_set)
+    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,natom=natom)
 
     !
     ! we need to generate two representations of the distribution, one as a straight array with global particles

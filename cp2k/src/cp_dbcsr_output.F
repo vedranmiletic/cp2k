@@ -13,9 +13,12 @@
 !> - Created 2009-09-09
 ! *****************************************************************************
 MODULE cp_dbcsr_output
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+ USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: &
@@ -98,8 +101,8 @@ CONTAINS
                                                 nsgf, row1, row2, stat
     LOGICAL                                  :: failure
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: matrix
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     group = para_env%group
@@ -112,8 +115,8 @@ CONTAINS
     CALL cp_fm_get_submatrix(blacs_matrix,matrix,error=error)
 
     ! *** Get the matrix dimension and check the optional arguments ***
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,nsgf=nsgf)
+    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
+    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,nsgf=nsgf)
 
     IF (PRESENT(first_row)) THEN
       row1 = MAX(1,first_row)
@@ -187,8 +190,8 @@ CONTAINS
                                                 group, row1, row2, stat
     LOGICAL                                  :: failure, print_sym
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: matrix
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     group = para_env%group
@@ -213,7 +216,7 @@ CONTAINS
     END SELECT
 
     ! *** Get the matrix dimension and check the optional arguments ***
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
+    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
     dim_row = SIZE(matrix,1)
     dim_col = SIZE(matrix,2)
 
@@ -374,13 +377,15 @@ CONTAINS
     CHARACTER(LEN=35)                        :: fmtstr2
     CHARACTER(LEN=6), DIMENSION(:), POINTER  :: sgf_symbol
     INTEGER :: from, group, iatom, icol, irow, iset, isgf, ishell, iso, jcol, &
-      l, left, natom, ncol, ndigits, nset, nsgf, right, stat, to, width
+      l, left, natom, ncol, ndigits, nset, nsgf, right, stat, to, width, ikind
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: first_sgf, last_sgf
     INTEGER, DIMENSION(:), POINTER           :: nshell
     INTEGER, DIMENSION(:, :), POINTER        :: lshell
     LOGICAL                                  :: failure
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
@@ -392,12 +397,13 @@ CONTAINS
       CALL m_flush(output_unit)
 
       CALL get_qs_env(qs_env=qs_env,&
+                      qs_kind_set=qs_kind_set,&
                       atomic_kind_set=atomic_kind_set,&
                       particle_set=particle_set,error=error)
 
       natom = SIZE(particle_set)
 
-      CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,nsgf=nsgf)
+      CALL get_qs_kind_set(qs_kind_set=qs_kind_set,nsgf=nsgf)
 
       ALLOCATE (first_sgf(natom),STAT=stat)
       CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -439,8 +445,9 @@ CONTAINS
          irow = 1
          DO iatom=1,natom
             NULLIFY(orb_basis_set)
-            CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                 element_symbol=element_symbol, orb_basis_set=orb_basis_set)
+            CALL get_atomic_kind(particle_set(iatom)%atomic_kind,&
+                 kind_number=ikind, element_symbol=element_symbol)
+            CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
             IF ( ASSOCIATED(orb_basis_set) ) THEN
                CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                     nset=nset,nshell=nshell,l=lshell,sgf_symbol=sgf_symbol)

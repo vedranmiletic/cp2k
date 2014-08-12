@@ -20,6 +20,7 @@ MODULE qs_loc_methods
                                              atomic_kind_type,&
                                              deallocate_atomic_kind_set,&
                                              set_atomic_kind
+  USE qs_kind_types,               ONLY:     qs_kind_type
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -942,8 +943,8 @@ CONTAINS
                                                 ivector, my_ispin, my_state0, &
                                                 unit_out_c
     LOGICAL                                  :: add_idir, add_spin, failure
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_subsys_type), POINTER            :: subsys
@@ -996,10 +997,10 @@ CONTAINS
 
     DO istate = 1, nstates
        ivector = state_list(istate) - my_state0
-       CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,cell=cell,&
+       CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,cell=cell,&
             dft_control=dft_control,particle_set=particle_set,pw_env=pw_env,error=error)
 
-       CALL calculate_wavefunction(mo_coeff, ivector, wf_r, wf_g, atomic_kind_set,&
+       CALL calculate_wavefunction(mo_coeff, ivector, wf_r, wf_g, qs_kind_set,&
             cell, dft_control, particle_set, pw_env, error=error)
 
        ! Formatting the middle part of the name

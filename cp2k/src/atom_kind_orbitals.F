@@ -7,6 +7,9 @@
 !> \brief calculate the orbitals for a given atomic kind type
 ! *****************************************************************************
 MODULE atom_kind_orbitals
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE ai_onecenter,                    ONLY: sg_erfc
   USE atom_electronic_structure,       ONLY: calculate_atom
   USE atom_fit,                        ONLY: atom_fit_density
@@ -70,9 +73,10 @@ CONTAINS
 !> \param xc_section ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE calculate_atomic_orbitals (atomic_kind,iunit,pmat,ispin,confine,&
+  SUBROUTINE calculate_atomic_orbitals (atomic_kind,qs_kind,iunit,pmat,ispin,confine,&
                                         xc_section,error)
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     INTEGER, INTENT(IN), OPTIONAL            :: iunit
     REAL(KIND=dp), DIMENSION(:, :), &
       OPTIONAL, POINTER                      :: pmat
@@ -128,12 +132,15 @@ CONTAINS
 
     CALL get_atomic_kind(atomic_kind,z=z,zeff=zeff)
     NULLIFY(all_potential,gth_potential,orb_basis_set)
-    CALL get_atomic_kind(atomic_kind=atomic_kind,&
+    CALL get_atomic_kind(atomic_kind,&
                          all_potential=all_potential,&
-                         gth_potential=gth_potential,&
-                         orb_basis_set=orb_basis_set,&
-                         bs_occupation=bs_occupation,&
-                         addel=addel,laddel=laddel,naddel=naddel)
+                         gth_potential=gth_potential)
+
+    CALL get_qs_kind(qs_kind,&
+                     orb_basis_set=orb_basis_set,&
+                     bs_occupation=bs_occupation,&
+                     addel=addel,laddel=laddel,naddel=naddel)
+
     CPPostcondition(ASSOCIATED(orb_basis_set), cp_failure_level, routineP, error, failure)
 
     atom%z = z
@@ -1001,8 +1008,9 @@ CONTAINS
 !> \param rtmat ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE calculate_atomic_relkin (atomic_kind,rel_control,rtmat,error)
+  SUBROUTINE calculate_atomic_relkin (atomic_kind,qs_kind,rel_control,rtmat,error)
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(rel_control_type), POINTER          :: rel_control
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rtmat
     TYPE(cp_error_type), INTENT(INOUT)       :: error
@@ -1039,9 +1047,9 @@ CONTAINS
     IF(rel_control%rel_method == rel_none) RETURN
 
     NULLIFY(all_potential,orb_basis_set)
-    CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                         all_potential=all_potential,&
-                         orb_basis_set=orb_basis_set)
+    CALL get_atomic_kind(atomic_kind, all_potential=all_potential)
+    CALL get_qs_kind(qs_kind, orb_basis_set=orb_basis_set)
+
     CPPostcondition(ASSOCIATED(orb_basis_set), cp_failure_level, routineP, error, failure)
 
     IF ( ASSOCIATED(all_potential) ) THEN

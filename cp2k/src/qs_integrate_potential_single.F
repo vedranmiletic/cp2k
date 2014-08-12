@@ -28,6 +28,8 @@
 MODULE qs_integrate_potential_single
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE atprop_types,                    ONLY: atprop_array_init
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
@@ -125,7 +127,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: hab, pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -153,6 +156,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
          atomic_kind_set=atomic_kind_set,&
+         qs_kind_set=qs_kind_set,&
          cell=cell,&
          dft_control=dft_control,&
          particle_set=particle_set,&
@@ -166,11 +170,8 @@ CONTAINS
 
     DO ikind=1,SIZE(atomic_kind_set)
 
-       atomic_kind => atomic_kind_set(ikind)
-
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                            natom=natom_of_kind,atom_list=atom_list,&
-                            scptb_parameter=scptb_kind)
+       CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom_of_kind, atom_list=atom_list)
+       CALL get_qs_kind(qs_kind_set(ikind), scptb_parameter=scptb_kind)
        CALL get_scptb_parameter(scptb_kind,defined=defined,lmaxscp=lmaxscp,ag=alpha)
        IF (.NOT.defined) CYCLE
 
@@ -707,7 +708,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: hab, pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -750,6 +752,7 @@ CONTAINS
 
         CALL get_qs_env(qs_env=qs_env,&
              atomic_kind_set=atomic_kind_set,&
+             qs_kind_set=qs_kind_set,&
              cell=cell,&
              dft_control=dft_control,&
              particle_set=particle_set,&
@@ -767,14 +770,12 @@ CONTAINS
 
         DO ikind=1,SIZE(atomic_kind_set)
 
-           atomic_kind => atomic_kind_set(ikind)
-
-           CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                natom=natom_of_kind,&
-                paw_atom=paw_atom, &
-                atom_list=atom_list,&
+           CALL get_atomic_kind(atomic_kind_set(ikind),&
+                natom=natom_of_kind, atom_list=atom_list,&
                 alpha_core_charge=alpha_core_charge,&
                 ccore_charge=ccore_charge)
+
+           CALL get_qs_kind(qs_kind_set(ikind), paw_atom=paw_atom)
 
            IF(paw_atom) THEN
                 force(ikind)%rho_core(:,:) =  0.0_dp
@@ -894,7 +895,8 @@ CONTAINS
                                                 work_f, work_i, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -912,7 +914,7 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
-    NULLIFY(atomic_kind, atomic_kind_set, atom_list, cell, dft_control,&
+    NULLIFY(atomic_kind_set, qs_kind_set, atom_list, cell, dft_control,&
             first_sgfa, gridlevel_info, hab, la_max, la_min, lri_basis_set,&
             npgfa, nsgf_seta, pab, para_env, particle_set, pw_env, rpgfa, &
             rs_descs, rs_grid, rs_v, virial, set_radius_a, sphi_a,  work_f,&
@@ -934,6 +936,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
          atomic_kind_set=atomic_kind_set,&
+         qs_kind_set=qs_kind_set,&
          cell=cell,&
          dft_control=dft_control,&
          nkind=nkind,&
@@ -962,12 +965,8 @@ CONTAINS
 
     DO ikind=1,nkind
 
-       atomic_kind => atomic_kind_set(ikind)
-
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-            natom=natom_of_kind,&
-            atom_list=atom_list,&
-            lri_basis_set=lri_basis_set)
+       CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom_of_kind, atom_list=atom_list)
+       CALL get_qs_kind(qs_kind_set(ikind), lri_basis_set=lri_basis_set)
        CALL get_gto_basis_set(gto_basis_set=lri_basis_set,&
             first_sgf=first_sgfa,&
             lmax=la_max,&

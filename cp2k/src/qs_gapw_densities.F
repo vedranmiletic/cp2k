@@ -7,6 +7,8 @@
 MODULE qs_gapw_densities
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cp_control_types,                ONLY: dft_control_type,&
                                              gapw_control_type
   USE cp_para_types,                   ONLY: cp_para_env_type
@@ -57,7 +59,7 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ikind, ispin, istat, &
-                                                natom, nkind, nspins, &
+                                                natom, nspins, &
                                                 output_unit
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, my_do_rho0, paw_atom
@@ -65,7 +67,8 @@ CONTAINS
     REAL(dp), DIMENSION(:), POINTER          :: rho1_h_tot, rho1_s_tot
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -82,7 +85,7 @@ CONTAINS
     CALL timeset(routineN,handle)
 
     NULLIFY(atomic_kind_set)
-    NULLIFY(atom_kind)
+    NULLIFY(qs_kind_set)
     NULLIFY(dft_control)
     NULLIFY(gapw_control)
     NULLIFY(para_env)
@@ -106,6 +109,7 @@ CONTAINS
     CALL get_qs_env(qs_env=qs_env,dft_control=dft_control,&
                     para_env=para_env,&
                     qs_charges=qs_charges,&
+                    qs_kind_set=qs_kind_set,&
                     atomic_kind_set=atomic_kind_set,&
                     rho0_mpole=rho0_mpole,&
                     rho_atom_set=rho_atom_set,&
@@ -121,7 +125,6 @@ CONTAINS
        END IF
     END IF
 
-    nkind  = SIZE(atomic_kind_set,1)
     nspins = dft_control%nspins
 
     rho0_h_tot = 0.0_dp
@@ -130,23 +133,22 @@ CONTAINS
     rho1_h_tot = 0.0_dp
     rho1_s_tot = 0.0_dp
 
-    DO ikind = 1,nkind
-      atom_kind => atomic_kind_set(ikind)
+    DO ikind = 1, SIZE(atomic_kind_set)
       NULLIFY(grid_atom,harmonics)
-      CALL get_atomic_kind(atomic_kind=atom_kind, atom_list=atom_list,&
-                           grid_atom=grid_atom,natom=natom,&
+      CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list,natom=natom)
+      CALL get_qs_kind(qs_kind_set(ikind), grid_atom=grid_atom,&
                            paw_atom=paw_atom, harmonics=harmonics)
 
 !     Calculate rho1_h and rho1_s on the radial grids centered on the atomic position
       IF(paw_atom) &
-        CALL calculate_rho_atom(para_env,rho_atom_set,atom_kind,atom_list,grid_atom,natom,&
-                                nspins,rho1_h_tot,rho1_s_tot,error=error)
+        CALL calculate_rho_atom(para_env,rho_atom_set,qs_kind_set(ikind),&
+        atom_list,grid_atom,natom,nspins,rho1_h_tot,rho1_s_tot,error=error)
 
 !     Calculate rho0_h and rho0_s on the radial grids centered on the atomic position
       IF (my_do_rho0) &
-           CALL calculate_rho0_atom(gapw_control,rho_atom_set,rho0_atom_set,rho0_mpole,atom_list,grid_atom,&
-                   paw_atom,natom,ikind,atom_kind,harmonics,rho0_h_tot,&
-                   error=error)
+           CALL calculate_rho0_atom(gapw_control,rho_atom_set,rho0_atom_set,rho0_mpole,&
+                atom_list,grid_atom, paw_atom,natom,ikind,qs_kind_set(ikind),&
+                harmonics,rho0_h_tot, error=error)
 
     ENDDO
 
@@ -160,7 +162,7 @@ CONTAINS
     IF (my_do_rho0) THEN
        rho0_mpole%total_rho0_h = -rho0_h_tot
 !      Put the rho0_soft on the global grid
-       CALL put_rho0_on_grid(qs_env,atomic_kind_set,rho0_mpole,tot_rs_int,error)
+       CALL put_rho0_on_grid(qs_env,rho0_mpole,tot_rs_int,error)
        IF(ABS(rho0_h_tot) .GE. 1.0E-5_dp)THEN
         IF(ABS(1.0_dp-ABS(tot_rs_int/rho0_h_tot)).GT.1.0E-3_dp) THEN
           IF (output_unit>0) THEN

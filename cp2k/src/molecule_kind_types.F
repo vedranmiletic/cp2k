@@ -899,11 +899,11 @@ CONTAINS
       END IF
       DO iatom=1,natom
         atomic_kind => molecule_kind%atom_list(iatom)%atomic_kind
-        CALL get_atomic_kind(atomic_kind=atomic_kind,kind_number=ikind)
-        CALL get_qs_kind(qs_kind_set(ikind),&
-                             all_potential=all_potential,&
-                             gth_potential=gth_potential,&
-                             orb_basis_set=orb_basis_set)
+        CALL get_atomic_kind(atomic_kind,&
+                              kind_number=ikind,&
+                              all_potential=all_potential,&
+                              gth_potential=gth_potential)
+        CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
         IF (ASSOCIATED(all_potential)) THEN
            CALL get_potential(potential=all_potential,zeff=zeff,&
                 zeff_correction=zeff_correction)

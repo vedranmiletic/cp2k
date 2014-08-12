@@ -20,6 +20,8 @@ MODULE qs_overlap
                                              decontraction,&
                                              force_trace
   USE ai_overlap,                      ONLY: overlap_ab
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
@@ -159,6 +161,8 @@ CONTAINS
                                                 scon_a, scon_b, zeta, zetb
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: sint
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
@@ -192,13 +196,13 @@ CONTAINS
 
      NULLIFY (atomic_kind_set)
      CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,natom=natom,&
-                     dbcsr_dist=dbcsr_dist,error=error)
+                     qs_kind_set=qs_kind_set,dbcsr_dist=dbcsr_dist,error=error)
 
-     nkind = SIZE(atomic_kind_set)
+     nkind = SIZE(qs_kind_set)
 
      ALLOCATE (atom_of_kind(natom),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-     CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,atom_of_kind=atom_of_kind)
+     CALL get_atomic_kind_set(atomic_kind_set,atom_of_kind=atom_of_kind)
 
      IF (PRESENT(calculate_forces)) THEN
        do_forces = calculate_forces
@@ -236,7 +240,7 @@ CONTAINS
         use_virial = virial%pv_availability.AND.(.NOT.virial%pv_numer)
      END IF
 
-     ldsab = get_memory_usage(atomic_kind_set,basis_set_id_a,basis_set_id_b)
+     ldsab = get_memory_usage(qs_kind_set,basis_set_id_a,basis_set_id_b)
      IF (do_forces) THEN
         ! we need density matrix for forces
         IF(dokp) THEN
@@ -260,8 +264,8 @@ CONTAINS
 
      ALLOCATE (basis_set_list_a(nkind),basis_set_list_b(nkind),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-     CALL basis_set_list_setup(basis_set_list_a,basis_set_id_a,atomic_kind_set)
-     CALL basis_set_list_setup(basis_set_list_b,basis_set_id_b,atomic_kind_set)
+     CALL basis_set_list_setup(basis_set_list_a,basis_set_id_a,qs_kind_set)
+     CALL basis_set_list_setup(basis_set_list_b,basis_set_id_b,qs_kind_set)
 
      CALL neighbor_list_iterator_create(nl_iterator,sab_nl)
      DO WHILE (neighbor_list_iterate(nl_iterator)==0)
@@ -500,8 +504,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: p_block, rpgfa, rpgfb, &
                                                 scon_a, scon_b, zeta, zetb
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(gto_basis_set_p_type), &
       DIMENSION(:), POINTER                  :: basis_set_list_a, &
                                                 basis_set_list_b
@@ -514,10 +518,10 @@ CONTAINS
 
      CALL timeset(routineN,handle)
 
-     NULLIFY (atomic_kind_set)
-     CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
+     NULLIFY (qs_kind_set)
+     CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
 
-     nkind = SIZE(atomic_kind_set)
+     nkind = SIZE(qs_kind_set)
      nder = 1
 
      ! check for symmetry
@@ -528,7 +532,7 @@ CONTAINS
      use_virial = virial%pv_availability.AND.(.NOT.virial%pv_numer)
 
      ! *** Allocate work storage ***
-     ldsab = get_memory_usage(atomic_kind_set,basis_set_id_a,basis_set_id_b)
+     ldsab = get_memory_usage(qs_kind_set,basis_set_id_a,basis_set_id_b)
      ALLOCATE (sab(ldsab,ldsab),pab(ldsab,ldsab),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
      ALLOCATE (drab(ldsab,ldsab,3),STAT=istat)
@@ -537,8 +541,8 @@ CONTAINS
      ! set up basis sets
      ALLOCATE (basis_set_list_a(nkind),basis_set_list_b(nkind),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-     CALL basis_set_list_setup(basis_set_list_a,basis_set_id_a,atomic_kind_set)
-     CALL basis_set_list_setup(basis_set_list_b,basis_set_id_b,atomic_kind_set)
+     CALL basis_set_list_setup(basis_set_list_a,basis_set_id_a,qs_kind_set)
+     CALL basis_set_list_setup(basis_set_list_b,basis_set_id_b,qs_kind_set)
 
      ! Loop over neighbor list
      CALL neighbor_list_iterator_create(nl_iterator,sab_nl)

@@ -13,6 +13,9 @@ MODULE qs_initial_guess
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -144,6 +147,9 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: col_blk_size, col_dist
     TYPE(atom_matrix_type), DIMENSION(:), &
       POINTER                                :: pmat
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -173,8 +179,8 @@ CONTAINS
 
     logger => cp_error_get_logger(error)
     failure = .FALSE.
-    NULLIFY(atomic_kind, mo_coeff, sv, orb_basis_set, atomic_kind_set, &
-         particle_set, ortho, work2, work1, mo_array, s_sparse, &
+    NULLIFY(atomic_kind, qs_kind, mo_coeff, sv, orb_basis_set, atomic_kind_set,&
+         qs_kind_set, particle_set, ortho, work2, work1, mo_array, s_sparse, &
          scf_control, dft_control, p_rmpv, ortho, work2, work1, &
          s_sparse, scf_control, dft_control, h_core_sparse)
     NULLIFY(dft_section, input, subsys_section)
@@ -184,7 +190,7 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
-    CALL get_qs_env(qs_env,atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_env(qs_env,atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
          particle_set=particle_set,mos=mo_array, matrix_s=s_sparse,&
          matrix_h=h_core_sparse,input=input,scp_env=scp_env,&
          scf_control=scf_control, id_nr=qs_env_id, dft_control=dft_control,&
@@ -290,7 +296,7 @@ CPSourceFileRef,&
     IF (density_guess == restart_guess) THEN
 
        CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set)
-       CALL read_mo_set(mo_array,atomic_kind_set,particle_set,qs_env%para_env,&
+       CALL read_mo_set(mo_array,atomic_kind_set,qs_kind_set,particle_set,qs_env%para_env,&
             id_nr=id_nr,multiplicity=dft_control%multiplicity,dft_section=dft_section,&
             natom_mismatch=natom_mismatch, kpoints=qs_env%kpoints, error=error)
 
@@ -341,8 +347,7 @@ CPSourceFileRef,&
        IF (not_read > 1) THEN
           DO i=1, last_read
              j = last_read -i
-             CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set)
-             CALL read_mo_set(mo_array,atomic_kind_set,particle_set,qs_env%para_env,&
+             CALL read_mo_set(mo_array,atomic_kind_set,qs_kind_set,particle_set,qs_env%para_env,&
                   id_nr=j,multiplicity=dft_control%multiplicity,&
                   dft_section=dft_section, kpoints=qs_env%kpoints, error=error)
 
@@ -506,7 +511,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
           CALL get_mo_set(mo_set=mo_array(ispin)%mo_set, nelectron=nelectron)
 
           CALL calculate_atomic_block_dm(p_rmpv(ispin)%matrix,s_sparse(1)%matrix, &
-                                         particle_set, atomic_kind_set, &
+                                         particle_set, atomic_kind_set, qs_kind_set, &
                                          ispin, nspin, nelectron, output_unit, error)
 
           ! The orbital transformation method (OT) requires not only an
@@ -620,8 +625,9 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
           IF (nspin==2) scale=0.5_dp
           DO ikind=1,SIZE(atomic_kind_set)
             atomic_kind => atomic_kind_set(ikind)
+            qs_kind     => qs_kind_set(ikind)
             NULLIFY(pmat(ikind)%mat)
-            CALL calculate_atomic_orbitals(atomic_kind,pmat=pmat(ikind)%mat,ispin=ispin,error=error)
+            CALL calculate_atomic_orbitals(atomic_kind,qs_kind, pmat=pmat(ikind)%mat,ispin=ispin,error=error)
             NULLIFY(atomic_kind)
           END DO
           CALL get_mo_set(mo_set=mo_array(ispin)%mo_set,&
@@ -676,13 +682,13 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
              ! sort kind vs nbr electron
              DO ikind = 1,size_atomic_kind_set
                 atomic_kind => atomic_kind_set(ikind)
+                qs_kind     => qs_kind_set(ikind)
                 CALL get_atomic_kind(atomic_kind=atomic_kind,&
                                      natom=natom,&
                                      atom_list=atom_list,&
-                                     orb_basis_set=orb_basis_set)
-                CALL get_atomic_kind(atomic_kind=atomic_kind, &
-                                     elec_conf=elec_conf, &
-                                     nsgf=nsgf, z=z, zeff=zeff)
+                                     z=z, zeff=zeff,&
+                                     elec_conf=elec_conf)
+                CALL get_qs_kind(qs_kind, nsgf=nsgf, orb_basis_set=orb_basis_set)
                 nelec_kind(ikind) = SUM(elec_conf)
              ENDDO
              CALL sort(nelec_kind,size_atomic_kind_set,sort_kind)
@@ -862,7 +868,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
           CALL get_mo_set(mo_set=mo_array(ispin)%mo_set, nelectron=nelectron)
 
           CALL calculate_mopac_dm(p_rmpv(ispin)%matrix,s_sparse(1)%matrix, has_unit_metric, qs_env%dft_control,&
-                                  particle_set, atomic_kind_set, ispin, nspin, nelectron,  qs_env%para_env, error)
+                                  particle_set, atomic_kind_set, qs_kind_set, ispin, nspin, nelectron,  qs_env%para_env, error)
 
           ! The orbital transformation method (OT) requires not only an
           ! initial density matrix, but also an initial wavefunction (MO set)
@@ -995,13 +1001,15 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
 !> \param output_unit ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE calculate_atomic_block_dm(matrix_p, matrix_s, particle_set, atomic_kind_set, &
-                                       ispin, nspin, nelectron_spin, output_unit, error)
+  SUBROUTINE calculate_atomic_block_dm(matrix_p,matrix_s, particle_set, atomic_kind_set, &
+                                       qs_kind_set, ispin, nspin, nelectron_spin, output_unit, error)
     TYPE(cp_dbcsr_type), INTENT(INOUT)       :: matrix_p, matrix_s
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     INTEGER, INTENT(IN)                      :: ispin, nspin, nelectron_spin, &
                                                 output_unit
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -1018,6 +1026,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     TYPE(atom_matrix_type), ALLOCATABLE, &
       DIMENSION(:)                           :: pmat
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_dbcsr_iterator)                  :: iter
 
     failure = .FALSE.
@@ -1043,12 +1052,13 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     ! precompute the atomic blocks corresponding to spherical atoms
     DO ikind=1,SIZE(atomic_kind_set)
       atomic_kind => atomic_kind_set(ikind)
+      qs_kind     => qs_kind_set(ikind)
       NULLIFY(pmat(ikind)%mat)
       IF (output_unit > 0) THEN
         WRITE (UNIT=output_unit,FMT="(/,T2,A)")&
           "Guess for atomic kind: "//TRIM(atomic_kind%name)
       END IF
-      CALL calculate_atomic_orbitals(atomic_kind,iunit=output_unit,pmat=pmat(ikind)%mat,&
+      CALL calculate_atomic_orbitals(atomic_kind,qs_kind,iunit=output_unit,pmat=pmat(ikind)%mat,&
                                      ispin=ispin,error=error)
     END DO
 
@@ -1111,7 +1121,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
 !> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_mopac_dm(matrix_p,matrix_s, has_unit_metric, &
-                                dft_control, particle_set, atomic_kind_set, &
+                                dft_control, particle_set, atomic_kind_set, qs_kind_set, &
                                 ispin, nspin, nelectron_spin, para_env, error)
     TYPE(cp_dbcsr_type), INTENT(INOUT)       :: matrix_p, matrix_s
     LOGICAL                                  :: has_unit_metric
@@ -1120,6 +1130,8 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
       POINTER                                :: particle_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     INTEGER, INTENT(IN)                      :: ispin, nspin, nelectron_spin
     TYPE(cp_para_env_type)                   :: para_env
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -1138,7 +1150,6 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: econf, pdiag, sdiag
     REAL(KIND=dp), DIMENSION(0:3)            :: edftb
     TYPE(all_potential_type), POINTER        :: all_potential
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(gth_potential_type), POINTER        :: gth_potential
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
 
@@ -1157,7 +1168,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
     CALL get_particle_set(particle_set=particle_set,first_sgf=first_sgf,error=error)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,maxlgto=maxl)
+    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxl)
 
     ALLOCATE (econf(0:maxl),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
@@ -1184,27 +1195,28 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
 
     IF (nelectron_spin /= 0) THEN
        DO ikind=1,SIZE(atomic_kind_set)
-          atomic_kind => atomic_kind_set(ikind)
 
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
+          CALL get_atomic_kind(atomic_kind_set(ikind),&
                                natom=natom,&
                                atom_list=atom_list,&
                                all_potential=all_potential,&
-                               gth_potential=gth_potential,&
-                               orb_basis_set=orb_basis_set)
+                               gth_potential=gth_potential)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
 
           IF ( dft_control%qs_control%dftb ) THEN
-             CALL get_dftb_atom_param(dftb_parameter=atomic_kind%dftb_parameter,&
+             CALL get_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,&
                   lmax=maxll,occupation=edftb)
              maxll = MIN(maxll,maxl)
              econf(0:maxl)=edftb(0:maxl)
           ELSEIF (ASSOCIATED(all_potential)) THEN
-             CALL get_atomic_kind(atomic_kind=atomic_kind,elec_conf=elec_conf, nsgf=nsgf, z=z, zeff=zeff)
+             CALL get_atomic_kind(atomic_kind_set(ikind),elec_conf=elec_conf, z=z, zeff=zeff)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)
           ELSE IF (ASSOCIATED(gth_potential)) THEN
-             CALL get_atomic_kind(atomic_kind=atomic_kind,elec_conf=elec_conf, nsgf=nsgf, z=z, zeff=zeff)
+             CALL get_atomic_kind(atomic_kind_set(ikind),elec_conf=elec_conf, z=z, zeff=zeff)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)

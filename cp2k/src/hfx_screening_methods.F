@@ -11,8 +11,8 @@
 ! *****************************************************************************
 MODULE hfx_screening_methods
   USE ao_util,                         ONLY: exp_radius_very_extended
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: gto_basis_set_type
   USE f77_blas
   USE hfx_libint_interface,            ONLY: evaluate_eri_screen
@@ -342,9 +342,9 @@ MODULE hfx_screening_methods
     REAL(dp), DIMENSION(:, :), POINTER       :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
     REAL(dp), SAVE                           :: DATA(2,0:100)
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis
     TYPE(hfx_screen_coeff_type), &
       DIMENSION(:, :), POINTER               :: tmp_R_1
@@ -356,10 +356,10 @@ MODULE hfx_screening_methods
 !$OMP END MASTER
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     error=error)
 
-    nkind = SIZE(atomic_kind_set,1)
+    nkind = SIZE(qs_kind_set,1)
 
 !$OMP MASTER
     ALLOCATE(coeffs_pgf(max_pgf,max_pgf,max_set,max_set,nkind,nkind),STAT=stat)
@@ -384,9 +384,9 @@ MODULE hfx_screening_methods
     ra = 0.0_dp
     rb = 0.0_dp
     DO ikind=1,nkind
-      NULLIFY(atom_kind,orb_basis)
-      atom_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+      NULLIFY(qs_kind,orb_basis)
+      qs_kind => qs_kind_set(ikind)
+      CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
       NULLIFY(la_max,la_min,npgfa,zeta)
 
       la_max => basis_parameter(ikind)%lmax
@@ -401,9 +401,9 @@ MODULE hfx_screening_methods
       rpgfa => basis_parameter(ikind)%pgf_radius
 
       DO jkind = 1,nkind
-        NULLIFY(atom_kind,orb_basis)
-        atom_kind => atomic_kind_set(jkind)
-        CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+        NULLIFY(qs_kind,orb_basis)
+        qs_kind => qs_kind_set(jkind)
+        CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
         NULLIFY(lb_max,lb_min,npgfb,zetb)
 
         lb_max => basis_parameter(jkind)%lmax
@@ -486,9 +486,9 @@ MODULE hfx_screening_methods
     ra = 0.0_dp
     rb = 0.0_dp
     DO ikind=1,nkind
-      NULLIFY(atom_kind,orb_basis)
-      atom_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+      NULLIFY(qs_kind,orb_basis)
+      qs_kind => qs_kind_set(ikind)
+      CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
       NULLIFY(la_max,la_min,npgfa,zeta)
 !      CALL get_gto_basis_set(gto_basis_set=orb_basis,&
 !                             lmax=la_max,&
@@ -511,9 +511,9 @@ MODULE hfx_screening_methods
       nsgfa => basis_parameter(ikind)%nsgf
 
       DO jkind = 1,nkind
-        NULLIFY(atom_kind,orb_basis)
-        atom_kind => atomic_kind_set(jkind)
-        CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+        NULLIFY(qs_kind,orb_basis)
+        qs_kind => qs_kind_set(jkind)
+        CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
         NULLIFY(lb_max,lb_min,npgfb,zetb)
 
         lb_max => basis_parameter(jkind)%lmax
@@ -579,9 +579,9 @@ MODULE hfx_screening_methods
     ra = 0.0_dp
     rb = 0.0_dp
     DO ikind=1,nkind
-      NULLIFY(atom_kind,orb_basis)
-      atom_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+      NULLIFY(qs_kind,orb_basis)
+      qs_kind => qs_kind_set(ikind)
+      CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
       NULLIFY(la_max,la_min,npgfa,zeta)
 
       la_max => basis_parameter(ikind)%lmax
@@ -595,9 +595,9 @@ MODULE hfx_screening_methods
       nsgfa => basis_parameter(ikind)%nsgf
 
       DO jkind = 1,nkind
-        NULLIFY(atom_kind,orb_basis)
-        atom_kind => atomic_kind_set(jkind)
-        CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+        NULLIFY(qs_kind,orb_basis)
+        qs_kind => qs_kind_set(jkind)
+        CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
         NULLIFY(lb_max,lb_min,npgfb,zetb)
 
         lb_max => basis_parameter(jkind)%lmax
@@ -711,9 +711,9 @@ MODULE hfx_screening_methods
     REAL(dp), DIMENSION(:, :), POINTER       :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
     REAL(dp), SAVE                           :: DATA(2,0:100)
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis
 
     failure = .FALSE.
@@ -723,10 +723,10 @@ MODULE hfx_screening_methods
     CALL timeset(routineN,handle)
 !$OMP END MASTER
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     error=error)
 
-    nkind = SIZE(atomic_kind_set,1)
+    nkind = SIZE(qs_kind_set,1)
     ra = 0.0_dp
     rb = 0.0_dp
 !$OMP MASTER
@@ -751,9 +751,9 @@ MODULE hfx_screening_methods
 !$OMP BARRIER
 
     DO ikind=1,nkind
-      NULLIFY(atom_kind,orb_basis)
-      atom_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+      NULLIFY(qs_kind,orb_basis)
+      qs_kind => qs_kind_set(ikind)
+      CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
       NULLIFY(la_max,la_min,npgfa,zeta)
 
       la_max => basis_parameter(ikind)%lmax
@@ -768,9 +768,9 @@ MODULE hfx_screening_methods
 
 
       DO jkind = 1,nkind
-        NULLIFY(atom_kind,orb_basis)
-        atom_kind => atomic_kind_set(jkind)
-        CALL get_atomic_kind(atomic_kind=atom_kind,orb_basis_set=orb_basis)
+        NULLIFY(qs_kind,orb_basis)
+        qs_kind => qs_kind_set(jkind)
+        CALL get_qs_kind(qs_kind=qs_kind,orb_basis_set=orb_basis)
         NULLIFY(lb_max,lb_min,npgfb,zetb)
 
         lb_max => basis_parameter(jkind)%lmax

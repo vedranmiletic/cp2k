@@ -120,10 +120,11 @@ MODULE qs_kind_types
 !> Provides all information about an atomic kind
 ! *****************************************************************************
   TYPE qs_kind_type
-     TYPE(all_potential_type), POINTER      :: all_potential
-     TYPE(local_potential_type), POINTER    :: tnadd_potential
-     TYPE(fist_potential_type), POINTER     :: fist_potential
-     TYPE(gth_potential_type), POINTER      :: gth_potential
+     !PRIVATE ! later
+     !TYPE(all_potential_type), POINTER      :: all_potential
+     !TYPE(local_potential_type), POINTER    :: tnadd_potential
+     !TYPE(fist_potential_type), POINTER     :: fist_potential
+     !TYPE(gth_potential_type), POINTER      :: gth_potential
      TYPE(semi_empirical_type), POINTER     :: se_parameter
      TYPE(semi_empirical_type), POINTER     :: scp_se_parameter
      TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
@@ -145,24 +146,26 @@ MODULE qs_kind_types
      LOGICAL                                :: paw_atom        ! needs atomic rho1
      LOGICAL                                :: qm_atom         ! needs atomic rho1
      LOGICAL                                :: gpw_type_forced ! gpw atom even if with hard exponents
-     LOGICAL                                :: ghost
-     CHARACTER(LEN=default_string_length)   :: name
-     CHARACTER(LEN=2)                       :: element_symbol
-     REAL(KIND = dp)                        :: mass
+     !LOGICAL                                :: ghost
+     !CHARACTER(LEN=default_string_length)   :: name
+     !CHARACTER(LEN=2)                       :: element_symbol
+     !REAL(KIND = dp)                        :: mass
      REAL(KIND = dp)                        :: alpha_scp, I_scp
-     INTEGER                                :: kind_number,&
-                                               natom,&
-                                               number_of_grid_points
+     !INTEGER                                :: kind_number,&
+     !                                          natom,&
+     INTEGER                                :: natom !TODO: remove this
+     INTEGER                                :: number_of_grid_points
      INTEGER, DIMENSION(:,:), POINTER       :: addel, laddel, naddel
-     INTEGER, DIMENSION(:), POINTER         :: atom_list
+     !INTEGER, DIMENSION(:), POINTER         :: atom_list
      TYPE(harmonics_atom_type), POINTER     :: harmonics
      TYPE(grid_atom_type), POINTER          :: grid_atom
      INTEGER                                :: ngrid_rad,ngrid_ang
      INTEGER                                :: lmax_rho0
      INTEGER, DIMENSION(:), POINTER         :: elec_conf ! used to set up the initial atomic guess
      ! user can specify whatever...
-     LOGICAL                                :: shell_active, bs_occupation
-     TYPE(shell_kind_type), POINTER         :: shell
+     !LOGICAL                                :: shell_active
+     LOGICAL                                :: bs_occupation
+     !TYPE(shell_kind_type), POINTER         :: shell
      TYPE(dft_plus_u_type), POINTER         :: dft_plus_u
      LOGICAL                                :: no_optimize
      !
@@ -191,8 +194,7 @@ MODULE qs_kind_types
             read_qs_kind_set,&
             set_qs_kind,&
             write_qs_kind_set,&
-            write_gto_basis_sets,&
-            is_hydrogen
+            write_gto_basis_sets
 
   ! Public data types
   PUBLIC :: qs_kind_type
@@ -230,10 +232,10 @@ CONTAINS
     CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
 
     DO ikind=1,nkind
-       NULLIFY (qs_kind_set(ikind)%all_potential)
-       NULLIFY (qs_kind_set(ikind)%tnadd_potential)
-       NULLIFY (qs_kind_set(ikind)%fist_potential)
-       NULLIFY (qs_kind_set(ikind)%gth_potential)
+       !NULLIFY (qs_kind_set(ikind)%all_potential)
+       !NULLIFY (qs_kind_set(ikind)%tnadd_potential)
+       !NULLIFY (qs_kind_set(ikind)%fist_potential)
+       !NULLIFY (qs_kind_set(ikind)%gth_potential)
        NULLIFY (qs_kind_set(ikind)%se_parameter)
        NULLIFY (qs_kind_set(ikind)%scp_se_parameter)
        NULLIFY (qs_kind_set(ikind)%dftb_parameter)
@@ -245,24 +247,23 @@ CONTAINS
        NULLIFY (qs_kind_set(ikind)%orb_basis_set)
        NULLIFY (qs_kind_set(ikind)%scp_basis_set)
        NULLIFY (qs_kind_set(ikind)%geminal_basis_set)
-       NULLIFY (qs_kind_set(ikind)%atom_list)
+       !NULLIFY (qs_kind_set(ikind)%atom_list)
        NULLIFY (qs_kind_set(ikind)%elec_conf)
        NULLIFY (qs_kind_set(ikind)%hard_basis_set)
        NULLIFY (qs_kind_set(ikind)%soft_basis_set)
        NULLIFY (qs_kind_set(ikind)%paw_proj_set)
        NULLIFY (qs_kind_set(ikind)%harmonics)
        NULLIFY (qs_kind_set(ikind)%grid_atom)
-       NULLIFY (qs_kind_set(ikind)%shell)
        NULLIFY (qs_kind_set(ikind)%dft_plus_u)
        NULLIFY (qs_kind_set(ikind)%dispersion)
        NULLIFY (qs_kind_set(ikind)%damping)
-       qs_kind_set(ikind)%name = ""
-       qs_kind_set(ikind)%element_symbol = ""
-       qs_kind_set(ikind)%mass = 0.0_dp
+       !qs_kind_set(ikind)%name = ""
+       !qs_kind_set(ikind)%element_symbol = ""
+       !qs_kind_set(ikind)%mass = 0.0_dp
        qs_kind_set(ikind)%alpha_scp = 0.0_dp
        qs_kind_set(ikind)%I_scp = 0.0_dp
-       qs_kind_set(ikind)%kind_number = 0
-       qs_kind_set(ikind)%natom = 0
+       !qs_kind_set(ikind)%kind_number = 0
+       !qs_kind_set(ikind)%natom = 0
        qs_kind_set(ikind)%number_of_grid_points = 0
        qs_kind_set(ikind)%paw_atom = .FALSE.
        qs_kind_set(ikind)%qm_atom = .FALSE.
@@ -273,8 +274,7 @@ CONTAINS
        qs_kind_set(ikind)%ngrid_rad = 50
        qs_kind_set(ikind)%ngrid_ang = 50
        qs_kind_set(ikind)%lmax_rho0 = 0
-       qs_kind_set(ikind)%ghost = .FALSE.
-       qs_kind_set(ikind)%shell_active=.FALSE.
+       !qs_kind_set(ikind)%ghost = .FALSE.
        qs_kind_set(ikind)%bs_occupation=.FALSE.
        qs_kind_set(ikind)%no_optimize=.TRUE.
        NULLIFY(qs_kind_set(ikind)%addel)
@@ -311,18 +311,18 @@ CONTAINS
        nkind = SIZE(qs_kind_set)
 
        DO ikind=1,nkind
-          IF (ASSOCIATED(qs_kind_set(ikind)%all_potential)) THEN
-             CALL deallocate_potential(qs_kind_set(ikind)%all_potential,error)
-          END IF
-          IF (ASSOCIATED(qs_kind_set(ikind)%tnadd_potential)) THEN
-             CALL deallocate_potential(qs_kind_set(ikind)%tnadd_potential,error)
-          END IF
-          IF (ASSOCIATED(qs_kind_set(ikind)%fist_potential)) THEN
-             CALL deallocate_potential(qs_kind_set(ikind)%fist_potential,error)
-          END IF
-          IF (ASSOCIATED(qs_kind_set(ikind)%gth_potential)) THEN
-             CALL deallocate_potential(qs_kind_set(ikind)%gth_potential,error)
-          END IF
+          !IF (ASSOCIATED(qs_kind_set(ikind)%all_potential)) THEN
+          !   CALL deallocate_potential(qs_kind_set(ikind)%all_potential,error)
+          !END IF
+          !IF (ASSOCIATED(qs_kind_set(ikind)%tnadd_potential)) THEN
+          !   CALL deallocate_potential(qs_kind_set(ikind)%tnadd_potential,error)
+          !END IF
+          !IF (ASSOCIATED(qs_kind_set(ikind)%fist_potential)) THEN
+          !   CALL deallocate_potential(qs_kind_set(ikind)%fist_potential,error)
+          !END IF
+          !IF (ASSOCIATED(qs_kind_set(ikind)%gth_potential)) THEN
+          !   CALL deallocate_potential(qs_kind_set(ikind)%gth_potential,error)
+          !END IF
           IF (ASSOCIATED(qs_kind_set(ikind)%se_parameter)) THEN
              CALL semi_empirical_release(qs_kind_set(ikind)%se_parameter,error)
           END IF
@@ -373,15 +373,15 @@ CONTAINS
              CALL deallocate_grid_atom(qs_kind_set(ikind)%grid_atom,error)
           END IF
 
-          IF (ASSOCIATED(qs_kind_set(ikind)%atom_list)) THEN
-             DEALLOCATE (qs_kind_set(ikind)%atom_list,STAT=stat)
-             CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
-          END IF
+          !IF (ASSOCIATED(qs_kind_set(ikind)%atom_list)) THEN
+          !   DEALLOCATE (qs_kind_set(ikind)%atom_list,STAT=stat)
+          !   CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
+          !END IF
           IF (ASSOCIATED(qs_kind_set(ikind)%elec_conf)) THEN
              DEALLOCATE (qs_kind_set(ikind)%elec_conf,STAT=stat)
              CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
           END IF
-          CALL shell_release(qs_kind_set(ikind)%shell,error)
+          !CALL shell_release(qs_kind_set(ikind)%shell,error)
 
           IF (ASSOCIATED(qs_kind_set(ikind)%dft_plus_u)) THEN
              IF (ASSOCIATED(qs_kind_set(ikind)%dft_plus_u%orbitals)) THEN
@@ -509,31 +509,31 @@ CONTAINS
 !> \param reltmat ...
 !> \author MK (02.01.2002)
 ! *****************************************************************************
-  SUBROUTINE get_qs_kind(qs_kind, all_potential, tnadd_potential, fist_potential,&
-       gth_potential, se_parameter, scp_se_parameter, dftb_parameter, scptb_parameter, &
+  SUBROUTINE get_qs_kind(qs_kind, se_parameter, scp_se_parameter, dftb_parameter, scptb_parameter, &
        aux_basis_set, ri_aux_basis_set, aux_fit_basis_set, orb_basis_set, scp_basis_set, geminal_basis_set, &
        lri_basis_set, &
-       element_symbol, name, mass, kind_number, natom, atom_list, &
-       alpha_core_charge, ccore_charge, core_charge, alpha_scp, I_scp, &
-       core_charge_radius, ncgf, nsgf, rcov, rvdw, z, zeff, qeff, apol, cpol, mm_radius, &
+        natom, &
+       !alpha_core_charge, ccore_charge, core_charge, 
+       alpha_scp, I_scp, &
+       core_charge_radius, ncgf, nsgf, zeff, qeff, apol, cpol, mm_radius, &
        soft_basis_set, elec_conf, hard_basis_set, paw_proj_set, softb, &
        paw_atom,qm_atom, hard_radius, hard0_radius, max_rad_local, &
        gpw_type_forced, harmonics, max_iso_not0, max_s_harm, grid_atom, &
-       ngrid_ang, ngrid_rad, lmax_rho0, ghost,shell, shell_active, damping, &
+       ngrid_ang, ngrid_rad, lmax_rho0, damping, &
        dft_plus_u_atom, l_of_dft_plus_u, u_minus_j, dispersion, basis_set_id, &
        npgf, bs_occupation, no_optimize, addel, laddel, naddel, orbitals, &
        max_scf, eps_scf, smear, u_ramping, u_minus_j_target, eps_u_ramping, &
        init_u_ramping_each_scf, reltmat)
 
     TYPE(qs_kind_type)                       :: qs_kind
-    TYPE(all_potential_type), OPTIONAL, &
-      POINTER                                :: all_potential
-    TYPE(local_potential_type), OPTIONAL, &
-      POINTER                                :: tnadd_potential
-    TYPE(fist_potential_type), OPTIONAL, &
-      POINTER                                :: fist_potential
-    TYPE(gth_potential_type), OPTIONAL, &
-      POINTER                                :: gth_potential
+    !TYPE(all_potential_type), OPTIONAL, &
+    !  POINTER                                :: all_potential
+    !TYPE(local_potential_type), OPTIONAL, &
+    !  POINTER                                :: tnadd_potential
+    !TYPE(fist_potential_type), OPTIONAL, &
+    !  POINTER                                :: fist_potential
+    !TYPE(gth_potential_type), OPTIONAL, &
+    !  POINTER                                :: gth_potential
     TYPE(semi_empirical_type), OPTIONAL, &
       POINTER                                :: se_parameter, scp_se_parameter
     TYPE(qs_dftb_atom_type), OPTIONAL, &
@@ -549,19 +549,10 @@ CONTAINS
       POINTER                                :: geminal_basis_set
     TYPE(gto_basis_set_type), OPTIONAL, &
       POINTER                                :: lri_basis_set
-    CHARACTER(LEN=2), INTENT(OUT), OPTIONAL  :: element_symbol
-    CHARACTER(LEN=default_string_length), &
-      INTENT(OUT), OPTIONAL                  :: name
-    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: mass
-    INTEGER, INTENT(OUT), OPTIONAL           :: kind_number, natom
-    INTEGER, DIMENSION(:), OPTIONAL, POINTER :: atom_list
-    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: alpha_core_charge, &
-                                                ccore_charge, core_charge, &
-                                                alpha_scp, I_scp, &
+    INTEGER, INTENT(OUT), OPTIONAL           :: natom
+    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: alpha_scp, I_scp, &
                                                 core_charge_radius
     INTEGER, INTENT(OUT), OPTIONAL           :: ncgf, nsgf
-    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: rcov, rvdw
-    INTEGER, INTENT(OUT), OPTIONAL           :: z
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: zeff, qeff, apol, cpol, &
                                                 mm_radius
     TYPE(gto_basis_set_type), OPTIONAL, &
@@ -582,9 +573,6 @@ CONTAINS
     TYPE(grid_atom_type), OPTIONAL, POINTER  :: grid_atom
     INTEGER, INTENT(OUT), OPTIONAL           :: ngrid_ang, ngrid_rad, &
                                                 lmax_rho0
-    LOGICAL, INTENT(OUT), OPTIONAL           :: ghost
-    TYPE(shell_kind_type), OPTIONAL, POINTER :: shell
-    LOGICAL, INTENT(OUT), OPTIONAL           :: shell_active
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
     LOGICAL, INTENT(OUT), OPTIONAL           :: dft_plus_u_atom
     INTEGER, INTENT(OUT), OPTIONAL           :: l_of_dft_plus_u
@@ -625,10 +613,10 @@ CONTAINS
 !    IF (ASSOCIATED(qs_kind)) THEN
 
        IF (PRESENT(softb)) softb_local = softb
-       IF (PRESENT(all_potential)) all_potential => qs_kind%all_potential
-       IF (PRESENT(tnadd_potential)) tnadd_potential => qs_kind%tnadd_potential
-       IF (PRESENT(fist_potential)) fist_potential => qs_kind%fist_potential
-       IF (PRESENT(gth_potential)) gth_potential => qs_kind%gth_potential
+       !IF (PRESENT(all_potential)) all_potential => qs_kind%all_potential
+       !IF (PRESENT(tnadd_potential)) tnadd_potential => qs_kind%tnadd_potential
+       !IF (PRESENT(fist_potential)) fist_potential => qs_kind%fist_potential
+       !IF (PRESENT(gth_potential)) gth_potential => qs_kind%gth_potential
        IF (PRESENT(se_parameter))  se_parameter => qs_kind%se_parameter
        IF (PRESENT(scp_se_parameter))  scp_se_parameter => qs_kind%scp_se_parameter
        IF (PRESENT(dftb_parameter))  dftb_parameter => qs_kind%dftb_parameter
@@ -646,59 +634,54 @@ CONTAINS
        END IF
        IF (PRESENT(geminal_basis_set)) geminal_basis_set => qs_kind%geminal_basis_set
        IF (PRESENT(scp_basis_set)) scp_basis_set => qs_kind%scp_basis_set
-       IF (PRESENT(element_symbol)) element_symbol = qs_kind%element_symbol
-       IF (PRESENT(name)) name = qs_kind%name
-       IF (PRESENT(mass)) mass = qs_kind%mass
        IF (PRESENT(alpha_scp)) alpha_scp = qs_kind%alpha_scp
        IF (PRESENT(I_scp)) I_scp = qs_kind%I_scp
-       IF (PRESENT(kind_number)) kind_number = qs_kind%kind_number
        IF (PRESENT(natom)) natom = qs_kind%natom
-       IF (PRESENT(atom_list)) atom_list => qs_kind%atom_list
        IF (PRESENT(elec_conf)) elec_conf => qs_kind%elec_conf
-       IF (PRESENT(alpha_core_charge)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,&
-                  alpha_core_charge=alpha_core_charge)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,&
-                  alpha_core_charge=alpha_core_charge)
-          ELSE
-             alpha_core_charge = 1.0_dp
-          END IF
-       END IF
-       IF (PRESENT(ccore_charge)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,&
-                  ccore_charge=ccore_charge)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,&
-                  ccore_charge=ccore_charge)
-          ELSE
-             ccore_charge = 0.0_dp
-          END IF
-       END IF
-       IF (PRESENT(core_charge_radius)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,&
-                  core_charge_radius=core_charge_radius)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,&
-                  core_charge_radius=core_charge_radius)
-          ELSE
-             core_charge_radius = 0.0_dp
-          END IF
-       END IF
-       IF (PRESENT(core_charge)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,&
-                  zeff=core_charge)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,&
-                  zeff=core_charge)
-          ELSE
-             core_charge = 0.0_dp
-          END IF
-       END IF
+       !IF (PRESENT(alpha_core_charge)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,&
+       !           alpha_core_charge=alpha_core_charge)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,&
+       !           alpha_core_charge=alpha_core_charge)
+       !   ELSE
+       !      alpha_core_charge = 1.0_dp
+       !   END IF
+       !END IF
+       !IF (PRESENT(ccore_charge)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,&
+       !           ccore_charge=ccore_charge)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,&
+       !           ccore_charge=ccore_charge)
+       !   ELSE
+       !      ccore_charge = 0.0_dp
+       !   END IF
+       !END IF
+       !IF (PRESENT(core_charge_radius)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,&
+       !           core_charge_radius=core_charge_radius)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,&
+       !           core_charge_radius=core_charge_radius)
+       !   ELSE
+       !      core_charge_radius = 0.0_dp
+       !   END IF
+       !END IF
+       !IF (PRESENT(core_charge)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,&
+       !           zeff=core_charge)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,&
+       !           zeff=core_charge)
+       !   ELSE
+       !      core_charge = 0.0_dp
+       !   END IF
+       !END IF
        IF (PRESENT(ncgf)) THEN
           SELECT CASE ( my_basis_set_id)
           CASE (use_orb_basis_set)
@@ -792,58 +775,52 @@ CONTAINS
          END IF
        END IF
 !JTe
-       IF (PRESENT(z)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,z=z)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,z=z)
-          ELSE
-             CALL get_ptable_info(qs_kind%element_symbol, number=z)
-          END IF
-       END IF
-       IF (PRESENT(zeff)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL get_potential(potential=qs_kind%all_potential,zeff=zeff)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL get_potential(potential=qs_kind%gth_potential,zeff=zeff)
-          ELSE
-             zeff = 0.0_dp
-          END IF
-       END IF
-       IF (PRESENT(rcov)) THEN
-          CALL get_ptable_info(qs_kind%element_symbol, covalent_radius=rcov)
-       END IF
-       IF (PRESENT(rvdw)) THEN
-          CALL get_ptable_info(qs_kind%element_symbol, vdw_radius=rvdw)
-       END IF
-       IF (PRESENT(qeff)) THEN
-          IF (ASSOCIATED(qs_kind%fist_potential)) THEN
-             CALL get_potential(potential=qs_kind%fist_potential,qeff=qeff)
-          ELSE
-             qeff = -HUGE(0.0_dp)
-          END IF
-       END IF
-       IF (PRESENT(apol)) THEN
-          IF (ASSOCIATED(qs_kind%fist_potential)) THEN
-             CALL get_potential(potential=qs_kind%fist_potential,apol=apol)
-          ELSE
-             apol = -HUGE(0.0_dp)
-          END IF
-       END IF
-       IF (PRESENT(cpol)) THEN
-          IF (ASSOCIATED(qs_kind%fist_potential)) THEN
-             CALL get_potential(potential=qs_kind%fist_potential,cpol=cpol)
-          ELSE
-             cpol = -HUGE(0.0_dp)
-          END IF
-       END IF
-       IF (PRESENT(mm_radius)) THEN
-          IF (ASSOCIATED(qs_kind%fist_potential)) THEN
-             CALL get_potential(potential=qs_kind%fist_potential,mm_radius=mm_radius)
-          ELSE
-             mm_radius = -HUGE(0.0_dp)
-          END IF
-       END IF
+       !IF (PRESENT(z)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,z=z)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,z=z)
+       !   ELSE
+       !      CALL get_ptable_info(qs_kind%element_symbol, number=z)
+       !   END IF
+       !END IF
+       !IF (PRESENT(zeff)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%all_potential,zeff=zeff)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%gth_potential,zeff=zeff)
+       !   ELSE
+       !      zeff = 0.0_dp
+       !   END IF
+       !END IF
+       !IF (PRESENT(qeff)) THEN
+       !   IF (ASSOCIATED(qs_kind%fist_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%fist_potential,qeff=qeff)
+       !   ELSE
+       !      qeff = -HUGE(0.0_dp)
+       !   END IF
+       !END IF
+       !IF (PRESENT(apol)) THEN
+       !   IF (ASSOCIATED(qs_kind%fist_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%fist_potential,apol=apol)
+       !   ELSE
+       !      apol = -HUGE(0.0_dp)
+       !   END IF
+       !END IF
+       !IF (PRESENT(cpol)) THEN
+       !   IF (ASSOCIATED(qs_kind%fist_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%fist_potential,cpol=cpol)
+       !   ELSE
+       !      cpol = -HUGE(0.0_dp)
+       !   END IF
+       !END IF
+       !IF (PRESENT(mm_radius)) THEN
+       !   IF (ASSOCIATED(qs_kind%fist_potential)) THEN
+       !      CALL get_potential(potential=qs_kind%fist_potential,mm_radius=mm_radius)
+       !   ELSE
+       !      mm_radius = -HUGE(0.0_dp)
+       !   END IF
+       !END IF
        IF (PRESENT(soft_basis_set)) soft_basis_set => qs_kind%soft_basis_set
        IF (PRESENT(soft_basis_set)) soft_basis_set => qs_kind%soft_basis_set
        IF (PRESENT(hard_basis_set)) hard_basis_set => qs_kind%hard_basis_set
@@ -873,9 +850,6 @@ CONTAINS
        IF (PRESENT(ngrid_ang)) ngrid_ang = qs_kind%ngrid_ang
        IF (PRESENT(ngrid_rad)) ngrid_rad = qs_kind%ngrid_rad
        IF (PRESENT(lmax_rho0)) lmax_rho0 = qs_kind%lmax_rho0
-       IF (PRESENT(ghost)) ghost = qs_kind%ghost
-       IF (PRESENT(shell)) shell => qs_kind%shell
-       IF (PRESENT(shell_active)) shell_active = qs_kind%shell_active
        IF (PRESENT(dft_plus_u_atom)) dft_plus_u_atom = ASSOCIATED(qs_kind%dft_plus_u)
        IF (PRESENT(damping)) damping => qs_kind%damping
        IF (PRESENT(l_of_dft_plus_u)) THEN
@@ -1027,12 +1001,12 @@ CONTAINS
        maxppnl,maxsgf,maxsgf_set,maxshell,&
        natom,nelectron,ncgf,ncgf_aux, ncgf_ri_aux,&
        npgf,nset,nsgf,nshell,&
-       all_potential_present,tnadd_potential_present,fist_potential_present,&
-       gth_potential_present,paw_atom_present,&
-       qm_atom_present,shell_present, shell_adiabatic,&
-       shell_check_distance, dft_plus_u_atom_present,&
+       !all_potential_present,tnadd_potential_present,fist_potential_present,&
+       !gth_potential_present,
+       paw_atom_present,&
+       qm_atom_present, dft_plus_u_atom_present,&
        damping_present,&
-       atom_of_kind,kind_of,natom_of_kind,maxder,&
+       maxder,&
        maxlgem,max_ngrid_rad,&
        max_sph_harm,maxg_iso_not0,lmax_rho0,&
        zetsoft_max,basis_set_id)
@@ -1043,13 +1017,10 @@ CONTAINS
       maxgtop, maxgtops, maxlgto, maxlprj, maxlppl, maxlppnl, maxpol, &
       maxnset, maxpgf, maxppnl, maxsgf, maxsgf_set, maxshell, natom, &
       nelectron, ncgf, ncgf_aux, ncgf_ri_aux, npgf, nset, nsgf, nshell
-    LOGICAL, INTENT(OUT), OPTIONAL :: all_potential_present, &
-      tnadd_potential_present, fist_potential_present, gth_potential_present, &
-      paw_atom_present, qm_atom_present, shell_present, shell_adiabatic, &
-      shell_check_distance, dft_plus_u_atom_present, damping_present
-    INTEGER, DIMENSION(:), INTENT(OUT), &
-      OPTIONAL                               :: atom_of_kind, kind_of, &
-                                                natom_of_kind
+    LOGICAL, INTENT(OUT), OPTIONAL :: &
+      !all_potential_present, &
+      !tnadd_potential_present, fist_potential_present, gth_potential_present, &
+      paw_atom_present, qm_atom_present, dft_plus_u_atom_present, damping_present
     INTEGER, INTENT(IN), OPTIONAL            :: maxder
     INTEGER, INTENT(OUT), OPTIONAL           :: maxlgem(2), max_ngrid_rad, &
                                                 max_sph_harm, maxg_iso_not0, &
@@ -1079,7 +1050,6 @@ CONTAINS
     TYPE(local_potential_type), POINTER      :: tnadd_potential
     TYPE(paw_proj_set_type), POINTER         :: paw_proj_set
     TYPE(qs_dftb_atom_type), POINTER         :: dftb_parameter
-    TYPE(shell_kind_type), POINTER           :: shell
 
     IF( PRESENT(basis_set_id) ) THEN
       my_basis_set_id = basis_set_id
@@ -1116,19 +1086,13 @@ CONTAINS
        IF (PRESENT(nset)) nset = 0
        IF (PRESENT(nsgf)) nsgf = 0
        IF (PRESENT(nshell)) nshell = 0
-       IF (PRESENT(all_potential_present)) all_potential_present = .FALSE.
-       IF (PRESENT(tnadd_potential_present)) tnadd_potential_present = .FALSE.
-       IF (PRESENT(fist_potential_present)) fist_potential_present = .FALSE.
-       IF (PRESENT(gth_potential_present)) gth_potential_present = .FALSE.
+       !IF (PRESENT(all_potential_present)) all_potential_present = .FALSE.
+       !IF (PRESENT(tnadd_potential_present)) tnadd_potential_present = .FALSE.
+       !IF (PRESENT(fist_potential_present)) fist_potential_present = .FALSE.
+       !IF (PRESENT(gth_potential_present)) gth_potential_present = .FALSE.
        IF (PRESENT(paw_atom_present)) paw_atom_present = .FALSE.
        IF (PRESENT(qm_atom_present)) qm_atom_present = .FALSE.
-       IF (PRESENT(shell_present)) shell_present = .FALSE.
-       IF (PRESENT(shell_adiabatic)) shell_adiabatic = .FALSE.
-       IF (PRESENT(shell_check_distance)) shell_check_distance = .FALSE.
        IF (PRESENT(damping_present)) damping_present = .FALSE.
-       IF (PRESENT(atom_of_kind)) atom_of_kind(:) = 0
-       IF (PRESENT(kind_of)) kind_of(:) = 0
-       IF (PRESENT(natom_of_kind)) natom_of_kind(:) = 0
        IF (PRESENT(zetsoft_max))  zetsoft_max = 0.0_dp
        IF (PRESENT(max_ngrid_rad))  max_ngrid_rad = 0
        IF (PRESENT(max_sph_harm))   max_sph_harm = 0
@@ -1139,10 +1103,10 @@ CONTAINS
        DO ikind=1,nkind
           qs_kind => qs_kind_set(ikind)
           CALL get_qs_kind(qs_kind=qs_kind,&
-               all_potential=all_potential,&
-               tnadd_potential=tnadd_potential,&
-               fist_potential=fist_potential,&
-               gth_potential=gth_potential,&
+               !all_potential=all_potential,&
+               !tnadd_potential=tnadd_potential,&
+               !fist_potential=fist_potential,&
+               !gth_potential=gth_potential,&
                aux_basis_set=aux_basis_set,&
                lri_basis_set=lri_basis_set,&
                ri_aux_basis_set=ri_aux_basis_set,&
@@ -1160,7 +1124,6 @@ CONTAINS
                qm_atom=qm_atom,&
                dft_plus_u_atom=dft_plus_u_atom,&
                lmax_rho0=lmax_rho0_kind,&
-               shell=shell,&
                damping=damping)
           IF (PRESENT(maxatom)) THEN
              maxatom = MAX(maxatom,qs_kind%natom)
@@ -1597,19 +1560,19 @@ CONTAINS
                 ncgf_ri_aux = ncgf_ri_aux + n*qs_kind_set(ikind)%natom
              END IF
           END IF
-          IF (PRESENT(nelectron)) THEN
-             IF (ASSOCIATED(qs_kind%all_potential)) THEN
-                CALL get_potential(potential=qs_kind%all_potential,&
-                     zeff=zeff,zeff_correction=zeff_correction)
-             ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-                CALL get_potential(potential=qs_kind%gth_potential,&
-                     zeff=zeff,zeff_correction=zeff_correction)
-             ELSE
-                zeff = 0.0_dp
-                zeff_correction = 0.0_dp
-             END IF
-             nelectron = nelectron + qs_kind_set(ikind)%natom*NINT(zeff-zeff_correction)
-          END IF
+          !IF (PRESENT(nelectron)) THEN
+          !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+          !      CALL get_potential(potential=qs_kind%all_potential,&
+          !           zeff=zeff,zeff_correction=zeff_correction)
+          !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+          !      CALL get_potential(potential=qs_kind%gth_potential,&
+          !           zeff=zeff,zeff_correction=zeff_correction)
+          !   ELSE
+          !      zeff = 0.0_dp
+          !      zeff_correction = 0.0_dp
+          !   END IF
+          !   nelectron = nelectron + qs_kind_set(ikind)%natom*NINT(zeff-zeff_correction)
+          !END IF
           IF (PRESENT(npgf)) THEN
              SELECT CASE (my_basis_set_id)
              CASE (use_orb_basis_set)
@@ -1714,26 +1677,26 @@ CONTAINS
                 nshell = nshell + (n+1)*qs_kind_set(ikind)%natom
              END IF
           END IF
-          IF (PRESENT(all_potential_present)) THEN
-             IF (ASSOCIATED(all_potential)) THEN
-                all_potential_present = .TRUE.
-             END IF
-          END IF
-          IF (PRESENT(tnadd_potential_present)) THEN
-             IF (ASSOCIATED(tnadd_potential)) THEN
-                tnadd_potential_present = .TRUE.
-             END IF
-          END IF
-          IF (PRESENT(fist_potential_present)) THEN
-             IF (ASSOCIATED(fist_potential)) THEN
-                fist_potential_present = .TRUE.
-             END IF
-          END IF
-          IF (PRESENT(gth_potential_present)) THEN
-             IF (ASSOCIATED(gth_potential)) THEN
-                gth_potential_present = .TRUE.
-             END IF
-          END IF
+          !IF (PRESENT(all_potential_present)) THEN
+          !   IF (ASSOCIATED(all_potential)) THEN
+          !      all_potential_present = .TRUE.
+          !   END IF
+          !END IF
+          !IF (PRESENT(tnadd_potential_present)) THEN
+          !   IF (ASSOCIATED(tnadd_potential)) THEN
+          !      tnadd_potential_present = .TRUE.
+          !   END IF
+          !END IF
+          !IF (PRESENT(fist_potential_present)) THEN
+          !   IF (ASSOCIATED(fist_potential)) THEN
+          !      fist_potential_present = .TRUE.
+          !   END IF
+          !END IF
+          !IF (PRESENT(gth_potential_present)) THEN
+          !   IF (ASSOCIATED(gth_potential)) THEN
+          !      gth_potential_present = .TRUE.
+          !   END IF
+          !END IF
           IF (PRESENT(paw_atom_present)) THEN
              IF (paw_atom) THEN
                 paw_atom_present = .TRUE.
@@ -1748,37 +1711,11 @@ CONTAINS
              IF (dft_plus_u_atom) THEN
                 dft_plus_u_atom_present = .TRUE.
              END IF
-          END IF
-          IF (PRESENT(shell_present)) THEN
-             IF (ASSOCIATED(shell)) THEN
-                shell_present = .TRUE.
-             END IF
-          END IF
-          IF (PRESENT(shell_adiabatic) .AND. ASSOCIATED(shell) )THEN
-             IF(.NOT. shell_adiabatic) shell_adiabatic = (shell%massfrac /= 0.0_dp)
-          END IF
-          IF (PRESENT(shell_check_distance) .AND. ASSOCIATED(shell) )THEN
-             IF(.NOT. shell_check_distance) shell_check_distance = (shell%max_dist > 0.0_dp)
-          END IF
+          END IF     
           IF (PRESENT(damping_present))THEN
              IF (ASSOCIATED(damping)) THEN
                 damping_present=.TRUE.
              END IF
-          END IF
-          IF (PRESENT(atom_of_kind)) THEN
-             DO iatom=1,qs_kind%natom
-                atom_a = qs_kind%atom_list(iatom)
-                atom_of_kind(atom_a) = iatom
-             END DO
-          END IF
-          IF (PRESENT(kind_of)) THEN
-             DO iatom=1,qs_kind%natom
-                atom_a = qs_kind%atom_list(iatom)
-                kind_of(atom_a) = ikind
-             END DO
-          END IF
-          IF (PRESENT(natom_of_kind)) THEN
-             natom_of_kind(ikind) = qs_kind_set(ikind)%natom
           END IF
           IF(PRESENT(max_ngrid_rad)) THEN
              max_ngrid_rad = MAX(max_ngrid_rad,ngrid_rad)
@@ -1831,67 +1768,67 @@ CONTAINS
     TYPE(section_vals_type), POINTER         :: force_env_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
-    CHARACTER(len=*), PARAMETER :: routineN = 'init_qs_kind', &
-      routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: handle, method_name_id
-
-    CALL timeset(routineN,handle)
-
-    IF (ASSOCIATED(qs_kind)) THEN
-       CALL section_vals_val_get(force_env_section,"METHOD",i_val=method_name_id,error=error)
-       IF (method_name_id == do_qs) THEN
-          IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL init_potential(qs_kind%gth_potential,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%orb_basis_set)) THEN
-             IF (qs_kind%orb_basis_set%norm_type < 0) THEN
-                qs_kind%orb_basis_set%norm_type = 2
-             END IF
-             CALL init_orb_basis_set(qs_kind%orb_basis_set,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%scp_basis_set)) THEN
-             IF (qs_kind%scp_basis_set%norm_type < 0) THEN
-                qs_kind%scp_basis_set%norm_type = 2
-             END IF
-             CALL init_orb_basis_set(qs_kind%scp_basis_set,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%lri_basis_set)) THEN
-             IF (qs_kind%lri_basis_set%norm_type < 0) THEN
-                qs_kind%lri_basis_set%norm_type = 2
-             END IF
-             CALL init_orb_basis_set(qs_kind%lri_basis_set,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%aux_fit_basis_set)) THEN
-             IF (qs_kind%aux_fit_basis_set%norm_type < 0) THEN
-                qs_kind%aux_fit_basis_set%norm_type = 2
-             END IF
-             CALL init_orb_basis_set(qs_kind%aux_fit_basis_set,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%aux_basis_set)) THEN
-             IF (qs_kind%aux_basis_set%norm_type < 0) THEN
-                qs_kind%aux_basis_set%norm_type = 1
-             END IF
-             CALL init_aux_basis_set(qs_kind%aux_basis_set,error)
-          END IF
-          IF (ASSOCIATED(qs_kind%ri_aux_basis_set)) THEN
-             IF (qs_kind%ri_aux_basis_set%norm_type < 0) THEN
-                qs_kind%ri_aux_basis_set%norm_type = 2
-             END IF
-             CALL init_orb_basis_set(qs_kind%ri_aux_basis_set,error)
-          END IF
-       ELSE IF (method_name_id == do_fist) THEN
-          IF (ASSOCIATED(qs_kind%fist_potential)) THEN
-             CALL allocate_potential(qs_kind%fist_potential,error)
-          END IF
-       END IF
-
-    ELSE
-       CALL stop_program(routineN,moduleN,__LINE__,&
-            "The pointer qs_kind is not associated",para_env)
-    END IF
-
-    CALL timestop(handle)
+    !CHARACTER(len=*), PARAMETER :: routineN = 'init_qs_kind', &
+    !  routineP = moduleN//':'//routineN
+    !
+    !INTEGER                                  :: handle, method_name_id
+    !
+    !CALL timeset(routineN,handle)
+    !
+    !IF (ASSOCIATED(qs_kind)) THEN
+    !   CALL section_vals_val_get(force_env_section,"METHOD",i_val=method_name_id,error=error)
+    !   IF (method_name_id == do_qs) THEN
+    !      !IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+    !      !   CALL init_potential(qs_kind%gth_potential,error)
+    !      !END IF
+    !      IF (ASSOCIATED(qs_kind%orb_basis_set)) THEN
+    !         IF (qs_kind%orb_basis_set%norm_type < 0) THEN
+    !            qs_kind%orb_basis_set%norm_type = 2
+    !         END IF
+    !         CALL init_orb_basis_set(qs_kind%orb_basis_set,error)
+    !      END IF
+    !      IF (ASSOCIATED(qs_kind%scp_basis_set)) THEN
+    !         IF (qs_kind%scp_basis_set%norm_type < 0) THEN
+    !            qs_kind%scp_basis_set%norm_type = 2
+    !         END IF
+    !         CALL init_orb_basis_set(qs_kind%scp_basis_set,error)
+    !      END IF
+    !      IF (ASSOCIATED(qs_kind%lri_basis_set)) THEN
+    !         IF (qs_kind%lri_basis_set%norm_type < 0) THEN
+    !            qs_kind%lri_basis_set%norm_type = 2
+    !         END IF
+    !         CALL init_orb_basis_set(qs_kind%lri_basis_set,error)
+    !      END IF
+    !      IF (ASSOCIATED(qs_kind%aux_fit_basis_set)) THEN
+    !         IF (qs_kind%aux_fit_basis_set%norm_type < 0) THEN
+    !            qs_kind%aux_fit_basis_set%norm_type = 2
+    !         END IF
+    !         CALL init_orb_basis_set(qs_kind%aux_fit_basis_set,error)
+    !      END IF
+    !      IF (ASSOCIATED(qs_kind%aux_basis_set)) THEN
+    !         IF (qs_kind%aux_basis_set%norm_type < 0) THEN
+    !            qs_kind%aux_basis_set%norm_type = 1
+    !         END IF
+    !         CALL init_aux_basis_set(qs_kind%aux_basis_set,error)
+    !      END IF
+    !      IF (ASSOCIATED(qs_kind%ri_aux_basis_set)) THEN
+    !         IF (qs_kind%ri_aux_basis_set%norm_type < 0) THEN
+    !            qs_kind%ri_aux_basis_set%norm_type = 2
+    !         END IF
+    !         CALL init_orb_basis_set(qs_kind%ri_aux_basis_set,error)
+    !      END IF
+    !   ELSE IF (method_name_id == do_fist) THEN
+    !      IF (ASSOCIATED(qs_kind%fist_potential)) THEN
+    !         CALL allocate_potential(qs_kind%fist_potential,error)
+    !      END IF
+    !   END IF
+    !
+    !ELSE
+    !   CALL stop_program(routineN,moduleN,__LINE__,&
+    !        "The pointer qs_kind is not associated",para_env)
+    !END IF
+    !
+    !CALL timestop(handle)
 
   END SUBROUTINE init_qs_kind
 
@@ -2041,634 +1978,634 @@ CONTAINS
     INTEGER, INTENT(IN)                      :: method_id
     TYPE(cp_error_type), INTENT(inout)       :: error
 
-    CHARACTER(LEN=*), PARAMETER :: routineN = 'read_qs_kind', &
-      routineP = moduleN//':'//routineN
-
-    CHARACTER(LEN=2)                         :: element_symbol
-    CHARACTER(LEN=default_string_length) :: akind_name, aux_basis_set_name, &
-      aux_fit_basis_set_name, geminal_basis_set_name, keyword, kgpot_name, &
-      kgpot_type, lri_basis_set_name, orb_basis_set_name, potential_name, &
-      potential_type, ri_aux_basis_set_name
-    INTEGER                                  :: handle, i, i_rep, ipos, j, &
-                                                k_rep, l, m, n_rep, naux, &
-                                                ngauss, norb, norbitals, &
-                                                stat, z
-    INTEGER, DIMENSION(:), POINTER           :: add_el, elec_conf, orbitals
-    LOGICAL :: check, explicit, explicit_basis, explicit_geminal, &
-      explicit_kgpot, explicit_potential, failure, section_enabled, &
-      subsection_enabled
-    REAL(KIND=dp)                            :: zeff_correction
-    TYPE(section_vals_type), POINTER :: basis_section, bs_section, &
-      dft_plus_u_section, dft_section, enforce_occupation_section, &
-      geminal_section, kgpot_section, potential_section, spin_section
-
-    CALL timeset(routineN,handle)
-
-    NULLIFY (elec_conf)
-
-    failure = .FALSE.
-    aux_basis_set_name = ""
-    ri_aux_basis_set_name = ""
-    orb_basis_set_name = ""
-    potential_name = ""
-    potential_type = ""
-    kgpot_name = ""
-    kgpot_type = ""
-    z = -1
-    qs_kind%mass=-1.0_dp
-    zeff_correction = 0.0_dp
-    dft_section => section_vals_get_subs_vals(force_env_section,"DFT",error=error)
-    CALL section_vals_get(kind_section,n_repetition=n_rep,error=error)
-    k_rep=-1
-    akind_name=qs_kind%name
-    CALL uppercase(akind_name)
-    ! First we use the atom_name to find out the proper KIND section
-    DO i_rep=1,n_rep
-       CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
-            c_val=keyword,i_rep_section=i_rep,error=error)
-       CALL uppercase(keyword)
-       IF (keyword==akind_name) THEN
-          k_rep=i_rep
-          EXIT
-       END IF
-    END DO
-    ! The search for the KIND section failed.. check for a QM/MM link atom
-    IF (k_rep<1) THEN
-       ipos = INDEX(qs_kind%name,"_")
-       IF (((ipos == 2).OR.(ipos == 3)).AND.(INDEX(qs_kind%name,"_ghost")==0)) THEN
-          ! If the atm_name could not match any KIND section it maybe be a QM/MM link atom.
-          ! ghost atoms will be treated differently.
-          akind_name = qs_kind%name(1:ipos-1)
-          CALL uppercase(akind_name)
-          DO i_rep=1,n_rep
-             CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
-                  c_val=keyword,i_rep_section=i_rep,error=error)
-             CALL uppercase(keyword)
-             IF (keyword==akind_name) THEN
-                k_rep=i_rep
-                EXIT
-             END IF
-          END DO
-       END IF
-    END IF
-    ! The search for the KIND section failed.. check element_symbol
-    IF (k_rep<1) THEN
-       ! If it's not a link atom let's check for the element and map
-       ! the KIND section to the element.
-       element_symbol = qs_kind%element_symbol(1:2)
-       CALL uppercase(element_symbol)
-       DO i_rep=1,n_rep
-          CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
-               c_val=keyword,i_rep_section=i_rep,error=error)
-          CALL uppercase(keyword)
-          IF (keyword==element_symbol) THEN
-             k_rep=i_rep
-             EXIT
-          END IF
-       END DO
-    END IF
-    ! In case it should not really match any possible KIND section
-    ! let's look if a default one is defined..
-    IF (k_rep<1) THEN
-       DO i_rep=1,n_rep
-          CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
-               c_val=keyword,i_rep_section=i_rep,error=error)
-          CALL uppercase(keyword)
-          IF (keyword=="DEFAULT") THEN
-             k_rep=i_rep
-             EXIT
-          END IF
-       END DO
-    END IF
-    IF (k_rep<0.AND.(.NOT.no_fail)) THEN
-       CALL stop_program(routineN,moduleN,__LINE__,&
-            "No &KIND section was possible to associate to the atomic kind <"//&
-            TRIM(akind_name)//">. The KIND section were also scanned for the"//&
-            " corresponding element <"//TRIM(qs_kind%element_symbol)//"> "//&
-            " and for the DEFAULT section but no match was found. Check your input file!",para_env)
-    END IF
-    ! Retrieve information on element
-    CALL get_ptable_info(qs_kind%element_symbol, amass=qs_kind%mass, ielement=z)
-
-    ! Normal parsing of the KIND section
-    IF (k_rep>0) THEN
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="AUX_FIT_BASIS_SET", c_val=aux_fit_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="AUX_BASIS_SET", c_val=aux_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="LRI_BASIS_SET", c_val=lri_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="RI_AUX_BASIS_SET", c_val=ri_aux_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="AUX_BASIS_NORMALIZATION", i_val=naux,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="BASIS_SET",c_val=orb_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="GEMINAL_BASIS_SET",c_val=geminal_basis_set_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="BASIS_NORMALIZATION", i_val=norb,error=error)
-       ! seems like qs_kind is not initialised here
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="ELEC_CONF",n_rep_val=i,error=error)
-       IF (i>0) THEN
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="ELEC_CONF",i_vals=elec_conf,error=error)
-          CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
-       ENDIF
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="CORE_CORRECTION",r_val=zeff_correction,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="MASS",n_rep_val=i,error=error)
-       IF (i>0) THEN
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="MASS",r_val=qs_kind%mass,error=error)
-       END IF
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="I_SCP",n_rep_val=i,error=error)
-       IF (i>0) THEN
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="I_SCP",r_val=qs_kind%I_scp,error=error)
-       END IF
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="ALPHA_SCP",n_rep_val=i,error=error)
-       IF (i>0) THEN
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="ALPHA_SCP",r_val=qs_kind%alpha_scp,error=error)
-       END IF
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="POTENTIAL",c_val=potential_name,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="KG_POTENTIAL",c_val=kgpot_name,error=error)
-       ! assign atom dependent defaults, only H special case
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,n_rep_val=i,&
-            keyword_name="HARD_EXP_RADIUS",error=error)
-       IF (i==0) THEN
-          IF (z==1) THEN
-             qs_kind%hard_radius=1.2_dp
-          ELSE
-             qs_kind%hard_radius=0.8_dp*bohr
-          ENDIF
-       ELSE
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="HARD_EXP_RADIUS",r_val=qs_kind%hard_radius,error=error)
-       ENDIF
-
-       ! assign atom dependent defaults, only H special case
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,n_rep_val=i,&
-            keyword_name="RHO0_EXP_RADIUS",error=error)
-       IF (i==0) THEN
-          qs_kind%hard0_radius=qs_kind%hard_radius
-       ELSE
-          CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-               keyword_name="RHO0_EXP_RADIUS",r_val=qs_kind%hard0_radius,error=error)
-       ENDIF
-       CALL cp_assert(qs_kind%hard_radius>=qs_kind%hard0_radius,&
-            cp_failure_level,cp_assertion_failed,routineP,&
-            "rc0 should be <= rc",error,failure)
-
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="MAX_RAD_LOCAL",r_val=qs_kind%max_rad_local,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="LEBEDEV_GRID",i_val=qs_kind%ngrid_ang,error=error)
-       CALL cp_assert(qs_kind%ngrid_ang > 0,&
-            cp_failure_level,cp_assertion_failed,routineP,&
-            "# point lebedev grid < 0",error,failure)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="RADIAL_GRID",i_val=qs_kind%ngrid_rad,error=error)
-       CALL cp_assert(qs_kind%ngrid_rad > 0,&
-            cp_failure_level,cp_assertion_failed,routineP,&
-            "# point radial grid < 0",error,failure)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="GPW_TYPE",l_val=qs_kind%gpw_type_forced,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="GHOST",l_val=qs_kind%ghost,error=error)
-       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-            keyword_name="NO_OPTIMIZE",l_val=qs_kind%no_optimize,error=error)
-
-       ! Read the BS subsection of the current atomic kind, if enabled
-       NULLIFY(bs_section)
-       bs_section => section_vals_get_subs_vals(kind_section,"BS",&
-            i_rep_section=k_rep,&
-            error=error)
-       section_enabled = .FALSE.
-       CALL section_vals_val_get(bs_section,"_SECTION_PARAMETERS_",&
-            l_val=section_enabled,&
-            error=error)
-       IF (section_enabled) THEN
-          qs_kind%bs_occupation = .TRUE.
-          !Alpha spin
-          NULLIFY(spin_section)
-          spin_section => section_vals_get_subs_vals(bs_section,"ALPHA",error=error)
-          CALL section_vals_get(spin_section, explicit=explicit, error=error)
-          IF(explicit) THEN
-              NULLIFY(add_el)
-              CALL section_vals_val_get(spin_section,&
-                   keyword_name="NEL",i_vals=add_el,error=error)
-              CPPrecondition(ASSOCIATED(add_el),cp_failure_level,routineP,error,failure)
-              ALLOCATE(qs_kind%addel(SIZE(add_el),2),STAT=stat)
-              qs_kind%addel =0
-              qs_kind%addel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
-              NULLIFY(add_el)
-              CALL section_vals_val_get(spin_section,&
-                   keyword_name="L",i_vals=add_el,error=error)
-              CPPrecondition(ASSOCIATED(add_el),cp_failure_level,routineP,error,failure)
-              CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
-              ALLOCATE(qs_kind%laddel(SIZE(add_el),2),STAT=stat)
-              qs_kind%laddel =0
-              qs_kind%laddel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
-              ALLOCATE(qs_kind%naddel(SIZE(add_el),2),STAT=stat)
-              qs_kind%naddel =0
-              NULLIFY(add_el)
-              CALL section_vals_val_get(spin_section,&
-                 keyword_name="N",n_rep_val=i,error=error)
-              IF(i>0) THEN
-                CALL section_vals_val_get(spin_section,&
-                     keyword_name="N",i_vals=add_el,error=error)
-                IF(SIZE(add_el)==SIZE( qs_kind%addel,1)) THEN
-                  qs_kind%naddel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
-                END IF
-              END IF
-          END IF
-          !Beta spin
-          NULLIFY(spin_section)
-          spin_section => section_vals_get_subs_vals(bs_section,"BETA",error=error)
-          CALL section_vals_get(spin_section, explicit=explicit, error=error)
-          IF(explicit) THEN
-
-            NULLIFY(add_el)
-            CALL section_vals_val_get(spin_section,&
-                 keyword_name="NEL",i_vals=add_el,error=error)
-            CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
-            qs_kind%addel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
-            qs_kind%addel(:,:) = qs_kind%addel(:,:)
-            NULLIFY(add_el)
-            CALL section_vals_val_get(spin_section,&
-                 keyword_name="L",i_vals=add_el,error=error)
-            CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
-            qs_kind%laddel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
-
-            CALL section_vals_val_get(spin_section,&
-                keyword_name="N",n_rep_val=i,error=error)
-            IF(i>0) THEN
-              NULLIFY(add_el)
-              CALL section_vals_val_get(spin_section,&
-                    keyword_name="N",i_vals=add_el,error=error)
-              IF(SIZE(add_el)==SIZE( qs_kind%addel,1)) THEN
-                qs_kind%naddel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
-              END IF
-            END IF
-          END IF
-       END IF
-
-       ! Read the DFT+U subsection of the current atomic kind, if enabled
-
-       NULLIFY (dft_plus_u_section)
-       dft_plus_u_section => section_vals_get_subs_vals(kind_section,&
-                                                        subsection_name="DFT_PLUS_U",&
-                                                        i_rep_section=k_rep,&
-                                                        error=error)
-       section_enabled = .FALSE.
-       CALL section_vals_val_get(dft_plus_u_section,&
-                                 keyword_name="_SECTION_PARAMETERS_",&
-                                 l_val=section_enabled,&
-                                 error=error)
-       IF (section_enabled) THEN
-          ALLOCATE (qs_kind%dft_plus_u,STAT=stat)
-          CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-          NULLIFY (qs_kind%dft_plus_u%orbitals)
-          CALL section_vals_val_get(dft_plus_u_section,&
-                                    keyword_name="L",&
-                                    i_val=l,&
-                                    error=error)
-          qs_kind%dft_plus_u%l = l
-          CALL cp_assert((l >= 0),cp_failure_level,&
-                         cp_assertion_failed,routineP,&
-                         "DFT+U| Invalid orbital angular momentum quantum number specified: l < 0",&
-                         error,failure)
-          CALL section_vals_val_get(dft_plus_u_section,&
-                                    keyword_name="U_MINUS_J",&
-                                    r_val=qs_kind%dft_plus_u%u_minus_j_target,&
-                                    error=error)
-          CALL section_vals_val_get(dft_plus_u_section,&
-                                    keyword_name="U_RAMPING",&
-                                    r_val=qs_kind%dft_plus_u%u_ramping,&
-                                    error=error)
-          CALL section_vals_val_get(dft_plus_u_section,&
-                                    keyword_name="INIT_U_RAMPING_EACH_SCF",&
-                                    l_val=qs_kind%dft_plus_u%init_u_ramping_each_scf,&
-                                    error=error)
-          IF (qs_kind%dft_plus_u%u_ramping > 0.0_dp) THEN
-             qs_kind%dft_plus_u%u_minus_j = 0.0_dp
-          ELSE
-             qs_kind%dft_plus_u%u_minus_j = qs_kind%dft_plus_u%u_minus_j_target
-          END IF
-          CALL section_vals_val_get(dft_plus_u_section,&
-                                    keyword_name="EPS_U_RAMPING",&
-                                    r_val=qs_kind%dft_plus_u%eps_u_ramping,&
-                                    error=error)
-
-          NULLIFY (enforce_occupation_section)
-          enforce_occupation_section => section_vals_get_subs_vals(dft_plus_u_section,&
-                                                                   subsection_name="ENFORCE_OCCUPATION",&
-                                                                   error=error)
-          subsection_enabled = .FALSE.
-          CALL section_vals_val_get(enforce_occupation_section,&
-                                    keyword_name="_SECTION_PARAMETERS_",&
-                                    l_val=subsection_enabled,&
-                                    error=error)
-          IF (subsection_enabled) THEN
-             NULLIFY (orbitals)
-             CALL section_vals_val_get(enforce_occupation_section,&
-                                       keyword_name="ORBITALS",&
-                                       i_vals=orbitals,&
-                                       error=error)
-             norbitals = SIZE(orbitals)
-             CALL cp_assert(((norbitals > 0).AND.(norbitals <= 2*l+1)),cp_failure_level,cp_assertion_failed,routineP,&
-                            "DFT+U| Invalid number of ORBITALS specified: 1 to 2*L+1 integer numbers are expected",&
-                            error,failure)
-             ALLOCATE (qs_kind%dft_plus_u%orbitals(norbitals),STAT=stat)
-             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-             qs_kind%dft_plus_u%orbitals(:) = orbitals(:)
-             NULLIFY (orbitals)
-             DO m=1,norbitals
-                CALL cp_assert((qs_kind%dft_plus_u%orbitals(m) <= l),cp_failure_level,&
-                               cp_assertion_failed,routineP,&
-                               "DFT+U| Invalid orbital magnetic quantum number specified: m > l",&
-                               error,failure)
-                CALL cp_assert((qs_kind%dft_plus_u%orbitals(m) >= -l),cp_failure_level,&
-                               cp_assertion_failed,routineP,&
-                               "DFT+U| Invalid orbital magnetic quantum number specified: m < -l",&
-                               error,failure)
-                DO j=1,norbitals
-                   IF (j /= m) THEN
-                      CALL cp_assert((qs_kind%dft_plus_u%orbitals(j) /= qs_kind%dft_plus_u%orbitals(m)),&
-                                     cp_failure_level,cp_assertion_failed,routineP,&
-                                     "DFT+U| An orbital magnetic quantum number was specified twice",&
-                                     error,failure)
-                   END IF
-                END DO
-             END DO
-             CALL section_vals_val_get(enforce_occupation_section,&
-                                       keyword_name="EPS_SCF",&
-                                       r_val=qs_kind%dft_plus_u%eps_scf,&
-                                       error=error)
-             CALL section_vals_val_get(enforce_occupation_section,&
-                                       keyword_name="MAX_SCF",&
-                                       i_val=i,&
-                                       error=error)
-             qs_kind%dft_plus_u%max_scf = MAX(-1,i)
-             CALL section_vals_val_get(enforce_occupation_section,&
-                                       keyword_name="SMEAR",&
-                                       l_val=qs_kind%dft_plus_u%smear,&
-                                       error=error)
-          END IF ! subsection enabled
-       END IF ! section enabled
-
-    END IF
-
-    qs_kind%mass = qs_kind%mass*massunit
-
-    ! Allocate and initialise the orbital basis set data set structure
-    CALL init_orbital_pointers(5) ! debug the SUN optimizer
-
-    ! BASIS  and POTENTIAL read only when strictly necessary otherwise, even if not used
-    ! we just print misleading informations
-    explicit_basis = .FALSE.
-    IF (k_rep>0) THEN
-       basis_section  => section_vals_get_subs_vals(kind_section,"BASIS",i_rep_section=k_rep,&
-            can_return_null=.TRUE.,error=error)
-       CALL section_vals_get(basis_section, explicit=explicit_basis,error=error)
-    END IF
-
-    explicit_potential = .FALSE.
-    IF (k_rep>0) THEN
-       potential_section  => section_vals_get_subs_vals(kind_section,"POTENTIAL",&
-            i_rep_section=k_rep,can_return_null=.TRUE.,error=error)
-       CALL section_vals_get(potential_section, explicit=explicit_potential,error=error)
-    END IF
-
-    explicit_kgpot = .FALSE.
-    IF (k_rep>0) THEN
-       kgpot_section  => section_vals_get_subs_vals(kind_section,"KG_POTENTIAL",&
-            i_rep_section=k_rep,can_return_null=.TRUE.,error=error)
-       CALL section_vals_get(kgpot_section, explicit=explicit_kgpot,error=error)
-    END IF
-
-    explicit_geminal = .FALSE.
-    IF (k_rep>0) THEN
-       geminal_section  => section_vals_get_subs_vals(kind_section,"GEMINAL",i_rep_section=k_rep,&
-            can_return_null=.TRUE.,error=error)
-       CALL section_vals_get(geminal_section, explicit=explicit_geminal,error=error)
-    END IF
-
-    SELECT CASE(method_id)
-    CASE(do_method_dftb, do_method_scptb, do_method_rm1, do_method_am1, do_method_mndo, &
-         do_method_pdg, do_method_pm3, do_method_pm6, do_method_mndod,&
-         do_method_pnnl )
-       ! Allocate all_potential
-       CALL allocate_potential(qs_kind%all_potential,error)
-       CALL set_default_all_potential(qs_kind%all_potential,z,zeff_correction,error)
-       CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
-       IF (.NOT.ASSOCIATED(elec_conf)) THEN
-          CALL get_potential(potential=qs_kind%all_potential,elec_conf=elec_conf)
-          CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
-       END IF
-       IF (qs_kind%ghost) THEN
-          CALL get_qs_kind(qs_kind=qs_kind,&
-               elec_conf=elec_conf)
-          elec_conf(:) = 0
-          CALL get_potential(potential=qs_kind%all_potential,&
-               elec_conf=elec_conf)
-          elec_conf(:) = 0
-          CALL set_potential(potential=qs_kind%all_potential,&
-               zeff=0.0_dp,&
-               zeff_correction=0.0_dp)
-       END IF
-
-       ! Basis set (Parameters)
-       SELECT CASE(method_id)
-       CASE (do_method_rm1, do_method_am1, do_method_mndo, do_method_pdg,&
-             do_method_pm3, do_method_pm6, do_method_mndod, do_method_pnnl )
-          ! Setup proper semiempirical parameters
-          check = .NOT.ASSOCIATED(qs_kind%se_parameter)
-          CPPostcondition(check, cp_failure_level, routineP, error, failure)
-          CALL semi_empirical_create(qs_kind%se_parameter,error)
-          ! Check if we allow p-orbitals on H
-          SELECT CASE(z)
-          CASE (1)
-             IF (k_rep>0) THEN
-                CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
-                     keyword_name="SE_P_ORBITALS_ON_H",l_val=qs_kind%se_parameter%p_orbitals_on_h,&
-                     error=error)
-             END IF
-          CASE DEFAULT
-             ! No special cases for other elements..
-          END SELECT
-          ! Set default parameters
-          CALL section_vals_val_get(dft_section,"QS%SE%STO_NG",i_val=ngauss,error=error)
-          CALL se_param_set_default(qs_kind%se_parameter,z,method_id,error)
-          CALL init_se_param(qs_kind%se_parameter,qs_kind%orb_basis_set,ngauss,error=error)
-          CALL init_potential ( qs_kind%all_potential, itype="BARE", &
-               zeff=qs_kind%se_parameter%zeff,zeff_correction=zeff_correction,error=error)
-          qs_kind%se_parameter%zeff=qs_kind%se_parameter%zeff-zeff_correction
-       CASE (do_method_dftb,do_method_scptb)
-          ! Do nothing at this stage.. The initialization of the parameters will be done
-          ! later
-       CASE DEFAULT
-          CPPostcondition(.FALSE., cp_failure_level, routineP, error, failure)
-       END SELECT
-
-       check = ((potential_name /= '').OR.explicit_potential)
-       CALL cp_assert(.NOT.check,cp_warning_level,cp_assertion_failed,routineP,&
-            "Information provided in the input file regarding POTENTIAL for KIND <"//&
-            TRIM(qs_kind%name)//"> will be ignored!"//&
-            CPSourceFileRef,&
-            only_ionode=.TRUE.)
-
-       check = ((orb_basis_set_name /= '').OR.explicit_basis)
-       CALL cp_assert(.NOT.check,cp_warning_level,cp_assertion_failed,routineP,&
-            "Information provided in the input file regarding BASIS for KIND <"//&
-            TRIM(qs_kind%name)//"> will be ignored!"//&
-            CPSourceFileRef,&
-            only_ionode=.TRUE.)
-
-    CASE DEFAULT
-
-       ! Allocate and initialise the basis set data set structure
-       IF ((orb_basis_set_name /= '').OR.explicit_basis) THEN
-          CALL allocate_gto_basis_set(qs_kind%orb_basis_set,error)
-          CALL read_gto_basis_set(qs_kind%element_symbol,orb_basis_set_name,&
-               qs_kind%orb_basis_set,para_env,dft_section,basis_section,error)
-          CALL set_gto_basis_set(gto_basis_set=qs_kind%orb_basis_set,norm_type=norb)
-       ELSE
-          CALL stop_program(routineN,moduleN,__LINE__,&
-               "No basis set type was defined for the "//&
-               "atomic kind <"//TRIM(qs_kind%name)//">",para_env)
-       END IF
-
-       ! Allocate and initialise the auxiliary basis set data set structure
-       IF (aux_basis_set_name /= '') THEN
-          CALL allocate_gto_basis_set(qs_kind%aux_basis_set,error)
-          CALL read_gto_basis_set(qs_kind%element_symbol,aux_basis_set_name,&
-               qs_kind%aux_basis_set,para_env,dft_section,error=error)
-          CALL set_gto_basis_set(gto_basis_set=qs_kind%aux_basis_set,&
-               norm_type=naux)
-       END IF
-
-       ! Allocate and initialise the auxiliary basis set data set structure for RI-MP2/RPA ...
-       IF (ri_aux_basis_set_name /= '') THEN
-          CALL allocate_gto_basis_set(qs_kind%ri_aux_basis_set,error)
-          CALL read_gto_basis_set(qs_kind%element_symbol,ri_aux_basis_set_name,&
-               qs_kind%ri_aux_basis_set,para_env,dft_section,error=error)
-          CALL set_gto_basis_set(gto_basis_set=qs_kind%ri_aux_basis_set,&
-               norm_type=naux)
-       END IF
-
-       ! Allocate and initialise the auxiliary basis set data set structure for fitting
-       IF (aux_fit_basis_set_name /= '') THEN
-          CALL allocate_gto_basis_set(qs_kind%aux_fit_basis_set,error)
-          CALL read_gto_basis_set(qs_kind%element_symbol,aux_fit_basis_set_name,&
-               qs_kind%aux_fit_basis_set,para_env,dft_section,error=error)
-          CALL set_gto_basis_set(gto_basis_set=qs_kind%aux_fit_basis_set,&
-               norm_type=naux)
-       END IF
-
-       ! Allocate and initialise the lri basis set data set structure for fitting
-       IF (lri_basis_set_name /= '') THEN
-          CALL allocate_gto_basis_set(qs_kind%lri_basis_set,error)
-          CALL read_gto_basis_set(qs_kind%element_symbol,lri_basis_set_name,&
-               qs_kind%lri_basis_set,para_env,dft_section,error=error)
-          CALL set_gto_basis_set(gto_basis_set=qs_kind%lri_basis_set,&
-               norm_type=naux)
-       END IF
-
-       ! Allocate and initialise the geminal basis set data set structure
-       IF ((geminal_basis_set_name /= '').OR.explicit_geminal) THEN
-          CALL allocate_geminal_basis_set(qs_kind%geminal_basis_set,error)
-          CALL read_geminal_basis_set(qs_kind%element_symbol,geminal_basis_set_name,&
-               qs_kind%geminal_basis_set,para_env,dft_section,geminal_section,error=error)
-       END IF
-
-       ! If Ghost atom we don't need to allocate/initialize anything connected to POTENTIAL
-       IF (qs_kind%ghost) THEN
-          IF (ASSOCIATED(qs_kind%elec_conf)) qs_kind%elec_conf = 0
-       ELSE
-          ! Allocate and initialise the potential data set structure
-          IF ((potential_name /= '').OR.explicit_potential) THEN
-             ipos = INDEX(potential_name,"-")
-             IF (ipos > 1) THEN
-                potential_type = potential_name(:ipos-1)
-             ELSE
-                potential_type = potential_name
-             END IF
-             CALL uppercase(potential_type)
-
-             SELECT CASE (TRIM(potential_type))
-             CASE ("ALL")
-                CALL allocate_potential(qs_kind%all_potential,error)
-                CALL read_potential(qs_kind%element_symbol,potential_name,&
-                     qs_kind%all_potential,zeff_correction,para_env,&
-                     dft_section,potential_section,error)
-                CALL set_potential(qs_kind%all_potential,z=z)
-                CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
-                IF (.NOT.ASSOCIATED(elec_conf)) THEN
-                   CALL get_potential(potential=qs_kind%all_potential,elec_conf=elec_conf)
-                   CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
-                END IF
-             CASE ("GTH")
-                CALL allocate_potential(qs_kind%gth_potential,error)
-                CALL read_potential(qs_kind%element_symbol,potential_name,&
-                     qs_kind%gth_potential,zeff_correction,para_env,&
-                     dft_section,potential_section,error)
-                CALL set_potential(qs_kind%gth_potential,z=z)
-                CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
-                IF (.NOT.ASSOCIATED(elec_conf)) THEN
-                   CALL get_potential(potential=qs_kind%gth_potential,elec_conf=elec_conf)
-                   CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
-                END IF
-             CASE DEFAULT
-                CALL stop_program(routineN,moduleN,__LINE__,&
-                     "An invalid potential type <"//&
-                     TRIM(potential_name)//"> was specified "//&
-                     "for the atomic kind <"//&
-                     TRIM(qs_kind%name),para_env)
-             END SELECT
-          ELSE
-             CALL stop_program(routineN,moduleN,__LINE__,&
-                  "No potential type was defined for the "//&
-                  "atomic kind <"//TRIM(qs_kind%name)//">",para_env)
-          END IF
-          ! Allocate and initialise the potential data set structure
-          IF ((kgpot_name /= '').OR.explicit_kgpot) THEN
-             ipos = INDEX(kgpot_name,"-")
-             IF (ipos > 1) THEN
-                kgpot_type = kgpot_name(:ipos-1)
-             ELSE
-                kgpot_type = kgpot_name
-             END IF
-             CALL uppercase(kgpot_type)
-
-             SELECT CASE (TRIM(kgpot_type))
-             CASE ("TNADD")
-                CALL allocate_potential(qs_kind%tnadd_potential,error)
-                CALL read_potential(qs_kind%element_symbol,kgpot_name,&
-                     qs_kind%tnadd_potential,para_env,&
-                     dft_section,kgpot_section,error)
-             CASE ("NONE")
-                NULLIFY(qs_kind%tnadd_potential)
-             CASE DEFAULT
-                CALL stop_program(routineN,moduleN,__LINE__,&
-                     "An invalid kg_potential type <"//&
-                     TRIM(potential_name)//"> was specified "//&
-                     "for the atomic kind <"//&
-                     TRIM(qs_kind%name),para_env)
-             END SELECT
-          END IF
-       END IF
-    END SELECT
-
-    CALL timestop(handle)
+   ! CHARACTER(LEN=*), PARAMETER :: routineN = 'read_qs_kind', &
+   !   routineP = moduleN//':'//routineN
+   !
+   ! CHARACTER(LEN=2)                         :: element_symbol
+   ! CHARACTER(LEN=default_string_length) :: akind_name, aux_basis_set_name, &
+   !   aux_fit_basis_set_name, geminal_basis_set_name, keyword, kgpot_name, &
+   !   kgpot_type, lri_basis_set_name, orb_basis_set_name, potential_name, &
+   !   potential_type, ri_aux_basis_set_name
+   ! INTEGER                                  :: handle, i, i_rep, ipos, j, &
+   !                                             k_rep, l, m, n_rep, naux, &
+   !                                             ngauss, norb, norbitals, &
+   !                                             stat, z
+   ! INTEGER, DIMENSION(:), POINTER           :: add_el, elec_conf, orbitals
+   ! LOGICAL :: check, explicit, explicit_basis, explicit_geminal, &
+   !   explicit_kgpot, explicit_potential, failure, section_enabled, &
+   !   subsection_enabled
+   ! REAL(KIND=dp)                            :: zeff_correction
+   ! TYPE(section_vals_type), POINTER :: basis_section, bs_section, &
+   !   dft_plus_u_section, dft_section, enforce_occupation_section, &
+   !   geminal_section, kgpot_section, potential_section, spin_section
+   !
+   ! CALL timeset(routineN,handle)
+   !
+   ! NULLIFY (elec_conf)
+   !
+   ! failure = .FALSE.
+   ! aux_basis_set_name = ""
+   ! ri_aux_basis_set_name = ""
+   ! orb_basis_set_name = ""
+   ! potential_name = ""
+   ! potential_type = ""
+   ! kgpot_name = ""
+   ! kgpot_type = ""
+   ! z = -1
+   ! qs_kind%mass=-1.0_dp
+   ! zeff_correction = 0.0_dp
+   ! dft_section => section_vals_get_subs_vals(force_env_section,"DFT",error=error)
+   ! CALL section_vals_get(kind_section,n_repetition=n_rep,error=error)
+   ! k_rep=-1
+   ! akind_name=qs_kind%name
+   ! CALL uppercase(akind_name)
+   ! ! First we use the atom_name to find out the proper KIND section
+   ! DO i_rep=1,n_rep
+   !    CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
+   !         c_val=keyword,i_rep_section=i_rep,error=error)
+   !    CALL uppercase(keyword)
+   !    IF (keyword==akind_name) THEN
+   !       k_rep=i_rep
+   !       EXIT
+   !    END IF
+   ! END DO
+   ! ! The search for the KIND section failed.. check for a QM/MM link atom
+   ! IF (k_rep<1) THEN
+   !    ipos = INDEX(qs_kind%name,"_")
+   !    IF (((ipos == 2).OR.(ipos == 3)).AND.(INDEX(qs_kind%name,"_ghost")==0)) THEN
+   !       ! If the atm_name could not match any KIND section it maybe be a QM/MM link atom.
+   !       ! ghost atoms will be treated differently.
+   !       akind_name = qs_kind%name(1:ipos-1)
+   !       CALL uppercase(akind_name)
+   !       DO i_rep=1,n_rep
+   !          CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
+   !               c_val=keyword,i_rep_section=i_rep,error=error)
+   !          CALL uppercase(keyword)
+   !          IF (keyword==akind_name) THEN
+   !             k_rep=i_rep
+   !             EXIT
+   !          END IF
+   !       END DO
+   !    END IF
+   ! END IF
+   ! ! The search for the KIND section failed.. check element_symbol
+   ! IF (k_rep<1) THEN
+   !    ! If it's not a link atom let's check for the element and map
+   !    ! the KIND section to the element.
+   !    element_symbol = qs_kind%element_symbol(1:2)
+   !    CALL uppercase(element_symbol)
+   !    DO i_rep=1,n_rep
+   !       CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
+   !            c_val=keyword,i_rep_section=i_rep,error=error)
+   !       CALL uppercase(keyword)
+   !       IF (keyword==element_symbol) THEN
+   !          k_rep=i_rep
+   !          EXIT
+   !       END IF
+   !    END DO
+   ! END IF
+   ! ! In case it should not really match any possible KIND section
+   ! ! let's look if a default one is defined..
+   ! IF (k_rep<1) THEN
+   !    DO i_rep=1,n_rep
+   !       CALL section_vals_val_get(kind_section,"_SECTION_PARAMETERS_",&
+   !            c_val=keyword,i_rep_section=i_rep,error=error)
+   !       CALL uppercase(keyword)
+   !       IF (keyword=="DEFAULT") THEN
+   !          k_rep=i_rep
+   !          EXIT
+   !       END IF
+   !    END DO
+   ! END IF
+   ! IF (k_rep<0.AND.(.NOT.no_fail)) THEN
+   !    CALL stop_program(routineN,moduleN,__LINE__,&
+   !         "No &KIND section was possible to associate to the atomic kind <"//&
+   !         TRIM(akind_name)//">. The KIND section were also scanned for the"//&
+   !         " corresponding element <"//TRIM(qs_kind%element_symbol)//"> "//&
+   !         " and for the DEFAULT section but no match was found. Check your input file!",para_env)
+   ! END IF
+   ! ! Retrieve information on element
+   ! CALL get_ptable_info(qs_kind%element_symbol, amass=qs_kind%mass, ielement=z)
+   !
+   ! ! Normal parsing of the KIND section
+   ! IF (k_rep>0) THEN
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="AUX_FIT_BASIS_SET", c_val=aux_fit_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="AUX_BASIS_SET", c_val=aux_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="LRI_BASIS_SET", c_val=lri_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="RI_AUX_BASIS_SET", c_val=ri_aux_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="AUX_BASIS_NORMALIZATION", i_val=naux,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="BASIS_SET",c_val=orb_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="GEMINAL_BASIS_SET",c_val=geminal_basis_set_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="BASIS_NORMALIZATION", i_val=norb,error=error)
+   !    ! seems like qs_kind is not initialised here
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="ELEC_CONF",n_rep_val=i,error=error)
+   !    IF (i>0) THEN
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="ELEC_CONF",i_vals=elec_conf,error=error)
+   !       CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
+   !    ENDIF
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="CORE_CORRECTION",r_val=zeff_correction,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="MASS",n_rep_val=i,error=error)
+   !    IF (i>0) THEN
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="MASS",r_val=qs_kind%mass,error=error)
+   !    END IF
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="I_SCP",n_rep_val=i,error=error)
+   !    IF (i>0) THEN
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="I_SCP",r_val=qs_kind%I_scp,error=error)
+   !    END IF
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="ALPHA_SCP",n_rep_val=i,error=error)
+   !    IF (i>0) THEN
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="ALPHA_SCP",r_val=qs_kind%alpha_scp,error=error)
+   !    END IF
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="POTENTIAL",c_val=potential_name,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="KG_POTENTIAL",c_val=kgpot_name,error=error)
+   !    ! assign atom dependent defaults, only H special case
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,n_rep_val=i,&
+   !         keyword_name="HARD_EXP_RADIUS",error=error)
+   !    IF (i==0) THEN
+   !       IF (z==1) THEN
+   !          qs_kind%hard_radius=1.2_dp
+   !       ELSE
+   !          qs_kind%hard_radius=0.8_dp*bohr
+   !       ENDIF
+   !    ELSE
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="HARD_EXP_RADIUS",r_val=qs_kind%hard_radius,error=error)
+   !    ENDIF
+   !
+   !    ! assign atom dependent defaults, only H special case
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,n_rep_val=i,&
+   !         keyword_name="RHO0_EXP_RADIUS",error=error)
+   !    IF (i==0) THEN
+   !       qs_kind%hard0_radius=qs_kind%hard_radius
+   !    ELSE
+   !       CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !            keyword_name="RHO0_EXP_RADIUS",r_val=qs_kind%hard0_radius,error=error)
+   !    ENDIF
+   !    CALL cp_assert(qs_kind%hard_radius>=qs_kind%hard0_radius,&
+   !         cp_failure_level,cp_assertion_failed,routineP,&
+   !         "rc0 should be <= rc",error,failure)
+   !
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="MAX_RAD_LOCAL",r_val=qs_kind%max_rad_local,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="LEBEDEV_GRID",i_val=qs_kind%ngrid_ang,error=error)
+   !    CALL cp_assert(qs_kind%ngrid_ang > 0,&
+   !         cp_failure_level,cp_assertion_failed,routineP,&
+   !         "# point lebedev grid < 0",error,failure)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="RADIAL_GRID",i_val=qs_kind%ngrid_rad,error=error)
+   !    CALL cp_assert(qs_kind%ngrid_rad > 0,&
+   !         cp_failure_level,cp_assertion_failed,routineP,&
+   !         "# point radial grid < 0",error,failure)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="GPW_TYPE",l_val=qs_kind%gpw_type_forced,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="GHOST",l_val=qs_kind%ghost,error=error)
+   !    CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !         keyword_name="NO_OPTIMIZE",l_val=qs_kind%no_optimize,error=error)
+   !
+   !    ! Read the BS subsection of the current atomic kind, if enabled
+   !    NULLIFY(bs_section)
+   !    bs_section => section_vals_get_subs_vals(kind_section,"BS",&
+   !         i_rep_section=k_rep,&
+   !         error=error)
+   !    section_enabled = .FALSE.
+   !    CALL section_vals_val_get(bs_section,"_SECTION_PARAMETERS_",&
+   !         l_val=section_enabled,&
+   !         error=error)
+   !    IF (section_enabled) THEN
+   !       qs_kind%bs_occupation = .TRUE.
+   !       !Alpha spin
+   !       NULLIFY(spin_section)
+   !       spin_section => section_vals_get_subs_vals(bs_section,"ALPHA",error=error)
+   !       CALL section_vals_get(spin_section, explicit=explicit, error=error)
+   !       IF(explicit) THEN
+   !           NULLIFY(add_el)
+   !           CALL section_vals_val_get(spin_section,&
+   !                keyword_name="NEL",i_vals=add_el,error=error)
+   !           CPPrecondition(ASSOCIATED(add_el),cp_failure_level,routineP,error,failure)
+   !           ALLOCATE(qs_kind%addel(SIZE(add_el),2),STAT=stat)
+   !           qs_kind%addel =0
+   !           qs_kind%addel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
+   !           NULLIFY(add_el)
+   !           CALL section_vals_val_get(spin_section,&
+   !                keyword_name="L",i_vals=add_el,error=error)
+   !           CPPrecondition(ASSOCIATED(add_el),cp_failure_level,routineP,error,failure)
+   !           CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
+   !           ALLOCATE(qs_kind%laddel(SIZE(add_el),2),STAT=stat)
+   !           qs_kind%laddel =0
+   !           qs_kind%laddel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
+   !           ALLOCATE(qs_kind%naddel(SIZE(add_el),2),STAT=stat)
+   !           qs_kind%naddel =0
+   !           NULLIFY(add_el)
+   !           CALL section_vals_val_get(spin_section,&
+   !              keyword_name="N",n_rep_val=i,error=error)
+   !           IF(i>0) THEN
+   !             CALL section_vals_val_get(spin_section,&
+   !                  keyword_name="N",i_vals=add_el,error=error)
+   !             IF(SIZE(add_el)==SIZE( qs_kind%addel,1)) THEN
+   !               qs_kind%naddel(1:SIZE(add_el),1) = add_el(1:SIZE(add_el))
+   !             END IF
+   !           END IF
+   !       END IF
+   !       !Beta spin
+   !       NULLIFY(spin_section)
+   !       spin_section => section_vals_get_subs_vals(bs_section,"BETA",error=error)
+   !       CALL section_vals_get(spin_section, explicit=explicit, error=error)
+   !       IF(explicit) THEN
+   !
+   !         NULLIFY(add_el)
+   !         CALL section_vals_val_get(spin_section,&
+   !              keyword_name="NEL",i_vals=add_el,error=error)
+   !         CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
+   !         qs_kind%addel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
+   !         qs_kind%addel(:,:) = qs_kind%addel(:,:)
+   !         NULLIFY(add_el)
+   !         CALL section_vals_val_get(spin_section,&
+   !              keyword_name="L",i_vals=add_el,error=error)
+   !         CPPrecondition(SIZE(add_el)==SIZE( qs_kind%addel,1),cp_failure_level,routineP,error,failure)
+   !         qs_kind%laddel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
+   !
+   !         CALL section_vals_val_get(spin_section,&
+   !             keyword_name="N",n_rep_val=i,error=error)
+   !         IF(i>0) THEN
+   !           NULLIFY(add_el)
+   !           CALL section_vals_val_get(spin_section,&
+   !                 keyword_name="N",i_vals=add_el,error=error)
+   !           IF(SIZE(add_el)==SIZE( qs_kind%addel,1)) THEN
+   !             qs_kind%naddel(1:SIZE(add_el),2) = add_el(1:SIZE(add_el))
+   !           END IF
+   !         END IF
+   !       END IF
+   !    END IF
+   !
+   !    ! Read the DFT+U subsection of the current atomic kind, if enabled
+   !
+   !    NULLIFY (dft_plus_u_section)
+   !    dft_plus_u_section => section_vals_get_subs_vals(kind_section,&
+   !                                                     subsection_name="DFT_PLUS_U",&
+   !                                                     i_rep_section=k_rep,&
+   !                                                     error=error)
+   !    section_enabled = .FALSE.
+   !    CALL section_vals_val_get(dft_plus_u_section,&
+   !                              keyword_name="_SECTION_PARAMETERS_",&
+   !                              l_val=section_enabled,&
+   !                              error=error)
+   !    IF (section_enabled) THEN
+   !       ALLOCATE (qs_kind%dft_plus_u,STAT=stat)
+   !       CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+   !       NULLIFY (qs_kind%dft_plus_u%orbitals)
+   !       CALL section_vals_val_get(dft_plus_u_section,&
+   !                                 keyword_name="L",&
+   !                                 i_val=l,&
+   !                                 error=error)
+   !       qs_kind%dft_plus_u%l = l
+   !       CALL cp_assert((l >= 0),cp_failure_level,&
+   !                      cp_assertion_failed,routineP,&
+   !                      "DFT+U| Invalid orbital angular momentum quantum number specified: l < 0",&
+   !                      error,failure)
+   !       CALL section_vals_val_get(dft_plus_u_section,&
+   !                                 keyword_name="U_MINUS_J",&
+   !                                 r_val=qs_kind%dft_plus_u%u_minus_j_target,&
+   !                                 error=error)
+   !       CALL section_vals_val_get(dft_plus_u_section,&
+   !                                 keyword_name="U_RAMPING",&
+   !                                 r_val=qs_kind%dft_plus_u%u_ramping,&
+   !                                 error=error)
+   !       CALL section_vals_val_get(dft_plus_u_section,&
+   !                                 keyword_name="INIT_U_RAMPING_EACH_SCF",&
+   !                                 l_val=qs_kind%dft_plus_u%init_u_ramping_each_scf,&
+   !                                 error=error)
+   !       IF (qs_kind%dft_plus_u%u_ramping > 0.0_dp) THEN
+   !          qs_kind%dft_plus_u%u_minus_j = 0.0_dp
+   !       ELSE
+   !          qs_kind%dft_plus_u%u_minus_j = qs_kind%dft_plus_u%u_minus_j_target
+   !       END IF
+   !       CALL section_vals_val_get(dft_plus_u_section,&
+   !                                 keyword_name="EPS_U_RAMPING",&
+   !                                 r_val=qs_kind%dft_plus_u%eps_u_ramping,&
+   !                                 error=error)
+   !
+   !       NULLIFY (enforce_occupation_section)
+   !       enforce_occupation_section => section_vals_get_subs_vals(dft_plus_u_section,&
+   !                                                                subsection_name="ENFORCE_OCCUPATION",&
+   !                                                                error=error)
+   !       subsection_enabled = .FALSE.
+   !       CALL section_vals_val_get(enforce_occupation_section,&
+   !                                 keyword_name="_SECTION_PARAMETERS_",&
+   !                                 l_val=subsection_enabled,&
+   !                                 error=error)
+   !       IF (subsection_enabled) THEN
+   !          NULLIFY (orbitals)
+   !          CALL section_vals_val_get(enforce_occupation_section,&
+   !                                    keyword_name="ORBITALS",&
+   !                                    i_vals=orbitals,&
+   !                                    error=error)
+   !          norbitals = SIZE(orbitals)
+   !          CALL cp_assert(((norbitals > 0).AND.(norbitals <= 2*l+1)),cp_failure_level,cp_assertion_failed,routineP,&
+   !                         "DFT+U| Invalid number of ORBITALS specified: 1 to 2*L+1 integer numbers are expected",&
+   !                         error,failure)
+   !          ALLOCATE (qs_kind%dft_plus_u%orbitals(norbitals),STAT=stat)
+   !          CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+   !          qs_kind%dft_plus_u%orbitals(:) = orbitals(:)
+   !          NULLIFY (orbitals)
+   !          DO m=1,norbitals
+   !             CALL cp_assert((qs_kind%dft_plus_u%orbitals(m) <= l),cp_failure_level,&
+   !                            cp_assertion_failed,routineP,&
+   !                            "DFT+U| Invalid orbital magnetic quantum number specified: m > l",&
+   !                            error,failure)
+   !             CALL cp_assert((qs_kind%dft_plus_u%orbitals(m) >= -l),cp_failure_level,&
+   !                            cp_assertion_failed,routineP,&
+   !                            "DFT+U| Invalid orbital magnetic quantum number specified: m < -l",&
+   !                            error,failure)
+   !             DO j=1,norbitals
+   !                IF (j /= m) THEN
+   !                   CALL cp_assert((qs_kind%dft_plus_u%orbitals(j) /= qs_kind%dft_plus_u%orbitals(m)),&
+   !                                  cp_failure_level,cp_assertion_failed,routineP,&
+   !                                  "DFT+U| An orbital magnetic quantum number was specified twice",&
+   !                                  error,failure)
+   !                END IF
+   !             END DO
+   !          END DO
+   !          CALL section_vals_val_get(enforce_occupation_section,&
+   !                                    keyword_name="EPS_SCF",&
+   !                                    r_val=qs_kind%dft_plus_u%eps_scf,&
+   !                                    error=error)
+   !          CALL section_vals_val_get(enforce_occupation_section,&
+   !                                    keyword_name="MAX_SCF",&
+   !                                    i_val=i,&
+   !                                    error=error)
+   !          qs_kind%dft_plus_u%max_scf = MAX(-1,i)
+   !          CALL section_vals_val_get(enforce_occupation_section,&
+   !                                    keyword_name="SMEAR",&
+   !                                    l_val=qs_kind%dft_plus_u%smear,&
+   !                                    error=error)
+   !       END IF ! subsection enabled
+   !    END IF ! section enabled
+   !
+   ! END IF
+   !
+   ! qs_kind%mass = qs_kind%mass*massunit
+   !
+   ! ! Allocate and initialise the orbital basis set data set structure
+   ! CALL init_orbital_pointers(5) ! debug the SUN optimizer
+   !
+   ! ! BASIS  and POTENTIAL read only when strictly necessary otherwise, even if not used
+   ! ! we just print misleading informations
+   ! explicit_basis = .FALSE.
+   ! IF (k_rep>0) THEN
+   !    basis_section  => section_vals_get_subs_vals(kind_section,"BASIS",i_rep_section=k_rep,&
+   !         can_return_null=.TRUE.,error=error)
+   !    CALL section_vals_get(basis_section, explicit=explicit_basis,error=error)
+   ! END IF
+   !
+   ! explicit_potential = .FALSE.
+   ! IF (k_rep>0) THEN
+   !    potential_section  => section_vals_get_subs_vals(kind_section,"POTENTIAL",&
+   !         i_rep_section=k_rep,can_return_null=.TRUE.,error=error)
+   !    CALL section_vals_get(potential_section, explicit=explicit_potential,error=error)
+   ! END IF
+   !
+   ! explicit_kgpot = .FALSE.
+   ! IF (k_rep>0) THEN
+   !    kgpot_section  => section_vals_get_subs_vals(kind_section,"KG_POTENTIAL",&
+   !         i_rep_section=k_rep,can_return_null=.TRUE.,error=error)
+   !    CALL section_vals_get(kgpot_section, explicit=explicit_kgpot,error=error)
+   ! END IF
+   !
+   ! explicit_geminal = .FALSE.
+   ! IF (k_rep>0) THEN
+   !    geminal_section  => section_vals_get_subs_vals(kind_section,"GEMINAL",i_rep_section=k_rep,&
+   !         can_return_null=.TRUE.,error=error)
+   !    CALL section_vals_get(geminal_section, explicit=explicit_geminal,error=error)
+   ! END IF
+   !
+   ! SELECT CASE(method_id)
+   ! CASE(do_method_dftb, do_method_scptb, do_method_rm1, do_method_am1, do_method_mndo, &
+   !      do_method_pdg, do_method_pm3, do_method_pm6, do_method_mndod,&
+   !      do_method_pnnl )
+   !    ! Allocate all_potential
+   !    CALL allocate_potential(qs_kind%all_potential,error)
+   !    CALL set_default_all_potential(qs_kind%all_potential,z,zeff_correction,error)
+   !    CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
+   !    IF (.NOT.ASSOCIATED(elec_conf)) THEN
+   !       CALL get_potential(potential=qs_kind%all_potential,elec_conf=elec_conf)
+   !       CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
+   !    END IF
+   !    IF (qs_kind%ghost) THEN
+   !       CALL get_qs_kind(qs_kind=qs_kind,&
+   !            elec_conf=elec_conf)
+   !       elec_conf(:) = 0
+   !       CALL get_potential(potential=qs_kind%all_potential,&
+   !            elec_conf=elec_conf)
+   !       elec_conf(:) = 0
+   !       CALL set_potential(potential=qs_kind%all_potential,&
+   !            zeff=0.0_dp,&
+   !            zeff_correction=0.0_dp)
+   !    END IF
+   !
+   !    ! Basis set (Parameters)
+   !    SELECT CASE(method_id)
+   !    CASE (do_method_rm1, do_method_am1, do_method_mndo, do_method_pdg,&
+   !          do_method_pm3, do_method_pm6, do_method_mndod, do_method_pnnl )
+   !       ! Setup proper semiempirical parameters
+   !       check = .NOT.ASSOCIATED(qs_kind%se_parameter)
+   !       CPPostcondition(check, cp_failure_level, routineP, error, failure)
+   !       CALL semi_empirical_create(qs_kind%se_parameter,error)
+   !       ! Check if we allow p-orbitals on H
+   !       SELECT CASE(z)
+   !       CASE (1)
+   !          IF (k_rep>0) THEN
+   !             CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
+   !                  keyword_name="SE_P_ORBITALS_ON_H",l_val=qs_kind%se_parameter%p_orbitals_on_h,&
+   !                  error=error)
+   !          END IF
+   !       CASE DEFAULT
+   !          ! No special cases for other elements..
+   !       END SELECT
+   !       ! Set default parameters
+   !       CALL section_vals_val_get(dft_section,"QS%SE%STO_NG",i_val=ngauss,error=error)
+   !       CALL se_param_set_default(qs_kind%se_parameter,z,method_id,error)
+   !       CALL init_se_param(qs_kind%se_parameter,qs_kind%orb_basis_set,ngauss,error=error)
+   !       CALL init_potential ( qs_kind%all_potential, itype="BARE", &
+   !            zeff=qs_kind%se_parameter%zeff,zeff_correction=zeff_correction,error=error)
+   !       qs_kind%se_parameter%zeff=qs_kind%se_parameter%zeff-zeff_correction
+   !    CASE (do_method_dftb,do_method_scptb)
+   !       ! Do nothing at this stage.. The initialization of the parameters will be done
+   !       ! later
+   !    CASE DEFAULT
+   !       CPPostcondition(.FALSE., cp_failure_level, routineP, error, failure)
+   !    END SELECT
+   !
+   !    check = ((potential_name /= '').OR.explicit_potential)
+   !    CALL cp_assert(.NOT.check,cp_warning_level,cp_assertion_failed,routineP,&
+   !         "Information provided in the input file regarding POTENTIAL for KIND <"//&
+   !         TRIM(qs_kind%name)//"> will be ignored!"//&
+   !         CPSourceFileRef,&
+   !         only_ionode=.TRUE.)
+   !
+   !    check = ((orb_basis_set_name /= '').OR.explicit_basis)
+   !    CALL cp_assert(.NOT.check,cp_warning_level,cp_assertion_failed,routineP,&
+   !         "Information provided in the input file regarding BASIS for KIND <"//&
+   !         TRIM(qs_kind%name)//"> will be ignored!"//&
+   !         CPSourceFileRef,&
+   !         only_ionode=.TRUE.)
+   !
+   ! CASE DEFAULT
+   !
+   !    ! Allocate and initialise the basis set data set structure
+   !    IF ((orb_basis_set_name /= '').OR.explicit_basis) THEN
+   !       CALL allocate_gto_basis_set(qs_kind%orb_basis_set,error)
+   !       CALL read_gto_basis_set(qs_kind%element_symbol,orb_basis_set_name,&
+   !            qs_kind%orb_basis_set,para_env,dft_section,basis_section,error)
+   !       CALL set_gto_basis_set(gto_basis_set=qs_kind%orb_basis_set,norm_type=norb)
+   !    ELSE
+   !       CALL stop_program(routineN,moduleN,__LINE__,&
+   !            "No basis set type was defined for the "//&
+   !            "atomic kind <"//TRIM(qs_kind%name)//">",para_env)
+   !    END IF
+   !
+   !    ! Allocate and initialise the auxiliary basis set data set structure
+   !    IF (aux_basis_set_name /= '') THEN
+   !       CALL allocate_gto_basis_set(qs_kind%aux_basis_set,error)
+   !       CALL read_gto_basis_set(qs_kind%element_symbol,aux_basis_set_name,&
+   !            qs_kind%aux_basis_set,para_env,dft_section,error=error)
+   !       CALL set_gto_basis_set(gto_basis_set=qs_kind%aux_basis_set,&
+   !            norm_type=naux)
+   !    END IF
+   !
+   !    ! Allocate and initialise the auxiliary basis set data set structure for RI-MP2/RPA ...
+   !    IF (ri_aux_basis_set_name /= '') THEN
+   !       CALL allocate_gto_basis_set(qs_kind%ri_aux_basis_set,error)
+   !       CALL read_gto_basis_set(qs_kind%element_symbol,ri_aux_basis_set_name,&
+   !            qs_kind%ri_aux_basis_set,para_env,dft_section,error=error)
+   !       CALL set_gto_basis_set(gto_basis_set=qs_kind%ri_aux_basis_set,&
+   !            norm_type=naux)
+   !    END IF
+   !
+   !    ! Allocate and initialise the auxiliary basis set data set structure for fitting
+   !    IF (aux_fit_basis_set_name /= '') THEN
+   !       CALL allocate_gto_basis_set(qs_kind%aux_fit_basis_set,error)
+   !       CALL read_gto_basis_set(qs_kind%element_symbol,aux_fit_basis_set_name,&
+   !            qs_kind%aux_fit_basis_set,para_env,dft_section,error=error)
+   !       CALL set_gto_basis_set(gto_basis_set=qs_kind%aux_fit_basis_set,&
+   !            norm_type=naux)
+   !    END IF
+   !
+   !    ! Allocate and initialise the lri basis set data set structure for fitting
+   !    IF (lri_basis_set_name /= '') THEN
+   !       CALL allocate_gto_basis_set(qs_kind%lri_basis_set,error)
+   !       CALL read_gto_basis_set(qs_kind%element_symbol,lri_basis_set_name,&
+   !            qs_kind%lri_basis_set,para_env,dft_section,error=error)
+   !       CALL set_gto_basis_set(gto_basis_set=qs_kind%lri_basis_set,&
+   !            norm_type=naux)
+   !    END IF
+   !
+   !    ! Allocate and initialise the geminal basis set data set structure
+   !    IF ((geminal_basis_set_name /= '').OR.explicit_geminal) THEN
+   !       CALL allocate_geminal_basis_set(qs_kind%geminal_basis_set,error)
+   !       CALL read_geminal_basis_set(qs_kind%element_symbol,geminal_basis_set_name,&
+   !            qs_kind%geminal_basis_set,para_env,dft_section,geminal_section,error=error)
+   !    END IF
+   !
+   !    ! If Ghost atom we don't need to allocate/initialize anything connected to POTENTIAL
+   !    IF (qs_kind%ghost) THEN
+   !       IF (ASSOCIATED(qs_kind%elec_conf)) qs_kind%elec_conf = 0
+   !    ELSE
+   !       ! Allocate and initialise the potential data set structure
+   !       IF ((potential_name /= '').OR.explicit_potential) THEN
+   !          ipos = INDEX(potential_name,"-")
+   !          IF (ipos > 1) THEN
+   !             potential_type = potential_name(:ipos-1)
+   !          ELSE
+   !             potential_type = potential_name
+   !          END IF
+   !          CALL uppercase(potential_type)
+   !
+   !          SELECT CASE (TRIM(potential_type))
+   !          CASE ("ALL")
+   !             CALL allocate_potential(qs_kind%all_potential,error)
+   !             CALL read_potential(qs_kind%element_symbol,potential_name,&
+   !                  qs_kind%all_potential,zeff_correction,para_env,&
+   !                  dft_section,potential_section,error)
+   !             CALL set_potential(qs_kind%all_potential,z=z)
+   !             CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
+   !             IF (.NOT.ASSOCIATED(elec_conf)) THEN
+   !                CALL get_potential(potential=qs_kind%all_potential,elec_conf=elec_conf)
+   !                CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
+   !             END IF
+   !          CASE ("GTH")
+   !             CALL allocate_potential(qs_kind%gth_potential,error)
+   !             CALL read_potential(qs_kind%element_symbol,potential_name,&
+   !                  qs_kind%gth_potential,zeff_correction,para_env,&
+   !                  dft_section,potential_section,error)
+   !             CALL set_potential(qs_kind%gth_potential,z=z)
+   !             CALL get_qs_kind(qs_kind,elec_conf=elec_conf)
+   !             IF (.NOT.ASSOCIATED(elec_conf)) THEN
+   !                CALL get_potential(potential=qs_kind%gth_potential,elec_conf=elec_conf)
+   !                CALL set_qs_kind(qs_kind,elec_conf=elec_conf)
+   !             END IF
+   !          CASE DEFAULT
+   !             CALL stop_program(routineN,moduleN,__LINE__,&
+   !                  "An invalid potential type <"//&
+   !                  TRIM(potential_name)//"> was specified "//&
+   !                  "for the atomic kind <"//&
+   !                  TRIM(qs_kind%name),para_env)
+   !          END SELECT
+   !       ELSE
+   !          CALL stop_program(routineN,moduleN,__LINE__,&
+   !               "No potential type was defined for the "//&
+   !               "atomic kind <"//TRIM(qs_kind%name)//">",para_env)
+   !       END IF
+   !       ! Allocate and initialise the potential data set structure
+   !       IF ((kgpot_name /= '').OR.explicit_kgpot) THEN
+   !          ipos = INDEX(kgpot_name,"-")
+   !          IF (ipos > 1) THEN
+   !             kgpot_type = kgpot_name(:ipos-1)
+   !          ELSE
+   !             kgpot_type = kgpot_name
+   !          END IF
+   !          CALL uppercase(kgpot_type)
+   !
+   !          SELECT CASE (TRIM(kgpot_type))
+   !          CASE ("TNADD")
+   !             CALL allocate_potential(qs_kind%tnadd_potential,error)
+   !             CALL read_potential(qs_kind%element_symbol,kgpot_name,&
+   !                  qs_kind%tnadd_potential,para_env,&
+   !                  dft_section,kgpot_section,error)
+   !          CASE ("NONE")
+   !             NULLIFY(qs_kind%tnadd_potential)
+   !          CASE DEFAULT
+   !             CALL stop_program(routineN,moduleN,__LINE__,&
+   !                  "An invalid kg_potential type <"//&
+   !                  TRIM(potential_name)//"> was specified "//&
+   !                  "for the atomic kind <"//&
+   !                  TRIM(qs_kind%name),para_env)
+   !          END SELECT
+   !       END IF
+   !    END IF
+   ! END SELECT
+   !
+   ! CALL timestop(handle)
 
   END SUBROUTINE read_qs_kind
 
@@ -2849,28 +2786,24 @@ CONTAINS
 !> \par History
 !>      Creation (11.01.2002,MK)
 ! *****************************************************************************
-  SUBROUTINE set_qs_kind(qs_kind,element_symbol,name,mass,kind_number,&
-       natom,atom_list,elec_conf,paw_atom,qm_atom,hard_radius,hard0_radius,&
-       fist_potential,soft_basis_set,hard_basis_set,lmax_rho0,zeff,ghost,shell,&
-       shell_active,no_optimize,dispersion,damping,u_minus_j,reltmat,error)
+  SUBROUTINE set_qs_kind(qs_kind,elec_conf,paw_atom,qm_atom,hard_radius,hard0_radius,&
+       soft_basis_set,hard_basis_set,lmax_rho0,zeff,&
+       no_optimize,dispersion,damping,u_minus_j,reltmat,error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
-    CHARACTER(LEN=*), INTENT(IN), OPTIONAL   :: element_symbol, name
-    REAL(KIND=dp), INTENT(IN), OPTIONAL      :: mass
-    INTEGER, INTENT(IN), OPTIONAL            :: kind_number, natom
+    TYPE(qs_kind_type), INTENT(INOUT)        :: qs_kind
     INTEGER, DIMENSION(:), INTENT(IN), &
-      OPTIONAL                               :: atom_list, elec_conf
+      OPTIONAL                               :: elec_conf
     LOGICAL, INTENT(IN), OPTIONAL            :: paw_atom, qm_atom
     REAL(dp), INTENT(IN), OPTIONAL           :: hard_radius, hard0_radius
-    TYPE(fist_potential_type), OPTIONAL, &
-      POINTER                                :: fist_potential
+    !TYPE(fist_potential_type), OPTIONAL, &
+    !  POINTER                                :: fist_potential
     TYPE(gto_basis_set_type), OPTIONAL, &
       POINTER                                :: soft_basis_set, hard_basis_set
     INTEGER, INTENT(IN), OPTIONAL            :: lmax_rho0
     REAL(KIND=dp), INTENT(IN), OPTIONAL      :: zeff
-    LOGICAL, INTENT(IN), OPTIONAL            :: ghost
-    TYPE(shell_kind_type), OPTIONAL, POINTER :: shell
-    LOGICAL, INTENT(IN), OPTIONAL            :: shell_active, no_optimize
+    !TYPE(shell_kind_type), OPTIONAL, POINTER :: shell
+    LOGICAL, INTENT(IN), OPTIONAL            :: no_optimize
+    !LOGICAL, INTENT(IN), OPTIONAL            :: shell_active, no_optimize
     TYPE(qs_atom_dispersion_type), &
       OPTIONAL, POINTER                      :: dispersion
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
@@ -2888,29 +2821,8 @@ CONTAINS
 
     failure = .FALSE.
 
-    IF (ASSOCIATED(qs_kind)) THEN
+    !IF (ASSOCIATED(qs_kind)) THEN
 
-       IF (PRESENT(element_symbol)) qs_kind%element_symbol = element_symbol
-       IF (PRESENT(name)) qs_kind%name = name
-       IF (PRESENT(mass)) qs_kind%mass = mass
-       IF (PRESENT(kind_number)) qs_kind%kind_number = kind_number
-       IF (PRESENT(natom)) qs_kind%natom = natom
-       IF (PRESENT(atom_list)) THEN
-          n = SIZE(atom_list)
-          IF (n > 0) THEN
-             IF (ASSOCIATED(qs_kind%atom_list)) THEN
-                DEALLOCATE (qs_kind%atom_list,STAT=stat)
-                CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-             END IF
-             ALLOCATE (qs_kind%atom_list(n),STAT=stat)
-             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-             qs_kind%atom_list(:) = atom_list(:)
-             qs_kind%natom = n
-          ELSE
-             CALL stop_program(routineN,moduleN,__LINE__,&
-                  "An invalid atom_list was supplied")
-          END IF
-       END IF
        IF (PRESENT(elec_conf)) THEN
           IF (ASSOCIATED(qs_kind%elec_conf)) THEN
              DEALLOCATE(qs_kind%elec_conf)
@@ -2922,23 +2834,22 @@ CONTAINS
        IF (PRESENT(qm_atom)) qs_kind%qm_atom = qm_atom
        IF (PRESENT(hard_radius)) qs_kind%hard_radius = hard_radius
        IF (PRESENT(hard0_radius)) qs_kind%hard0_radius = hard0_radius
-       IF (PRESENT(fist_potential)) qs_kind%fist_potential => fist_potential
+       !IF (PRESENT(fist_potential)) qs_kind%fist_potential => fist_potential
        IF (PRESENT(soft_basis_set)) qs_kind%soft_basis_set => soft_basis_set
        IF (PRESENT(hard_basis_set)) qs_kind%hard_basis_set => hard_basis_set
        IF (PRESENT(lmax_rho0)) qs_kind%lmax_rho0 = lmax_rho0
-       IF (PRESENT(zeff)) THEN
-          IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             CALL set_potential(potential=qs_kind%all_potential,zeff=zeff)
-          ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             CALL set_potential(potential=qs_kind%gth_potential,zeff=zeff)
-          END IF
-       END IF
-       IF (PRESENT(ghost)) qs_kind%ghost = ghost
-       IF (PRESENT(shell)) THEN
-          qs_kind%shell => shell
-          CALL shell_retain(shell,error)
-       END IF
-       IF (PRESENT(shell_active)) qs_kind%shell_active=shell_active
+       !IF (PRESENT(zeff)) THEN
+       !   IF (ASSOCIATED(qs_kind%all_potential)) THEN
+       !      CALL set_potential(potential=qs_kind%all_potential,zeff=zeff)
+       !   ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+       !      CALL set_potential(potential=qs_kind%gth_potential,zeff=zeff)
+       !   END IF
+       !END IF
+       !IF (PRESENT(shell)) THEN
+       !   qs_kind%shell => shell
+       !   CALL shell_retain(shell,error)
+       !END IF
+       !IF (PRESENT(shell_active)) qs_kind%shell_active=shell_active
 
        IF (PRESENT(no_optimize)) qs_kind%no_optimize=no_optimize
 
@@ -2954,10 +2865,10 @@ CONTAINS
 
        IF (PRESENT(reltmat)) qs_kind%reltmat => reltmat
 
-    ELSE
-       CALL stop_program(routineN,moduleN,__LINE__,&
-            "The pointer qs_kind is not associated")
-    END IF
+    !ELSE
+    !   CALL stop_program(routineN,moduleN,__LINE__,&
+    !        "The pointer qs_kind is not associated")
+    !END IF
 
   END SUBROUTINE set_qs_kind
 
@@ -2975,93 +2886,93 @@ CONTAINS
     INTEGER, INTENT(in)                      :: output_unit
     TYPE(cp_error_type), INTENT(inout)       :: error
 
-    CHARACTER(len=*), PARAMETER :: routineN = 'write_qs_kind', &
-      routineP = moduleN//':'//routineN
-
-    CHARACTER(LEN=3)                         :: yon
-    LOGICAL                                  :: failure
-
-    failure = .FALSE.
-
-    IF (output_unit > 0) THEN
-
-       IF (ASSOCIATED(qs_kind)) THEN
-
-          WRITE (UNIT=output_unit,FMT="(/,T2,I2,A,T57,A,T75,I6)")&
-               qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name),&
-               "Number of atoms: ",qs_kind%natom
-
-          CALL write_orb_basis_set(qs_kind%orb_basis_set,output_unit,&
-               "Orbital Basis Set",error=error)
-          CALL write_orb_basis_set(qs_kind%scp_basis_set,output_unit,&
-               "SCP Basis Set",error=error)
-          CALL write_orb_basis_set(qs_kind%aux_fit_basis_set,output_unit,&
-               "Auxiliary Fit Basis Set",error=error)
-          CALL write_orb_basis_set(qs_kind%lri_basis_set,output_unit,&
-               "LRI Basis Set",error=error)
-
-          IF (qs_kind%ghost) THEN
-             WRITE (UNIT=output_unit,FMT="(/,T6,A)")&
-                  "The atoms of this atomic kind are GHOST atoms!"
-          END IF
-          IF (qs_kind%paw_atom) THEN
-             WRITE (UNIT=output_unit,FMT="(/,T6,A)")&
-                  "The atoms of this atomic kind are PAW atoms (GAPW):"
-             WRITE (UNIT=output_unit,FMT="(T8,A,T71,F10.3)")&
-                  "Hard Gaussian function radius:",qs_kind%hard_radius,&
-                  "Rho0 radius:",qs_kind%hard0_radius,&
-                  "Maximum GTO radius used for PAW projector construction:",&
-                  qs_kind%max_rad_local
-             CALL write_orb_basis_set(qs_kind%soft_basis_set,output_unit,&
-                  "GAPW Soft Basis Set",error=error)
-          END IF
-          CALL write_orb_basis_set(qs_kind%aux_basis_set,output_unit,&
-               "Auxiliary Basis Set",error)
-          CALL write_orb_basis_set(qs_kind%ri_aux_basis_set,output_unit,&
-               "RI Auxiliary Basis Set",error)
-          ! Potentials
-          CALL write_potential(qs_kind%all_potential,output_unit,error)
-          CALL write_potential(qs_kind%gth_potential,output_unit,error)
-          CALL write_potential(qs_kind%tnadd_potential,output_unit,error)
-          IF (ASSOCIATED(qs_kind%dft_plus_u)) THEN
-             WRITE (UNIT=output_unit,FMT="(/,T6,A,/,T8,A,T76,I5,/,T8,A,T73,F8.3)")&
-               "A DFT+U correction is applied to atoms of this atomic kind:",&
-               "Angular quantum momentum number L:",qs_kind%dft_plus_u%l,&
-               "U(eff) = (U - J) value in [eV]:",qs_kind%dft_plus_u%u_minus_j_target*evolt
-             IF (qs_kind%dft_plus_u%u_ramping > 0.0_dp) THEN
-                IF (qs_kind%dft_plus_u%init_u_ramping_each_scf) THEN
-                   yon = "YES"
-                ELSE
-                   yon = " NO"
-                END IF
-                WRITE (UNIT=output_unit,FMT="(T8,A,T73,F8.3,/,T8,A,T73,ES8.1,/,T8,A,T78,A3)")&
-                  "Increment for U ramping in [eV]:",qs_kind%dft_plus_u%u_ramping*evolt,&
-                  "SCF threshold value for U ramping:",qs_kind%dft_plus_u%eps_u_ramping,&
-                  "Set U ramping value to zero before each wavefunction optimisation:",yon
-             END IF
-             IF (ASSOCIATED(qs_kind%dft_plus_u%orbitals)) THEN
-                WRITE (UNIT=output_unit,FMT="(T8,A)")&
-                  "An initial orbital occupation is requested:"
-                WRITE (UNIT=output_unit,FMT="(T9,A,(T78,I3))")&
-                  "Preferred (initial) orbital occupation order (orbital M values):",&
-                  qs_kind%dft_plus_u%orbitals(:)
-                WRITE (UNIT=output_unit,FMT="(T9,A,T71,ES10.3,/,T9,A,T76,I5)")&
-                  "Threshold value for the SCF convergence criterion:",&
-                  qs_kind%dft_plus_u%eps_scf,&
-                  "Number of initial SCF iterations:",&
-                  qs_kind%dft_plus_u%max_scf
-                IF (qs_kind%dft_plus_u%smear) THEN
-                   WRITE (UNIT=output_unit,FMT="(T9,A)")&
-                     "A smearing of the orbital occupations will be performed"
-                END IF
-             END IF
-          END IF
-       ELSE
-          CPPrecondition(.FALSE.,cp_failure_level,routineP,error,failure)
-       END IF
-
-    END IF
-
+!    CHARACTER(len=*), PARAMETER :: routineN = 'write_qs_kind', &
+!      routineP = moduleN//':'//routineN
+!
+!    CHARACTER(LEN=3)                         :: yon
+!    LOGICAL                                  :: failure
+!
+!    failure = .FALSE.
+!
+!    IF (output_unit > 0) THEN
+!
+!       IF (ASSOCIATED(qs_kind)) THEN
+!
+!          WRITE (UNIT=output_unit,FMT="(/,T2,I2,A,T57,A,T75,I6)")&
+!               qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name),&
+!               "Number of atoms: ",qs_kind%natom
+!
+!          CALL write_orb_basis_set(qs_kind%orb_basis_set,output_unit,&
+!               "Orbital Basis Set",error=error)
+!          CALL write_orb_basis_set(qs_kind%scp_basis_set,output_unit,&
+!               "SCP Basis Set",error=error)
+!          CALL write_orb_basis_set(qs_kind%aux_fit_basis_set,output_unit,&
+!               "Auxiliary Fit Basis Set",error=error)
+!          CALL write_orb_basis_set(qs_kind%lri_basis_set,output_unit,&
+!               "LRI Basis Set",error=error)
+!
+!          IF (qs_kind%ghost) THEN
+!             WRITE (UNIT=output_unit,FMT="(/,T6,A)")&
+!                  "The atoms of this atomic kind are GHOST atoms!"
+!          END IF
+!          IF (qs_kind%paw_atom) THEN
+!             WRITE (UNIT=output_unit,FMT="(/,T6,A)")&
+!                  "The atoms of this atomic kind are PAW atoms (GAPW):"
+!             WRITE (UNIT=output_unit,FMT="(T8,A,T71,F10.3)")&
+!                  "Hard Gaussian function radius:",qs_kind%hard_radius,&
+!                  "Rho0 radius:",qs_kind%hard0_radius,&
+!                  "Maximum GTO radius used for PAW projector construction:",&
+!                  qs_kind%max_rad_local
+!             CALL write_orb_basis_set(qs_kind%soft_basis_set,output_unit,&
+!                  "GAPW Soft Basis Set",error=error)
+!          END IF
+!          CALL write_orb_basis_set(qs_kind%aux_basis_set,output_unit,&
+!               "Auxiliary Basis Set",error)
+!          CALL write_orb_basis_set(qs_kind%ri_aux_basis_set,output_unit,&
+!               "RI Auxiliary Basis Set",error)
+!          ! Potentials
+!          CALL write_potential(qs_kind%all_potential,output_unit,error)
+!          CALL write_potential(qs_kind%gth_potential,output_unit,error)
+!          CALL write_potential(qs_kind%tnadd_potential,output_unit,error)
+!          IF (ASSOCIATED(qs_kind%dft_plus_u)) THEN
+!             WRITE (UNIT=output_unit,FMT="(/,T6,A,/,T8,A,T76,I5,/,T8,A,T73,F8.3)")&
+!               "A DFT+U correction is applied to atoms of this atomic kind:",&
+!               "Angular quantum momentum number L:",qs_kind%dft_plus_u%l,&
+!               "U(eff) = (U - J) value in [eV]:",qs_kind%dft_plus_u%u_minus_j_target*evolt
+!             IF (qs_kind%dft_plus_u%u_ramping > 0.0_dp) THEN
+!                IF (qs_kind%dft_plus_u%init_u_ramping_each_scf) THEN
+!                   yon = "YES"
+!                ELSE
+!                   yon = " NO"
+!                END IF
+!                WRITE (UNIT=output_unit,FMT="(T8,A,T73,F8.3,/,T8,A,T73,ES8.1,/,T8,A,T78,A3)")&
+!                  "Increment for U ramping in [eV]:",qs_kind%dft_plus_u%u_ramping*evolt,&
+!                  "SCF threshold value for U ramping:",qs_kind%dft_plus_u%eps_u_ramping,&
+!                  "Set U ramping value to zero before each wavefunction optimisation:",yon
+!             END IF
+!             IF (ASSOCIATED(qs_kind%dft_plus_u%orbitals)) THEN
+!                WRITE (UNIT=output_unit,FMT="(T8,A)")&
+!                  "An initial orbital occupation is requested:"
+!                WRITE (UNIT=output_unit,FMT="(T9,A,(T78,I3))")&
+!                  "Preferred (initial) orbital occupation order (orbital M values):",&
+!                  qs_kind%dft_plus_u%orbitals(:)
+!                WRITE (UNIT=output_unit,FMT="(T9,A,T71,ES10.3,/,T9,A,T76,I5)")&
+!                  "Threshold value for the SCF convergence criterion:",&
+!                  qs_kind%dft_plus_u%eps_scf,&
+!                  "Number of initial SCF iterations:",&
+!                  qs_kind%dft_plus_u%max_scf
+!                IF (qs_kind%dft_plus_u%smear) THEN
+!                   WRITE (UNIT=output_unit,FMT="(T9,A)")&
+!                     "A smearing of the orbital occupations will be performed"
+!                END IF
+!             END IF
+!          END IF
+!       ELSE
+!          CPPrecondition(.FALSE.,cp_failure_level,routineP,error,failure)
+!       END IF
+!
+!    END IF
+!
   END SUBROUTINE write_qs_kind
 
 ! *****************************************************************************
@@ -3132,68 +3043,56 @@ CONTAINS
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
-    CHARACTER(LEN=*), PARAMETER :: routineN = 'write_gto_basis_sets', &
-      routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: handle, ikind, nkind, &
-                                                output_unit
-    LOGICAL                                  :: failure
-    TYPE(qs_kind_type), POINTER          :: qs_kind
-    TYPE(cp_logger_type), POINTER            :: logger
-
-    CALL timeset(routineN,handle)
-
-    failure = .FALSE.
-    NULLIFY (logger)
-    logger => cp_error_get_logger(error)
-    output_unit = cp_print_key_unit_nr(logger,subsys_section,&
-         "PRINT%KINDS/BASIS_SET",&
-         extension=".Log",error=error)
-    IF (output_unit > 0) THEN
-       IF (ASSOCIATED(qs_kind_set)) THEN
-          WRITE (UNIT=output_unit,FMT="(/,/,T2,A)")&
-               "BASIS SET INFORMATION (Unnormalised Gaussian-type functions)"
-          nkind = SIZE(qs_kind_set)
-          DO ikind=1,nkind
-             qs_kind => qs_kind_set(ikind)
-             WRITE (UNIT=output_unit,FMT="(/,T2,I2,A)")&
-                  qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name)
-             CALL write_gto_basis_set(qs_kind_set(ikind)%orb_basis_set,&
-                  output_unit,"Orbital Basis Set",error)
-             CALL write_gto_basis_set(qs_kind%soft_basis_set,&
-                  output_unit,"GAPW Soft Basis Set",error)
-             CALL write_gto_basis_set(qs_kind_set(ikind)%aux_basis_set,&
-                  output_unit,"Auxiliary Basis Set",error)
-             CALL write_gto_basis_set(qs_kind_set(ikind)%aux_fit_basis_set,&
-                  output_unit,"Auxiliary Fit Basis Set",error)
-             CALL write_gto_basis_set(qs_kind_set(ikind)%lri_basis_set,&
-                  output_unit,"LRI Basis Set",error)
-             CALL write_gto_basis_set(qs_kind_set(ikind)%ri_aux_basis_set,&
-                  output_unit,"RI Auxiliary Fit Basis Set",error)
-          END DO
-       ELSE
-          CPPrecondition(.FALSE.,cp_failure_level,routineP,error,failure)
-       END IF
-    END IF
-
-    CALL cp_print_key_finished_output(output_unit,logger,subsys_section,&
-         "PRINT%KINDS/BASIS_SET",error=error)
-
-    CALL timestop(handle)
+   ! CHARACTER(LEN=*), PARAMETER :: routineN = 'write_gto_basis_sets', &
+   !   routineP = moduleN//':'//routineN
+   !
+   ! INTEGER                                  :: handle, ikind, nkind, &
+   !                                             output_unit
+   ! LOGICAL                                  :: failure
+   ! TYPE(qs_kind_type), POINTER          :: qs_kind
+   ! TYPE(cp_logger_type), POINTER            :: logger
+   !
+   ! CALL timeset(routineN,handle)
+   !
+   ! failure = .FALSE.
+   ! NULLIFY (logger)
+   ! logger => cp_error_get_logger(error)
+   ! output_unit = cp_print_key_unit_nr(logger,subsys_section,&
+   !      "PRINT%KINDS/BASIS_SET",&
+   !      extension=".Log",error=error)
+   ! IF (output_unit > 0) THEN
+   !    IF (ASSOCIATED(qs_kind_set)) THEN
+   !       WRITE (UNIT=output_unit,FMT="(/,/,T2,A)")&
+   !            "BASIS SET INFORMATION (Unnormalised Gaussian-type functions)"
+   !       nkind = SIZE(qs_kind_set)
+   !       DO ikind=1,nkind
+   !          qs_kind => qs_kind_set(ikind)
+   !          WRITE (UNIT=output_unit,FMT="(/,T2,I2,A)")&
+   !               qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name)
+   !          CALL write_gto_basis_set(qs_kind_set(ikind)%orb_basis_set,&
+   !               output_unit,"Orbital Basis Set",error)
+   !          CALL write_gto_basis_set(qs_kind%soft_basis_set,&
+   !               output_unit,"GAPW Soft Basis Set",error)
+   !          CALL write_gto_basis_set(qs_kind_set(ikind)%aux_basis_set,&
+   !               output_unit,"Auxiliary Basis Set",error)
+   !          CALL write_gto_basis_set(qs_kind_set(ikind)%aux_fit_basis_set,&
+   !               output_unit,"Auxiliary Fit Basis Set",error)
+   !          CALL write_gto_basis_set(qs_kind_set(ikind)%lri_basis_set,&
+   !               output_unit,"LRI Basis Set",error)
+   !          CALL write_gto_basis_set(qs_kind_set(ikind)%ri_aux_basis_set,&
+   !               output_unit,"RI Auxiliary Fit Basis Set",error)
+   !       END DO
+   !    ELSE
+   !       CPPrecondition(.FALSE.,cp_failure_level,routineP,error,failure)
+   !    END IF
+   ! END IF
+   !
+   ! CALL cp_print_key_finished_output(output_unit,logger,subsys_section,&
+   !      "PRINT%KINDS/BASIS_SET",error=error)
+   !
+   ! CALL timestop(handle)
 
   END SUBROUTINE write_gto_basis_sets
 
-! *****************************************************************************
-!> \brief Determines if the qs_kind is HYDROGEN
-!> \param qs_kind ...
-!> \retval res ...
-!> \author Teodoro Laino [tlaino] - University of Zurich 10.2008
-! *****************************************************************************
-  PURE FUNCTION is_hydrogen(qs_kind) RESULT(res)
-    TYPE(qs_kind_type), POINTER          :: qs_kind
-    LOGICAL                                  :: res
-
-    res = TRIM(qs_kind%element_symbol)=="H"
-  END FUNCTION is_hydrogen
 
 END MODULE qs_kind_types

@@ -10,6 +10,8 @@
 MODULE hfx_ri_gemopt
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: geminal_basis_set_type,&
                                              get_geminal_basis_set,&
                                              write_geminal_basis_set
@@ -183,22 +185,20 @@ CONTAINS
     REAL(KIND=dp)                            :: a, b, c
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: zet
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
     failure = .FALSE.
-    NULLIFY(atomic_kind_set)
+    NULLIFY(qs_kind_set)
 
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
-    nkind = SIZE(atomic_kind_set)
+    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
+    nkind = SIZE(qs_kind_set)
 
     nopt = 0
     DO ikind = 1,nkind
-       atomic_kind => atomic_kind_set(ikind)
        NULLIFY(geminal_basis_set)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,no_optimize=noopt,&
+       CALL get_qs_kind(qs_kind_set(ikind),no_optimize=noopt,&
                             geminal_basis_set=geminal_basis_set)
        IF ( noopt ) CYCLE
        IF ( .NOT.ASSOCIATED(geminal_basis_set) ) CYCLE
@@ -218,9 +218,8 @@ CONTAINS
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     nopt = 0
     DO ikind = 1,nkind
-       atomic_kind => atomic_kind_set(ikind)
        NULLIFY(geminal_basis_set)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,no_optimize=noopt,&
+       CALL get_qs_kind(qs_kind_set(ikind),no_optimize=noopt,&
                             geminal_basis_set=geminal_basis_set)
        IF ( noopt ) CYCLE
        IF ( .NOT.ASSOCIATED(geminal_basis_set) ) CYCLE
@@ -276,22 +275,20 @@ CONTAINS
     REAL(KIND=dp)                            :: a, b, c
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: zet, zeth
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
     failure = .FALSE.
-    NULLIFY(atomic_kind_set)
+    NULLIFY(qs_kind_set)
 
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
-    nkind = SIZE(atomic_kind_set)
+    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
+    nkind = SIZE(qs_kind_set)
 
     nopt = 0
     DO ikind = 1,nkind
-       atomic_kind => atomic_kind_set(ikind)
        NULLIFY(geminal_basis_set)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,no_optimize=noopt,&
+       CALL get_qs_kind(qs_kind_set(ikind),no_optimize=noopt,&
                             geminal_basis_set=geminal_basis_set)
        IF ( noopt ) CYCLE
        IF ( .NOT.ASSOCIATED(geminal_basis_set) ) CYCLE
@@ -374,20 +371,18 @@ CONTAINS
 
     INTEGER                                  :: ikind, nkind
     LOGICAL                                  :: noopt
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
-    NULLIFY(atomic_kind_set)
+    NULLIFY(qs_kind_set)
 
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,error=error)
-    nkind = SIZE(atomic_kind_set)
+    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
+    nkind = SIZE(qs_kind_set)
 
     DO ikind = 1,nkind
-       atomic_kind => atomic_kind_set(ikind)
        NULLIFY(geminal_basis_set)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,no_optimize=noopt,&
+       CALL get_qs_kind(qs_kind_set(ikind),no_optimize=noopt,&
                             geminal_basis_set=geminal_basis_set)
        IF ( noopt ) CYCLE
        IF ( .NOT.ASSOCIATED(geminal_basis_set) ) CYCLE

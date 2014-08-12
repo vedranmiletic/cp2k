@@ -16,6 +16,9 @@ MODULE population_analyses
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: &
@@ -91,6 +94,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: orbpop
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p, matrix_s
     TYPE(cp_dbcsr_type), POINTER             :: sm_p, sm_s
@@ -106,6 +111,7 @@ CONTAINS
     failure = .FALSE.
 
     NULLIFY (atomic_kind_set)
+    NULLIFY (qs_kind_set)
     NULLIFY (fmstruct)
     NULLIFY (fm_s_half)
     NULLIFY (fm_work1)
@@ -122,6 +128,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     matrix_s=matrix_s,&
                     particle_set=particle_set,&
                     rho=rho,&
@@ -129,6 +136,7 @@ CONTAINS
                     error=error)
 
     CPPrecondition(ASSOCIATED(atomic_kind_set),cp_failure_level,routineP,error,failure)
+    CPPrecondition(ASSOCIATED(qs_kind_set),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(matrix_s),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(rho),cp_failure_level,routineP,error,failure)
@@ -140,7 +148,7 @@ CONTAINS
     nspin = SIZE(matrix_p)
 
     ! Get the total number of contracted spherical Gaussian basis functions
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,nsgf=nsgf)
+    CALL get_qs_kind_set(qs_kind_set,nsgf=nsgf)
 
     ! Provide an array to store the orbital populations for each spin
     ALLOCATE (orbpop(nsgf,nspin),STAT=stat)
@@ -216,7 +224,7 @@ CONTAINS
     ! Write atomic populations and charges
     IF (output_unit > 0) THEN
       print_gop = (print_level > 1) ! Print also orbital populations
-      CALL write_orbpop(orbpop,atomic_kind_set,particle_set,output_unit,print_gop,error)
+      CALL write_orbpop(orbpop,atomic_kind_set,qs_kind_set,particle_set,output_unit,print_gop,error)
     END IF
 
     ! Release local working storage
@@ -263,6 +271,8 @@ CONTAINS
                                                 s_block
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p, matrix_s
@@ -276,6 +286,7 @@ CONTAINS
     failure = .FALSE.
 
     NULLIFY (atomic_kind_set)
+    NULLIFY (qs_kind_set)
     NULLIFY (matrix_p)
     NULLIFY (matrix_s)
     NULLIFY (orbpop)
@@ -290,12 +301,14 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     matrix_s=matrix_s,&
                     particle_set=particle_set,&
                     rho=rho,&
                     error=error)
 
     CPPrecondition(ASSOCIATED(atomic_kind_set),cp_failure_level,routineP,error,failure)
+    CPPrecondition(ASSOCIATED(qs_kind_set),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(rho),cp_failure_level,routineP,error,failure)
     CPPrecondition(ASSOCIATED(matrix_s),cp_failure_level,routineP,error,failure)
@@ -306,10 +319,8 @@ CONTAINS
     nspin = SIZE(matrix_p)
 
     ! Get the total number of contracted spherical Gaussian basis functions
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                             natom=natom,&
-                             nsgf=nsgf)
-
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
+    CALL get_qs_kind_set(qs_kind_set, nsgf=nsgf)
     ALLOCATE (first_sgf_atom(natom),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     first_sgf_atom(:) = 0
@@ -406,7 +417,7 @@ CONTAINS
     ! Write atomic populations and charges
     IF (output_unit > 0) THEN
       print_gop = (print_level > 1) ! Print also orbital populations
-      CALL write_orbpop(orbpop,atomic_kind_set,particle_set,output_unit,print_gop,error)
+      CALL write_orbpop(orbpop,atomic_kind_set, qs_kind_set,particle_set,output_unit,print_gop,error)
     END IF
 
     ! Release local working storage
@@ -437,12 +448,14 @@ CONTAINS
 !> \author  Matthias Krack (MK)
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_orbpop(orbpop,atomic_kind_set,particle_set,output_unit,&
+  SUBROUTINE write_orbpop(orbpop,atomic_kind_set,qs_kind_set,particle_set,output_unit,&
                           print_orbital_contributions,error)
 
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: orbpop
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     INTEGER, INTENT(IN)                      :: output_unit
@@ -479,9 +492,8 @@ CONTAINS
 
     nspin = SIZE(orbpop,2)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                             natom=natom,&
-                             nsgf=nsgf)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
+    CALL get_qs_kind_set(qs_kind_set, nsgf=nsgf)
 
     ! Select and write headline
     IF (nspin == 1) THEN
@@ -511,8 +523,8 @@ CONTAINS
       CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
                            element_symbol=element_symbol,&
                            kind_number=ikind,&
-                           orb_basis_set=orb_basis_set,&
                            zeff=zeff)
+      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
       IF (ASSOCIATED(orb_basis_set)) THEN
         CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                nset=nset,&

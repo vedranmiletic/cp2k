@@ -11,6 +11,9 @@
 !> \author fschiff (06.2010)
 ! *****************************************************************************
 MODULE qs_efield_berry
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE ai_moments,                      ONLY: cossin
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
@@ -647,9 +650,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(3)         :: cost, sint
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -668,16 +670,16 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY (atomic_kind_set, particle_set, sab_orb, sab_all, cell)
+    NULLIFY (qs_kind_set, particle_set, sab_orb, sab_all, cell)
     CALL get_qs_env(qs_env=qs_env,&
-         atomic_kind_set=atomic_kind_set,&
+         qs_kind_set=qs_kind_set,&
          particle_set=particle_set,cell=cell,&
          sab_orb=sab_orb,sab_all=sab_all,matrix_s=matrix_s, error=error)
 
     CALL cp_dbcsr_set(sinmat,0.0_dp,error=error)
     CALL cp_dbcsr_set(cosmat,0.0_dp,error=error)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set, maxco=ldwork )
+    CALL get_qs_kind_set(qs_kind_set, maxco=ldwork )
     ldab = ldwork
     ALLOCATE(cosab(ldab,ldab),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
@@ -694,7 +696,7 @@ CONTAINS
        CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     END IF
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     natom = SIZE(particle_set)
 
     ALLOCATE (basis_set_list(nkind),STAT=istat)
@@ -731,8 +733,7 @@ CONTAINS
     END IF
 
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,orb_basis_set=basis_set_a)
+       CALL get_qs_kind(qs_kind_set(ikind),orb_basis_set=basis_set_a)
        IF (ASSOCIATED(basis_set_a)) THEN
           basis_set_list(ikind)%gto_basis_set => basis_set_a
        ELSE

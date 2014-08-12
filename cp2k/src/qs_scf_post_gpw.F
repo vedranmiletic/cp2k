@@ -17,6 +17,8 @@ MODULE qs_scf_post_gpw
   USE atom_kind_orbitals,              ONLY: calculate_atomic_density
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
@@ -211,8 +213,8 @@ CONTAINS
     REAL(KIND=dp)                            :: gap, homo_lumo(2,2)
     REAL(KIND=dp), DIMENSION(:), POINTER     :: mo_eigenvalues
     TYPE(admm_type), POINTER                 :: admm_env
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_1d_r_p_type), DIMENSION(:), &
       POINTER                                :: occupied_evals, &
                                                 unoccupied_evals, &
@@ -280,7 +282,7 @@ CONTAINS
        CALL get_qs_env(qs_env,dft_control=dft_control,molecule_set=molecule_set, &
             mos=mos,rho=rho,matrix_ks=ks_rmpv,scf_control=scf_control,matrix_s=matrix_s, &
             input=input, subsys=subsys, tddfpt_control=tddfpt_control, pw_env=pw_env,&
-            particle_set=particle_set, atomic_kind_set=atomic_kind_set, error=error)
+            particle_set=particle_set, qs_kind_set=qs_kind_set, error=error)
        CALL cp_subsys_get(subsys,particles=particles,error=error)
 
        !    **** the kinetic energy
@@ -588,7 +590,7 @@ CONTAINS
 
 
        ! generate a mix of wfns, and write to a restart
-       CALL wfn_mix(mos, particle_set, dft_section, atomic_kind_set, &
+       CALL wfn_mix(mos, particle_set, dft_section, qs_kind_set, &
                     lumo_ptr, scf_env, matrix_s, output_unit, marked_states,error)
        IF(p_loc_lumo)CALL cp_fm_vect_dealloc(lumo_localized,error)
        IF(ASSOCIATED(marked_states))THEN
@@ -1183,8 +1185,8 @@ CONTAINS
                                                 my_basis_set_id, nhomo, &
                                                 unit_nr
     LOGICAL                                  :: append_cube
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
@@ -1209,12 +1211,12 @@ CONTAINS
        IF (nhomo==-1) nhomo=homo
        DO ivector=MAX(1,homo-nhomo+1),homo
           CALL get_qs_env(qs_env=qs_env,&
-                          atomic_kind_set=atomic_kind_set,&
+                          qs_kind_set=qs_kind_set,&
                           cell=cell,&
                           particle_set=particle_set,&
                           pw_env=pw_env,&
                           error=error)
-          CALL calculate_wavefunction(mo_coeff,ivector,wf_r,wf_g,atomic_kind_set,&
+          CALL calculate_wavefunction(mo_coeff,ivector,wf_r,wf_g,qs_kind_set,&
                cell,dft_control,particle_set,pw_env ,basis_set_id=my_basis_set_id, error=error)
           WRITE(filename,'(a4,I5.5,a1,I1.1)')"WFN_",ivector,"_",ispin
           unit_nr=cp_print_key_unit_nr(logger,input,"DFT%PRINT%MO_CUBES",extension=".cube",&
@@ -1269,8 +1271,8 @@ CONTAINS
     INTEGER                                  :: handle, ifirst, index_mo, &
                                                 ivector, unit_nr
     LOGICAL                                  :: append_cube
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
@@ -1280,7 +1282,7 @@ CONTAINS
 
     IF (BTEST(cp_print_key_should_output(logger%iter_info,dft_section,"PRINT%MO_CUBES",error=error),cp_p_file)&
          .AND.  section_get_lval(dft_section,"PRINT%MO_CUBES%WRITE_CUBE",error=error) ) THEN
-       NULLIFY(atomic_kind_set, particle_set, pw_env, cell)
+       NULLIFY(qs_kind_set, particle_set, pw_env, cell)
        append_cube = section_get_lval(dft_section,"PRINT%MO_CUBES%APPEND",error=error)
        my_pos_cube="REWIND"
        IF(append_cube) THEN
@@ -1290,12 +1292,12 @@ CONTAINS
        IF(PRESENT(lumo)) ifirst = lumo
        DO ivector=ifirst, ifirst+nlumos-1
           CALL get_qs_env(qs_env=qs_env,&
-                          atomic_kind_set=atomic_kind_set,&
+                          qs_kind_set=qs_kind_set,&
                           cell=cell,&
                           particle_set=particle_set,&
                           pw_env=pw_env,&
                           error=error)
-          CALL calculate_wavefunction(unoccupied_orbs, ivector, wf_r, wf_g, atomic_kind_set,&
+          CALL calculate_wavefunction(unoccupied_orbs, ivector, wf_r, wf_g, qs_kind_set,&
                cell, dft_control, particle_set, pw_env, error=error)
 
           IF(ifirst==1) THEN
@@ -2144,6 +2146,8 @@ CONTAINS
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv, matrix_s
@@ -2172,7 +2176,7 @@ CONTAINS
     CALL timeset(routineN,handle)
     failure=.FALSE.
     NULLIFY(cell, dft_control, pw_env, auxbas_pw_pool, pw_pools, mo_coeff, &
-         mo_coeff_deriv, mo_eigenvalues, mos, atomic_kind_set, &
+         mo_coeff_deriv, mo_eigenvalues, mos, atomic_kind_set, qs_kind_set,&
          particle_set, rho, ks_rmpv, matrix_s, scf_control, dft_section, &
          molecule_set, input, particles, subsys)
     para_env=>qs_env%para_env
@@ -2183,6 +2187,7 @@ CONTAINS
     IF (.NOT. failure) THEN
        CALL get_qs_env(qs_env,dft_control=dft_control,molecule_set=molecule_set, &
             mos=mos,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
+            qs_kind_set=qs_kind_set,&
             rho=rho,matrix_ks=ks_rmpv,admm_env=admm_env,&
             scf_control=scf_control,matrix_s=matrix_s,&
             input=input,cell=cell,subsys=subsys,error=error)
@@ -2192,12 +2197,12 @@ CONTAINS
        dft_section => section_vals_get_subs_vals(input,"DFT",error=error)
        IF(.NOT.qs_env%run_rtp)THEN
           IF (dft_control%nspins == 2) THEN
-             CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,particle_set,4,&
+             CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                   dft_section,spin="ALPHA",last=.TRUE.,error=error)
-             CALL write_mo_set(mos(2)%mo_set,atomic_kind_set,particle_set,4,&
+             CALL write_mo_set(mos(2)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                   dft_section,spin="BETA",last=.TRUE.,error=error)
           ELSE
-             CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,particle_set,4,&
+             CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                   dft_section,last=.TRUE.,error=error)
           END IF
 
@@ -2230,10 +2235,10 @@ CONTAINS
                 END IF
                 IF(dft_control%nspins==2) THEN
                    CALL calculate_projected_dos(mos(ispin)%mo_set,atomic_kind_set,&
-                        particle_set,qs_env, dft_section,ispin=ispin,error=error)
+                        qs_kind_set,particle_set,qs_env, dft_section,ispin=ispin,error=error)
                 ELSE
                    CALL calculate_projected_dos(mos(ispin)%mo_set,atomic_kind_set,&
-                        particle_set,qs_env,dft_section,error=error)
+                        qs_kind_set,particle_set,qs_env,dft_section,error=error)
                 END IF
 
                 ! ** If we do ADMM, we add have to modify the kohn-sham matrix
@@ -2333,7 +2338,9 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: dr
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+   TYPE(atomic_kind_type), POINTER           :: atomic_kind
+   TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv, matrix_s
@@ -2363,7 +2370,7 @@ CONTAINS
     CALL timeset(routineN,handle)
     failure=.FALSE.
     NULLIFY(cell, dft_control, pw_env, auxbas_pw_pool, pw_pools, &
-         atomic_kind_set, particle_set, rho, ks_rmpv, matrix_s, &
+         atomic_kind_set, qs_kind_set, particle_set, rho, ks_rmpv, matrix_s, &
          dft_section, xc_section, input, particles, subsys)
 
     logger => cp_error_get_logger(error)
@@ -2372,7 +2379,8 @@ CONTAINS
     CPPrecondition(ASSOCIATED(qs_env),cp_failure_level,routineP,error,failure)
     IF (.NOT. failure) THEN
        CALL get_qs_env(qs_env,dft_control=dft_control, &
-            atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
+            atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
+            particle_set=particle_set,&
             rho=rho,matrix_ks=ks_rmpv,&
             matrix_s=matrix_s,input=input,cell=cell,subsys=subsys,para_env=para_env,error=error)
        dft_section => section_vals_get_subs_vals(input,"DFT",error=error)
@@ -2469,7 +2477,7 @@ CONTAINS
              CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
              DO ikind=1,nkind
                atomic_kind => atomic_kind_set(ikind)
-               CALL get_atomic_kind(atomic_kind=atomic_kind,name=name,element_symbol=element_symbol)
+               CALL get_atomic_kind(atomic_kind,name=name,element_symbol=element_symbol)
                CALL calculate_atomic_density(ppdens(:,:,ikind),atomic_kind,ngto,iunit=output_unit,&
                     confine=.TRUE.,error=error)
                CALL calculate_atomic_density(aedens(:,:,ikind),atomic_kind,ngto,iunit=output_unit,&
@@ -2498,8 +2506,8 @@ CONTAINS
                 END IF
                 np = particles%n_els
                 DO iat=1,np
-                   CALL get_atomic_kind(particles%els(iat)%atomic_kind,kind_number=ikind,&
-                                        grid_atom=grid_atom)
+                   CALL get_atomic_kind(particles%els(iat)%atomic_kind,kind_number=ikind)
+                   CALL get_qs_kind(qs_kind_set(ikind), grid_atom=grid_atom)
                    rho_atom => rho_atom_set(iat)
                    IF(ASSOCIATED(rho_atom%rho_rad_h(1)%r_coef)) THEN
                       nr = SIZE(rho_atom%rho_rad_h(1)%r_coef,1)

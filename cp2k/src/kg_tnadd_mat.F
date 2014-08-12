@@ -9,7 +9,9 @@
 !>      - adapted from core_ppl 
 ! *****************************************************************************
 MODULE kg_tnadd_mat
-
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE ai_overlap_ppl,                  ONLY: ppl_integral
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
@@ -74,7 +76,7 @@ CONTAINS
 !> \param error ...
 ! *****************************************************************************
   SUBROUTINE build_tnadd_mat(kg_env, matrix_p, force, virial, calculate_forces, use_virial, &
-                    atomic_kind_set, particle_set, sab_orb, dbcsr_dist, error)
+                    qs_kind_set, atomic_kind_set, particle_set, sab_orb, dbcsr_dist, error)
 
     TYPE(kg_environment_type), POINTER       :: kg_env
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -84,6 +86,8 @@ CONTAINS
     TYPE(virial_type), POINTER               :: virial
     LOGICAL, INTENT(IN)                      :: calculate_forces
     LOGICAL                                  :: use_virial
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(particle_type), DIMENSION(:), &
@@ -125,7 +129,6 @@ CONTAINS
                                                 p_block, rpgfa, rpgfb, &
                                                 sphi_a, sphi_b, zeta, zetb
     TYPE(array_i1d_obj)                      :: col_blk_sizes, row_blk_sizes
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_kg
     TYPE(gto_basis_set_p_type), &
@@ -173,7 +176,7 @@ CONTAINS
 
     maxder = ncoset(nder)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_kind_set(qs_kind_set,&
             maxco=maxco,maxlgto=maxlgto,maxpol=maxpol,maxsgf=maxsgf,maxnset=maxnset)
 
     maxl = MAX(maxlgto,maxpol)
@@ -185,8 +188,7 @@ CONTAINS
     ALLOCATE (basis_set_list(nkind),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     DO ikind=1,nkind
-      atomic_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atomic_kind,orb_basis_set=basis_set_a)
+      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=basis_set_a)
       IF (ASSOCIATED(basis_set_a)) THEN
         basis_set_list(ikind)%gto_basis_set => basis_set_a
       ELSE
@@ -377,8 +379,7 @@ CONTAINS
        ! loop over all kinds for nonadditive kinetic energy potential atoms
        DO kkind=1,nkind
 
-          atomic_kind => atomic_kind_set(kkind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,tnadd_potential=tnadd_potential)
+          CALL get_atomic_kind(atomic_kind_set(kkind),tnadd_potential=tnadd_potential)
           IF (.NOT.ASSOCIATED(tnadd_potential)) CYCLE
           CALL get_potential(potential=tnadd_potential,&
                alpha=alpha,cval=cval,ngau=ngau,npol=npol,radius=radius)

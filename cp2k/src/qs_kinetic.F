@@ -19,6 +19,8 @@ MODULE qs_kinetic
   USE ai_kinetic,                      ONLY: kinetic
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_allocate_matrix_set,&
@@ -135,6 +137,8 @@ CONTAINS
       POINTER                                :: dab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(gto_basis_set_p_type), &
       DIMENSION(:), POINTER                  :: basis_set_list
@@ -163,9 +167,9 @@ CONTAINS
         CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
      END IF
 
-     NULLIFY (atomic_kind_set, p_block)
+     NULLIFY (atomic_kind_set, qs_kind_set, p_block)
      CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,natom=natom,&
-                     dbcsr_dist=dbcsr_dist,error=error)
+                     qs_kind_set=qs_kind_set, dbcsr_dist=dbcsr_dist,error=error)
      nkind = SIZE(atomic_kind_set)
 
      ALLOCATE (atom_of_kind(natom),STAT=istat)
@@ -202,7 +206,7 @@ CONTAINS
      END IF
 
      ! *** Allocate work storage ***
-     ldsab = get_memory_usage(atomic_kind_set,basis_set_id)
+     ldsab = get_memory_usage(qs_kind_set,basis_set_id)
      ALLOCATE (kab(ldsab,ldsab),qab(ldsab,ldsab),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
      IF (do_forces) THEN
@@ -213,7 +217,7 @@ CONTAINS
      ! prepare basis set
      ALLOCATE (basis_set_list(nkind),STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-     CALL basis_set_list_setup(basis_set_list,basis_set_id,atomic_kind_set)
+     CALL basis_set_list_setup(basis_set_list,basis_set_id,qs_kind_set)
 
      ! Iterate of neighbor list
      CALL neighbor_list_iterator_create(nl_iterator,sab_nl)

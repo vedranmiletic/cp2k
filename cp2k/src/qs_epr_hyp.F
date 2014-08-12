@@ -13,6 +13,8 @@
 MODULE qs_epr_hyp
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -96,7 +98,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: ra, rab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -118,7 +121,7 @@ CONTAINS
     TYPE(rho_atom_type), POINTER             :: rho_atom
     TYPE(section_vals_type), POINTER         :: dft_section
 
-    NULLIFY(pw_env, cell, atomic_kind_set, auxbas_pw_pool, dft_control, &
+    NULLIFY(pw_env, cell, atomic_kind_set, qs_kind_set, auxbas_pw_pool, dft_control, &
          logger, dft_section, para_env, particle_set, rho, rho_atom, &
          rho_atom_set, rhototspin_elec_gspace, hypaniso_gspace)
 
@@ -145,7 +148,7 @@ CONTAINS
     hypfactor = -1.0_dp * mu_perm * e_charge * h_bar * e_gfactor / ( 2.0_dp * e_mass * a_bohr ** 3 )
 
     CALL get_qs_env(qs_env=qs_env,dft_control=dft_control,cell=cell,&
-                    rho=rho,atomic_kind_set=atomic_kind_set,&
+                    rho=rho,atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
                     rho_atom_set=rho_atom_set,pw_env=pw_env,&
                     particle_set=particle_set,para_env=para_env,&
                     error=error)
@@ -174,11 +177,14 @@ CONTAINS
     nkind = SIZE(atomic_kind_set) ! nkind = number of atom types
 
     DO ikind = 1,nkind ! loop over atom types
-      NULLIFY(atom_list, atomic_kind, grid_atom, harmonics)
-      atomic_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atomic_kind,grid_atom=grid_atom,&
-                           atom_list=atom_list,natom=natomkind,paw_atom=paw_atom,&
-                           harmonics=harmonics,z=z,hard_radius=hard_radius)
+      NULLIFY(atom_list, grid_atom, harmonics)
+      CALL get_atomic_kind(atomic_kind_set(ikind),&
+                           atom_list=atom_list,natom=natomkind,&
+                           z=z,hard_radius=hard_radius)
+
+      CALL get_qs_kind(qs_kind_set(ikind),harmonics=harmonics,&
+                       grid_atom=grid_atom,paw_atom=paw_atom)
+
       IF(.NOT. paw_atom) CYCLE ! skip the rest and go to next atom type
 
       num_pe = para_env%num_pe

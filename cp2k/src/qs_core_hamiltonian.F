@@ -72,7 +72,9 @@
 !> \author Matthias Krack (14.09.2000,21.03.02)
 ! *****************************************************************************
 MODULE qs_core_hamiltonian
-
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -162,6 +164,8 @@ CONTAINS
     REAL(KIND=dp)                            :: eps_filter, eps_fit, eps_ppnl
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), POINTER :: matrix_h, matrix_p, &
       matrix_s, matrix_s_aux_fit, matrix_s_aux_fit_vs_orb, matrix_t, matrix_w
     TYPE(cp_logger_type), POINTER            :: logger
@@ -195,6 +199,7 @@ CONTAINS
     logger => cp_error_get_logger(error)
 
     NULLIFY (atomic_kind_set)
+    NULLIFY (qs_kind_set)
     NULLIFY (force)
     NULLIFY (matrix_h)
     NULLIFY (matrix_s)
@@ -227,6 +232,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     matrix_h=matrix_h,&
                     kinetic=matrix_t,&
                     matrix_s=matrix_s,&
@@ -420,26 +426,26 @@ CONTAINS
     IF (ppl_present) THEN
       IF(qs_env%dft_control%qs_control%do_ppl_method==do_ppl_analytic) THEN
         CALL build_core_ppl(matrix_h, matrix_p, force, virial, calculate_forces, use_virial, nder,&
-                    atomic_kind_set, particle_set, sab_orb, sac_ppl, error)
+                    qs_kind_set, atomic_kind_set, particle_set, sab_orb, sac_ppl, error)
       END IF
     END IF
 
     ! *** compute the nuclear attraction contribution to the core hamiltonian ***
     IF (all_potential_present) THEN
       CALL build_core_ae(matrix_h, matrix_p, force, virial, calculate_forces, use_virial, nder,&
-                    atomic_kind_set, particle_set, sab_orb, sac_ae, error)
+                    qs_kind_set, atomic_kind_set, particle_set, sab_orb, sac_ae, error)
     END IF
 
     ! *** compute the ppnl contribution to the core hamiltonian ***
     eps_ppnl = qs_env%dft_control%qs_control%eps_ppnl
     CALL build_core_ppnl(matrix_h, matrix_p, force, virial, calculate_forces, use_virial, nder,&
-                    atomic_kind_set, particle_set, sab_orb, sap_ppnl, eps_ppnl, error)
+                    qs_kind_set, atomic_kind_set, particle_set, sab_orb, sap_ppnl, eps_ppnl, error)
 
     ! *** GAPW one-center-expansion (oce) matrices
     IF(qs_env%dft_control%qs_control%gapw .OR. qs_env%dft_control%qs_control%gapw_xc) THEN
       eps_fit  = qs_env%dft_control%qs_control%gapw_control%eps_fit
       IF (ASSOCIATED(sap_oce)) &
-         CALL build_oce_matrices(oce%intac,calculate_forces,nder,atomic_kind_set,particle_set,&
+         CALL build_oce_matrices(oce%intac,calculate_forces,nder,qs_kind_set,particle_set,&
               sap_oce,eps_fit,error)
     END IF
 
@@ -453,7 +459,7 @@ CONTAINS
     IF (kgpot) THEN
        CALL get_qs_env(qs_env=qs_env,kg_env=kg_env,dbcsr_dist=dbcsr_dist,error=error)
        CALL build_tnadd_mat(kg_env, matrix_p, force, virial, calculate_forces, use_virial,&
-                    atomic_kind_set, particle_set, sab_orb, dbcsr_dist, error)
+                    qs_kind_set, atomic_kind_set, particle_set, sab_orb, dbcsr_dist, error)
     END IF
 
     ! *** Put the core Hamiltonian matrix in the QS environment ***

@@ -11,6 +11,9 @@ MODULE qs_linres_types
   USE qs_kind_types,                   ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_array_i_utils,                ONLY: cp_2d_i_p_type
@@ -1472,11 +1475,11 @@ CONTAINS
 !> \param nspins ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE init_jrho_atom_set(jrho1_atom_set,qs_kind_set,nspins,error)
+  SUBROUTINE init_jrho_atom_set(jrho1_atom_set,atomic_kind_set,nspins,error)
     TYPE(jrho_atom_type), DIMENSION(:), &
       POINTER                                :: jrho1_atom_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     INTEGER, INTENT(IN)                      :: nspins
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -1493,21 +1496,21 @@ CONTAINS
 
     failure = .FALSE.
 
-    CPPrecondition(ASSOCIATED(qs_kind_set),cp_failure_level,routineP,error,failure)
+    CPPrecondition(ASSOCIATED(atomic_kind_set),cp_failure_level,routineP,error,failure)
 
     IF(ASSOCIATED(jrho1_atom_set)) THEN
        CALL deallocate_jrho_atom_set(jrho1_atom_set,error=error)
     END IF
 
-    CALL get_qs_kind_set(qs_kind_set, natom = natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom = natom)
 
     CALL allocate_jrho_atom_set(jrho1_atom_set,natom,error=error)
 
-    nkind = SIZE(qs_kind_set)
+    nkind = SIZE(atomic_kind_set)
 
     DO ikind = 1,nkind
 
-       CALL get_qs_kind(qs_kind_set(ikind), atom_list=atom_list, natom=nat)
+       CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=nat)
 
        DO iat = 1,nat
           iatom = atom_list(iat)
@@ -1584,10 +1587,12 @@ CONTAINS
 !> \param nspins ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE init_nablavks_atom_set(nablavks_atom_set,qs_kind_set,nspins,error)
+  SUBROUTINE init_nablavks_atom_set(nablavks_atom_set,atomic_kind_set,qs_kind_set,nspins,error)
 
     TYPE(nablavks_atom_type), DIMENSION(:), &
       POINTER                                :: nablavks_atom_set
+    TYPE(atomic_kind_type), DIMENSION(:), &
+     POINTER                                 :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
      POINTER                                 :: qs_kind_set
     INTEGER, INTENT(IN)                      :: nspins
@@ -1615,16 +1620,16 @@ CONTAINS
       CALL deallocate_nablavks_atom_set(nablavks_atom_set,error=error)
     END IF
 
-    CALL get_qs_kind_set(qs_kind_set, natom=natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
 
     CALL allocate_nablavks_atom_set(nablavks_atom_set,natom,error=error)
 
-    nkind = SIZE(qs_kind_set)
+    nkind = SIZE(atomic_kind_set)
 
     DO ikind = 1,nkind
+       CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list,natom=nat)
        CALL get_qs_kind(qs_kind_set(ikind),&
                         orb_basis_set=orb_basis_set, &
-                        atom_list=atom_list,natom=nat, &
                         harmonics=harmonics,&
                         grid_atom=grid_atom)
 

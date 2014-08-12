@@ -708,7 +708,7 @@ CONTAINS
 
     REAL(dp), DIMENSION(:, :), INTENT(IN)    :: ain
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: aout
-    TYPE(qs_kind_type), POINTER          :: atom
+    TYPE(qs_kind_type), INTENT(IN)           :: atom
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'prj_gather', &
@@ -745,7 +745,7 @@ CONTAINS
 
     REAL(dp), DIMENSION(:, :), INTENT(IN)    :: ain
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: aout
-    TYPE(qs_kind_type), POINTER          :: atom
+    TYPE(qs_kind_type), INTENT(IN)           :: atom
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'prj_scatter', &

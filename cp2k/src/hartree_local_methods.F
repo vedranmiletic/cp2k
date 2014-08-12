@@ -4,7 +4,9 @@
 !-----------------------------------------------------------------------------!
 ! *****************************************************************************
 MODULE  hartree_local_methods
-
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -246,7 +248,8 @@ CONTAINS
     REAL(dp), DIMENSION(:, :, :), POINTER    :: my_CG, Qlm_gg
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -270,9 +273,9 @@ CONTAINS
 
     failure = .FALSE.
     NULLIFY(cell,dft_control,para_env,poisson_env,pw_env,qs_charges)
-    NULLIFY(atomic_kind_set, rho_atom_set, rho0_atom_set)
+    NULLIFY(atomic_kind_set, qs_kind_set, rho_atom_set, rho0_atom_set)
     NULLIFY(rho0_mpole,rhoz_set,ecoul_1c)
-    NULLIFY(atom_kind,atom_list,grid_atom,harmonics)
+    NULLIFY(atom_list,grid_atom,harmonics)
     NULLIFY(orb_basis,lmin,lmax,npgf,zet)
     NULLIFY(gsph)
 
@@ -284,6 +287,7 @@ CONTAINS
          cell=cell,dft_control=dft_control,&
          para_env=para_env,&
          atomic_kind_set=atomic_kind_set,&
+         qs_kind_set=qs_kind_set,&
          pw_env=pw_env,qs_charges=qs_charges,error=error)
 
     CALL pw_env_get(pw_env,poisson_env=poisson_env,error=error)
@@ -334,12 +338,13 @@ CONTAINS
     !   Here starts the loop over all the atoms
     DO ikind = 1,nkind
 
-      atom_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atom_kind, atom_list=atom_list,&
+      CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=nat)
+      CALL get_qs_kind(qs_kind_set(ikind),&
             orb_basis_set=orb_basis,&
-            natom=nat,grid_atom=grid_atom,&
+            grid_atom=grid_atom,&
             harmonics=harmonics,ngrid_rad=nr,&
             max_iso_not0=max_iso_not0,paw_atom=paw_atom)
+
       IF(paw_atom) THEN
 !===========    PAW   ===============
          CALL get_gto_basis_set(gto_basis_set=orb_basis,lmax=lmax,lmin=lmin,&

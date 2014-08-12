@@ -11,6 +11,9 @@ MODULE scp_environment
   USE qs_kind_types,               ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                           get_atomic_kind,&
+                                           get_atomic_kind_set
   USE cp_dbcsr_interface,              ONLY: &
        array_i1d_obj, array_new, array_nullify, array_release, &
        convert_offsets_to_sizes, cp_dbcsr_add_block_node, cp_dbcsr_copy, &
@@ -84,9 +87,11 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(9, 9)           :: a_scp
     REAL(KIND=dp), POINTER                   :: ascp_diag( : ), block( :, : )
     TYPE(array_i1d_obj)                      :: col_blk_sizes, row_blk_sizes
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_dbcsr_type), POINTER             :: ks_scp, pscp
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
@@ -105,10 +110,11 @@ CONTAINS
     NULLIFY ( energy )
     NULLIFY ( particle_set )
     NULLIFY ( para_env )
-    NULLIFY ( qs_kind_set, qs_kind )
+    NULLIFY ( atomic_kind_set, qs_kind_set, qs_kind )
     NULLIFY ( pscp, ks_scp, block, ascp_diag, se_kind, atom_list )
 
     CALL get_qs_env (qs_env, para_env = para_env, &
+                     atomic_kind_set = atomic_kind_set, &
                      qs_kind_set = qs_kind_set, &
                      particle_set = particle_set, &
                      neighbor_list_id=neighbor_list_id, &
@@ -122,7 +128,7 @@ CONTAINS
     CALL allocate_scp_energy (energy)
     ! set the scp_env
     CALL set_scp_env (scp_env=scp_env,energy=energy,error=error)
-    nkind = SIZE(qs_kind_set)
+    nkind = SIZE(atomic_kind_set)
     natom = SIZE(particle_set)
     z = -1
     zeff_correction = 0.0_dp
@@ -130,7 +136,7 @@ CONTAINS
        qs_kind => qs_kind_set(ikind)
     ! Retrieve information on element
     !   CALL get_qs_kind(qs_kind=qs_kind, scp_se_parameter=se_kind )
-       CALL get_ptable_info(qs_kind%element_symbol, ielement=z)
+       CALL get_atomic_kind(atomic_kind_set(ikind), z=z)
    ! Setup proper semiempirical parameters
        check = .NOT.ASSOCIATED(se_kind)
        CPPostcondition(check, cp_failure_level, routineP, error, failure)
@@ -198,9 +204,8 @@ CONTAINS
 
     DO ikind=1,nkind
        qs_kind => qs_kind_set(ikind)
-       CALL get_qs_kind(qs_kind=qs_kind,&
-                            scp_se_parameter=se_kind, &
-                            atom_list=atom_list)
+       CALL get_qs_kind(qs_kind, scp_se_parameter=se_kind)
+       CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list)
        CALL get_se_param(se_kind, ass=ass,app=app,asp=asp,natorb=natorb)
        IF (natorb>4) THEN
           CALL cp_unimplemented_error(fromWhere=routineP, &
