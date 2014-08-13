@@ -11,6 +11,8 @@
 MODULE mp2_ri_gpw
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
   USE bibliography,                    ONLY: DelBen2013,&
                                              cite_reference
@@ -77,7 +79,7 @@ MODULE mp2_ri_gpw
                                              REALSPACE,&
                                              pw_p_type
   USE qs_collocate_density,            ONLY: calculate_wavefunction
-  USE qs_environment_types,            ONLY: qs_environment_type
+  USE qs_environment_types,            ONLY: qs_environment_type,get_qs_env
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace,&
                                              integrate_v_rspace
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
@@ -121,7 +123,7 @@ MODULE mp2_ri_gpw
 !> \param dft_control ...
 !> \param cell ...
 !> \param particle_set ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param mo_coeff ...
 !> \param nmo ...
 !> \param homo ...
@@ -155,7 +157,7 @@ MODULE mp2_ri_gpw
 ! *****************************************************************************
   SUBROUTINE mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,&
-                                   cell,particle_set,atomic_kind_set,mo_coeff,nmo,homo,&
+                                   cell,particle_set,qs_kind_set,mo_coeff,nmo,homo,&
                                    rho_r,rho_g,pot_g,mat_munu,sab_orb_sub,pw_env_sub,&
                                    poisson_env,auxbas_pw_pool,task_list_sub,mo_coeff_o,mo_coeff_v,eps_filter,unit_nr,&
                                    mp2_memory,calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub,&
@@ -173,8 +175,8 @@ MODULE mp2_ri_gpw
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     INTEGER                                  :: nmo, homo
     TYPE(pw_p_type)                          :: rho_r, rho_g, pot_g
@@ -501,7 +503,7 @@ MODULE mp2_ri_gpw
 
       ! pseudo psi_L
       CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
-                                  atomic_kind_set,cell,dft_control,particle_set, &
+                                  qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=my_Lrows(:,LLL-my_group_L_start+1),&
                                   error=error_sub)
@@ -671,6 +673,8 @@ MODULE mp2_ri_gpw
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, rpgfa, sphi_a, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env_L
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
@@ -696,30 +700,30 @@ MODULE mp2_ri_gpw
     ! get stuff
     subsys=>qs_env%subsys
     particle_set => subsys%particles%els
-    atomic_kind_set => subsys%atomic_kinds%els
+    CALL get_qs_env(qs_env, atomic_kind_set=atomic_kind_set, qs_kind_set=qs_kind_set, error=error)
     molecule_set => subsys%molecules_new%els
     molecule_kind_set => subsys%molecule_kinds_new%els
     ! blacs_env => qs_env%blacs_env
     cell=>qs_env%cell
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
     natom = SIZE(particle_set)
 
     ALLOCATE (kind_of(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,kind_of=kind_of)
+    CALL get_atomic_kind_set(atomic_kind_set,kind_of=kind_of)
 
     DO ikind=1, nkind
-      CPPrecondition(ASSOCIATED(atomic_kind_set(ikind)%ri_aux_basis_set),cp_failure_level,routineP,error,failure)
-      ! atomic_kind_set(ikind)%ri_aux_basis_set%norm_type=2
-      ! CALL init_orb_basis_set(atomic_kind_set(ikind)%ri_aux_basis_set,error)
+      CPPrecondition(ASSOCIATED(qs_kind_set(ikind)%ri_aux_basis_set),cp_failure_level,routineP,error,failure)
+      ! qs_kind_set(ikind)%ri_aux_basis_set%norm_type=2
+      ! CALL init_orb_basis_set(qs_kind_set(ikind)%ri_aux_basis_set,error)
     END DO
 
     dimen_RI=0
     DO iatom=1, natom
       ikind=kind_of(iatom)
-      dimen_RI=dimen_RI+atomic_kind_set(ikind)%ri_aux_basis_set%nsgf
+      dimen_RI=dimen_RI+qs_kind_set(ikind)%ri_aux_basis_set%nsgf
     END DO
 
     ! calculate wich rows of L^{-1} to have
@@ -760,7 +764,7 @@ MODULE mp2_ri_gpw
       wf_vector(LLL)=1.0_dp
       ! pseudo psi_L
       CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
-                                  atomic_kind_set,cell,dft_control,particle_set, &
+                                  qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=wf_vector,&
                                   error=error_sub)
@@ -786,7 +790,7 @@ MODULE mp2_ri_gpw
       offset=0
       DO iatom=1, natom
         ikind=kind_of(iatom)
-        basis_set_a => atomic_kind_set(ikind)%ri_aux_basis_set
+        basis_set_a => qs_kind_set(ikind)%ri_aux_basis_set
 
         first_sgfa   =>  basis_set_a%first_sgf
         la_max       =>  basis_set_a%lmax

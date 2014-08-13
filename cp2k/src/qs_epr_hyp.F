@@ -179,11 +179,10 @@ CONTAINS
     DO ikind = 1,nkind ! loop over atom types
       NULLIFY(atom_list, grid_atom, harmonics)
       CALL get_atomic_kind(atomic_kind_set(ikind),&
-                           atom_list=atom_list,natom=natomkind,&
-                           z=z,hard_radius=hard_radius)
+                           atom_list=atom_list,natom=natomkind,z=z)
 
       CALL get_qs_kind(qs_kind_set(ikind),harmonics=harmonics,&
-                       grid_atom=grid_atom,paw_atom=paw_atom)
+                       grid_atom=grid_atom,paw_atom=paw_atom,hard_radius=hard_radius)
 
       IF(.NOT. paw_atom) CYCLE ! skip the rest and go to next atom type
 

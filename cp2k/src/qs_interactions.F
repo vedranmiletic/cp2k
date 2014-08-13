@@ -18,6 +18,9 @@ MODULE qs_interactions
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: geminal_basis_set_type,&
                                              get_geminal_basis_set,&
                                              get_gto_basis_set,&
@@ -67,17 +70,19 @@ CONTAINS
 ! *****************************************************************************
 !> \brief   Initialize all the atomic kind radii for a given threshold value.
 !> \param qs_control ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param error ...
 !> \date    24.09.2002
 !> \author  GT
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE init_interaction_radii(qs_control,atomic_kind_set,error)
+  SUBROUTINE init_interaction_radii(qs_control,atomic_kind_set,qs_kind_set,error)
 
     TYPE(qs_control_type), INTENT(IN)        :: qs_control
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'init_interaction_radii', &
@@ -107,7 +112,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: zetg
     TYPE(all_potential_type), POINTER        :: all_potential
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(gth_potential_type), POINTER        :: gth_potential
     TYPE(gto_basis_set_type), POINTER        :: aux_basis_set, &
@@ -117,7 +121,7 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
-    NULLIFY ( atomic_kind, all_potential, gth_potential, &
+    NULLIFY (all_potential, gth_potential, &
               orb_basis_set, aux_basis_set, soft_basis, lri_basis, &
               geminal_basis_set, paw_proj_set)
     NULLIFY (npgf, nprj_ppnl, nshell, lshell, nprj)
@@ -134,26 +138,25 @@ CONTAINS
     p_lri  = .FALSE.
 
     nkind = SIZE(atomic_kind_set)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                             maxnset=maxnset)
+    CALL get_atomic_kind_set(atomic_kind_set, maxnset=maxnset)
 
     nexp_ppl = 0
 
     DO ikind=1,nkind
 
-      atomic_kind => atomic_kind_set(ikind)
-
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_atomic_kind(atomic_kind_set(ikind),&
                            all_potential=all_potential,&
-                           gth_potential=gth_potential,&
-                           aux_basis_set=aux_basis_set,&
-                           aux_fit_basis_set=aux_fit_basis_set,&
-                           orb_basis_set=orb_basis_set,&
-                           lri_basis_set=lri_basis,&
-                           soft_basis_set=soft_basis,&
-                           paw_proj_set=paw_proj_set,&
-                           geminal_basis_set=geminal_basis_set,&
-                           paw_atom=paw_atom)
+                           gth_potential=gth_potential)
+
+      CALL get_qs_kind(qs_kind_set(ikind),&
+                       aux_basis_set=aux_basis_set,&
+                       aux_fit_basis_set=aux_fit_basis_set,&
+                       orb_basis_set=orb_basis_set,&
+                       lri_basis_set=lri_basis,&
+                       soft_basis_set=soft_basis,&
+                       paw_proj_set=paw_proj_set,&
+                       geminal_basis_set=geminal_basis_set,&
+                       paw_atom=paw_atom)
 
       ! Calculate the orbital basis function radii ***
       ! For ALL electron this has to come before the calculation of the
@@ -466,17 +469,19 @@ CONTAINS
 ! *****************************************************************************
 !> \brief ...
 !> \param se_control ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE init_se_nlradius(se_control,atomic_kind_set,&
+  SUBROUTINE init_se_nlradius(se_control,atomic_kind_set,qs_kind_set,&
                    subsys_section,error)
 
     TYPE(semi_empirical_control_type), &
       POINTER                                :: se_control
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -485,18 +490,18 @@ CONTAINS
 
     INTEGER                                  :: ikind, nkind
     REAL(KIND=dp)                            :: kind_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
 
-    NULLIFY (orb_basis_set,atomic_kind)
+    NULLIFY (orb_basis_set,qs_kind)
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
 
     DO ikind=1,nkind
 
-      atomic_kind => atomic_kind_set(ikind)
+      qs_kind => qs_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind,&
+      CALL get_qs_kind(qs_kind=qs_kind,&
                            orb_basis_set=orb_basis_set)
 
       IF (ASSOCIATED(orb_basis_set)) THEN
@@ -513,20 +518,22 @@ CONTAINS
 
     END DO
 
-    CALL write_kind_radii(atomic_kind_set,subsys_section,error)
+    CALL write_kind_radii(atomic_kind_set, qs_kind_set,subsys_section,error)
 
   END SUBROUTINE init_se_nlradius
 
 ! *****************************************************************************
 !> \brief ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE write_kind_radii(atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_kind_radii(atomic_kind_set, qs_kind_set,subsys_section,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -534,7 +541,6 @@ CONTAINS
     CHARACTER(LEN=default_string_length)     :: name, unit_str
     INTEGER                                  :: ikind, nkind, output_unit
     REAL(KIND=dp)                            :: conv, kind_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
 
@@ -554,10 +560,8 @@ CONTAINS
         "RADII: "//TRIM(bas)//" BASIS in "//TRIM(unit_str),&
         "Kind","Label","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                             name=name,&
-                             orb_basis_set=orb_basis_set)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
         IF(ASSOCIATED(orb_basis_set)) THEN
           CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                  kind_radius=kind_radius)
@@ -577,7 +581,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief  Write the radii of the core charge distributions to the output
 !>         unit.
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \date    15.09.2000
@@ -594,7 +598,6 @@ CONTAINS
     INTEGER                                  :: ikind, nkind, output_unit
     REAL(KIND=dp)                            :: conv, core_charge_radius
     TYPE(all_potential_type), POINTER        :: all_potential
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(gth_potential_type), POINTER        :: gth_potential
 
@@ -610,8 +613,7 @@ CONTAINS
             "RADII: CORE CHARGE DISTRIBUTIONS in "//&
             TRIM(unit_str),"Kind","Label","Radius"
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
+          CALL get_atomic_kind(atomic_kind_set(ikind),&
                name=name,&
                all_potential=all_potential,&
                gth_potential=gth_potential)
@@ -635,18 +637,20 @@ CONTAINS
 ! *****************************************************************************
 !> \brief   Write the orbital basis function radii to the output unit.
 !> \param basis ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \date    05.06.2000
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_pgf_orb_radii(basis,atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_pgf_orb_radii(basis,atomic_kind_set,qs_kind_set,subsys_section,error)
 
     CHARACTER(len=*)                         :: basis
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -662,7 +666,6 @@ CONTAINS
                                                 short_kind_radius
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pgf_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(gto_basis_set_type), POINTER        :: aux_basis_set, lri_basis_set, &
                                                 orb_basis_set
@@ -684,7 +687,7 @@ CONTAINS
                         "Undefined basis set type")
     END IF
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
 
 !   *** Print the kind radii ***
     output_unit = cp_print_key_unit_nr(logger,subsys_section,&
@@ -696,28 +699,22 @@ CONTAINS
         "RADII: "//TRIM(bas)//" BASIS in "//TRIM(unit_str),&
         "Kind","Label","Radius","OCE Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
         IF ( bas(1:3) == "ORB" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               orb_basis_set=orb_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
           IF(ASSOCIATED(orb_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                    kind_radius=kind_radius,&
                                    short_kind_radius=short_kind_radius)
           END IF
         ELSE IF ( bas(1:3) == "AUX" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               aux_basis_set=aux_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), aux_basis_set=aux_basis_set)
           IF(ASSOCIATED(aux_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=aux_basis_set,&
                                    kind_radius=kind_radius)
           END IF
         ELSE IF ( bas(1:3) == "LOC" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               lri_basis_set=lri_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), lri_basis_set=lri_basis_set)
           IF(ASSOCIATED(lri_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=lri_basis_set,&
                                    kind_radius=kind_radius)
@@ -746,29 +743,23 @@ CONTAINS
         "RADII: SHELL SETS OF "//TRIM(bas)//" BASIS in "//&
         TRIM(unit_str),"Kind","Label","Set","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
         IF ( bas(1:3) == "ORB" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               orb_basis_set=orb_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
           IF(ASSOCIATED(orb_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                    nset=nset,&
                                    set_radius=set_radius)
           END IF
         ELSE IF ( bas(1:3) == "AUX" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               aux_basis_set=aux_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), aux_basis_set=aux_basis_set)
           IF(ASSOCIATED(aux_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=aux_basis_set,&
                                    nset=nset,&
                                    set_radius=set_radius)
           END IF
         ELSE IF ( bas(1:3) == "LOC" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               lri_basis_set=lri_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), lri_basis_set=lri_basis_set)
           IF(ASSOCIATED(lri_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=lri_basis_set,&
                                    nset=nset,&
@@ -797,11 +788,9 @@ CONTAINS
         "RADII: PRIMITIVE GAUSSIANS OF "//TRIM(bas)//" BASIS in "//&
         TRIM(unit_str),"Kind","Label","Set","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
         IF ( bas(1:3) == "ORB" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               orb_basis_set=orb_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
           IF(ASSOCIATED(orb_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                    nset=nset,&
@@ -809,9 +798,7 @@ CONTAINS
                                    pgf_radius=pgf_radius)
           END IF
         ELSE IF ( bas(1:3) == "AUX" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               aux_basis_set=aux_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), aux_basis_set=aux_basis_set)
           IF(ASSOCIATED(aux_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=aux_basis_set,&
                                    nset=nset,&
@@ -819,9 +806,7 @@ CONTAINS
                                    pgf_radius=pgf_radius)
           END IF
         ELSE IF ( bas(1:3) == "LOC" ) THEN
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               name=name,&
-                               lri_basis_set=lri_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), lri_basis_set=lri_basis_set)
           IF(ASSOCIATED(lri_basis_set)) THEN
             CALL get_gto_basis_set(gto_basis_set=lri_basis_set,&
                                    nset=nset,&
@@ -851,17 +836,19 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Write the geminal basis function radii to the output unit.
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \date    18.08.2009
 !> \author  JGH
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_geminal_radii(atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_geminal_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -873,7 +860,6 @@ CONTAINS
     REAL(KIND=dp)                            :: conv, kind_radius
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pgf_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
@@ -881,7 +867,7 @@ CONTAINS
     logger => cp_error_get_logger(error)
     NULLIFY(geminal_basis_set)
 
-    nkind = SIZE(atomic_kind_set)
+    nkind = SIZE(qs_kind_set)
 
     ! Print the kind radii
     output_unit = cp_print_key_unit_nr(logger,subsys_section,&
@@ -893,10 +879,8 @@ CONTAINS
       WRITE (UNIT=output_unit,FMT="(/,T2,A,T55,A,T62,A,T74,A)")&
         "RADII: "//TRIM(bas)//" BASIS in "//TRIM(unit_str),"Kind","Label","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                             name=name,&
-                             geminal_basis_set=geminal_basis_set)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), geminal_basis_set=geminal_basis_set)
         IF(ASSOCIATED(geminal_basis_set)) THEN
           CALL get_geminal_basis_set(geminal_basis_set=geminal_basis_set,&
                                  kind_radius=kind_radius)
@@ -919,10 +903,8 @@ CONTAINS
         "RADII: SHELL SETS OF "//TRIM(bas)//" BASIS in "//&
         TRIM(unit_str),"Kind","Label","Set","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                             name=name,&
-                             geminal_basis_set=geminal_basis_set)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), geminal_basis_set=geminal_basis_set)
         IF(ASSOCIATED(geminal_basis_set)) THEN
           CALL get_geminal_basis_set(geminal_basis_set=geminal_basis_set,&
                                      nset=nset,&
@@ -945,10 +927,8 @@ CONTAINS
         "RADII: PRIMITIVE GEMINALS OF "//TRIM(bas)//" BASIS in "//&
         TRIM(unit_str),"Kind","Label","Set","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                             name=name,&
-                             geminal_basis_set=geminal_basis_set)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), geminal_basis_set=geminal_basis_set)
         IF(ASSOCIATED(geminal_basis_set)) THEN
           CALL get_geminal_basis_set(geminal_basis_set=geminal_basis_set,&
                                      nset=nset,&
@@ -973,7 +953,7 @@ CONTAINS
 !> \brief   Write the radii of the exponential functions of the Goedecker
 !>           pseudopotential (GTH, local part) to the logical unit number
 !>          "output_unit".
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \date    06.10.2000
@@ -990,7 +970,6 @@ CONTAINS
     CHARACTER(LEN=default_string_length)     :: name, unit_str
     INTEGER                                  :: ikind, nkind, output_unit
     REAL(KIND=dp)                            :: conv, ppl_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(gth_potential_type), POINTER        :: gth_potential
 
@@ -1006,8 +985,7 @@ CONTAINS
         "RADII: LOCAL PART OF GTH/ELP PP in "//&
         TRIM(unit_str),"Kind","Label","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
+        CALL get_atomic_kind(atomic_kind_set(ikind),&
                              name=name,&
                              gth_potential=gth_potential)
         IF (ASSOCIATED(gth_potential)) THEN
@@ -1026,7 +1004,7 @@ CONTAINS
 !> \brief  Write the radii of the projector functions of the Goedecker
 !>          pseudopotential (GTH, non-local part) to the logical unit number
 !>          "output_unit".
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \date    06.10.2000
@@ -1043,7 +1021,6 @@ CONTAINS
     CHARACTER(LEN=default_string_length)     :: name, unit_str
     INTEGER                                  :: ikind, nkind, output_unit
     REAL(KIND=dp)                            :: conv, ppnl_radius
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(gth_potential_type), POINTER        :: gth_potential
 
@@ -1059,8 +1036,7 @@ CONTAINS
         "RADII: NON-LOCAL PART OF GTH PP in "//&
         TRIM(unit_str),"Kind","Label","Radius"
       DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
+        CALL get_atomic_kind(atomic_kind_set(ikind),&
                              name=name,&
                              gth_potential=gth_potential)
         IF (ASSOCIATED(gth_potential)) THEN
@@ -1077,15 +1053,16 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Write the radii of the one center projector
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param subsys_section ...
 !> \param error ...
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_paw_radii(atomic_kind_set,subsys_section,error)
-
+  SUBROUTINE write_paw_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -1093,7 +1070,6 @@ CONTAINS
     INTEGER                                  :: ikind, nkind, output_unit
     LOGICAL                                  :: paw_atom
     REAL(KIND=dp)                            :: conv, rcprj
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(paw_proj_set_type), POINTER         :: paw_proj_set
 
@@ -1104,16 +1080,14 @@ CONTAINS
     CALL section_vals_val_get(subsys_section,"PRINT%RADII%UNIT",c_val=unit_str,error=error)
     conv = cp_unit_from_cp2k(1.0_dp,TRIM(unit_str),error=error)
     IF (output_unit>0) THEN
-       nkind = SIZE(atomic_kind_set)
+       nkind = SIZE(qs_kind_set)
        WRITE (UNIT=output_unit,FMT="(/,T2,A,T56,A,T63,A,T75,A)")&
             "RADII: ONE CENTER PROJECTORS in "//&
             TRIM(unit_str),"Kind","Label","Radius"
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-               name=name,&
-               paw_atom=paw_atom,&
-               paw_proj_set=paw_proj_set)
+          CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+          CALL get_qs_kind(qs_kind_set(ikind),&
+               paw_atom=paw_atom, paw_proj_set=paw_proj_set)
           IF (paw_atom .AND. ASSOCIATED(paw_proj_set)) THEN
              CALL get_paw_proj_set(paw_proj_set=paw_proj_set,&
                   rcprj=rcprj)

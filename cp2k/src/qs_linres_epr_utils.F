@@ -18,6 +18,7 @@
 !> \author MI
 ! *****************************************************************************
 MODULE qs_linres_epr_utils
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -92,6 +93,8 @@ CONTAINS
     LOGICAL                                  :: failure, gapw
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -112,7 +115,7 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(atomic_kind_set, cell, dft_control, linres_control, scf_control)
+    NULLIFY(atomic_kind_set, qs_kind_set, cell, dft_control, linres_control, scf_control)
     NULLIFY(logger, mos, mpools, particle_set)
     NULLIFY(auxbas_pw_pool, pw_env)
     NULLIFY(nablavks_atom_set)
@@ -142,6 +145,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     linres_control=linres_control,&
@@ -182,8 +186,7 @@ CONTAINS
     !
     ! Initialize local current density if GAPW calculation
     IF(gapw) THEN
-       CALL init_nablavks_atom_set(nablavks_atom_set,atomic_kind_set,&
-                   nspins,error=error)
+       CALL init_nablavks_atom_set(nablavks_atom_set,atomic_kind_set,qs_kind_set,nspins,error=error)
        CALL set_epr_env(epr_env=epr_env,&
                         nablavks_atom_set=nablavks_atom_set,&
                         error=error)

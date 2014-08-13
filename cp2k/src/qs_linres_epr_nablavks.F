@@ -12,6 +12,8 @@
 MODULE qs_linres_epr_nablavks
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_output_handling,              ONLY: cp_p_file,&
@@ -121,7 +123,7 @@ CONTAINS
                                                 gth_gspace, ionode, &
                                                 make_soft, paw_atom
     REAL(KIND=dp) :: alpha, alpha_core, arg, charge, ehartree, exc, exp_rap, &
-      gapw_max_alpha, hard_value, soft_value, sqrt_alpha, sqrt_rap
+      gapw_max_alpha, hard_value, soft_value, sqrt_alpha, sqrt_rap, hard_radius
     REAL(KIND=dp), ALLOCATABLE, &
       DIMENSION(:, :)                        :: vh1_rad_h, vh1_rad_s
     REAL(KIND=dp), DIMENSION(3)              :: rap, ratom, roffset, rpoint
@@ -130,7 +132,8 @@ CONTAINS
     TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -250,6 +253,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     input=input,&
                     cell=cell,&
                     dft_control=dft_control,&
@@ -326,23 +330,24 @@ CONTAINS
 
        DO ikind = 1,nkind ! loop over atom types
 
-          NULLIFY(atomic_kind)
           NULLIFY(atom_list)
           NULLIFY(grid_atom)
           NULLIFY(harmonics)
           NULLIFY(rho_rad_z)
 
-          atomic_kind => atomic_kind_set(ikind)
           rho_rad_z  => rhoz_set(ikind)%r_coef
 
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
+          CALL get_atomic_kind(atomic_kind_set(ikind),&
                                atom_list=atom_list,&
-                               grid_atom=grid_atom,&
-                               harmonics=harmonics,&
                                natom=natom,&
-                               paw_atom=paw_atom,&
                                zeff=charge,&
                                alpha_core_charge=alpha_core)
+
+           CALL get_qs_kind(qs_kind_set(ikind),&
+                               grid_atom=grid_atom,&
+                               harmonics=harmonics,&
+                               hard_radius=hard_radius,&
+                               paw_atom=paw_atom)
 
           IF (paw_atom) THEN
 
@@ -400,7 +405,7 @@ CONTAINS
 
                 DO ir = 2,grid_atom%nr
 
-                   IF (grid_atom%rad(ir) >= atomic_kind%hard_radius) CYCLE
+                   IF (grid_atom%rad(ir) >= hard_radius) CYCLE
 
                    DO ia = 1,grid_atom%ng_sphere
 
@@ -495,20 +500,20 @@ CONTAINS
     DO ikind = 1,nkind ! loop over atom types
 
        NULLIFY(atom_list)
-       NULLIFY(atomic_kind)
        NULLIFY(grid_atom)
        NULLIFY(harmonics)
 
-       atomic_kind => atomic_kind_set(ikind)
-
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
+       CALL get_atomic_kind(atomic_kind_set(ikind),&
                             all_potential=all_potential,&
                             atom_list=atom_list,&
-                            grid_atom=grid_atom,&
                             gth_potential=gth_potential,&
-                            harmonics=harmonics,&
-                            natom=natom,&
-                            paw_atom=paw_atom)
+                            natom=natom)
+
+       CALL get_qs_kind(qs_kind_set(ikind),&
+                        grid_atom=grid_atom,&
+                        harmonics=harmonics,&
+                        hard_radius=hard_radius,&
+                        paw_atom=paw_atom)
 
        IF (ASSOCIATED(gth_potential)) THEN
 
@@ -781,7 +786,7 @@ CONTAINS
 
                 DO ir = 1,grid_atom%nr
 
-                   IF (grid_atom%rad(ir) >= atomic_kind%hard_radius) CYCLE
+                   IF (grid_atom%rad(ir) >= hard_radius) CYCLE
 
                    exp_rap = EXP( - alpha * grid_atom%rad(ir)**2 )
 
@@ -855,7 +860,7 @@ CONTAINS
 
              DO ir = 1,grid_atom%nr
 
-                IF (grid_atom%rad(ir) >= atomic_kind%hard_radius) CYCLE
+                IF (grid_atom%rad(ir) >= hard_radius) CYCLE
 
                 DO ia = 1,grid_atom%ng_sphere
 

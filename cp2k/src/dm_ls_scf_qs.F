@@ -12,6 +12,7 @@
 ! *****************************************************************************
 MODULE dm_ls_scf_qs
   USE atomic_kind_types,               ONLY: atomic_kind_type
+  USE qs_kind_types,               ONLY: qs_kind_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_cp2k_link,              ONLY: cp_dbcsr_alloc_block_from_nbl
   USE cp_dbcsr_interface,              ONLY: &
@@ -407,6 +408,8 @@ CONTAINS
     LOGICAL                                  :: has_unit_metric
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -434,6 +437,7 @@ CONTAINS
                            ks_env=ks_env,&
                            energy=qs_energy,&
                            atomic_kind_set=atomic_kind_set,&
+                           qs_kind_set=qs_kind_set,&
                            particle_set=particle_set,&
                            has_unit_metric=has_unit_metric,&
                            para_env=para_env,&
@@ -446,12 +450,12 @@ CONTAINS
        CALL cp_dbcsr_set(qs_env%rho%rho_ao(ispin)%matrix,0.0_dp,error=error)
        IF (dft_control%qs_control%dftb .OR. dft_control%qs_control%semi_empirical) THEN
           CALL calculate_mopac_dm(qs_env%rho%rho_ao(ispin)%matrix,matrix_s(1)%matrix, has_unit_metric, &
-                                  dft_control,particle_set, atomic_kind_set,&
+                                  dft_control,particle_set, atomic_kind_set, qs_kind_set,&
                                   ispin, nspin, nelectron_spin(ispin),&
                                   para_env, error)
        ELSE
           CALL calculate_atomic_block_dm(qs_env%rho%rho_ao(ispin)%matrix,matrix_s(1)%matrix, &
-                                         particle_set, atomic_kind_set, &
+                                         particle_set, atomic_kind_set, qs_kind_set, &
                                          ispin, nspin, nelectron_spin(ispin), &
                                          unit_nr, error)
        ENDIF

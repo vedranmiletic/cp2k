@@ -75,8 +75,8 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE calculate_atomic_orbitals (atomic_kind,qs_kind,iunit,pmat,ispin,confine,&
                                         xc_section,error)
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(qs_kind_type), POINTER              :: qs_kind
+    TYPE(atomic_kind_type), INTENT(IN)       :: atomic_kind
+    TYPE(qs_kind_type), INTENT(IN)           :: qs_kind
     INTEGER, INTENT(IN), OPTIONAL            :: iunit
     REAL(KIND=dp), DIMENSION(:, :), &
       OPTIONAL, POINTER                      :: pmat
@@ -1009,8 +1009,8 @@ CONTAINS
 !> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_atomic_relkin (atomic_kind,qs_kind,rel_control,rtmat,error)
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(qs_kind_type), POINTER              :: qs_kind
+    TYPE(atomic_kind_type), INTENT(IN)       :: atomic_kind
+    TYPE(qs_kind_type), INTENT(IN)           :: qs_kind
     TYPE(rel_control_type), POINTER          :: rel_control
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rtmat
     TYPE(cp_error_type), INTENT(INOUT)       :: error

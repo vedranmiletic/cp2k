@@ -11,11 +11,13 @@ MODULE scptb_utils
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: allocate_sto_basis_set,&
                                              create_gto_from_sto_basis,&
                                              deallocate_sto_basis_set,&
                                              set_sto_basis_set,&
-                                             sto_basis_set_type
+                                             sto_basis_set_type,gto_basis_set_type
   USE cp_control_types,                ONLY: scptb_control_type
   USE cp_output_handling,              ONLY: cp_p_file,&
                                              cp_print_key_finished_output,&
@@ -62,10 +64,12 @@ CONTAINS
 !> \param para_env ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE scptb_parameter_init(atomic_kind_set,scptb_control,print_section,para_env,error)
+  SUBROUTINE scptb_parameter_init(atomic_kind_set,qs_kind_set,scptb_control,print_section,para_env,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_control_type), INTENT(INOUT)  :: scptb_control
     TYPE(section_vals_type), POINTER         :: print_section
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -82,14 +86,15 @@ CONTAINS
     LOGICAL                                  :: failure, print_info
     REAL(KIND=dp)                            :: a, c, d, eff, r, rmax, rmin
     REAL(KIND=dp), DIMENSION(:), POINTER     :: zet
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(scptb_parameter_type), POINTER      :: scptb_parameter
     TYPE(sto_basis_set_type), POINTER        :: sto_basis
+    TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
+    TYPE(atomic_kind_type), POINTER          :: atomic_kind
 
     failure = .FALSE.
     output_unit = -1
-    NULLIFY(logger)
+    NULLIFY(logger, atomic_kind)
     logger => cp_error_get_logger(error)
     print_info = (BTEST(cp_print_key_should_output(logger%iter_info,print_section,&
          "KINDS/BASIS_SET",error=error),cp_p_file))
@@ -111,7 +116,7 @@ CONTAINS
     nkind  = SIZE(atomic_kind_set)
     DO ikind = 1, nkind
       atomic_kind => atomic_kind_set(ikind)
-      CALL get_atomic_kind(atomic_kind=atomic_kind,name=iname)
+      CALL get_atomic_kind(atomic_kind_set(ikind), name=iname)
       CALL uppercase(iname)
       NULLIFY(scptb_parameter)
       CALL allocate_scptb_parameter(scptb_parameter,error)
@@ -167,7 +172,8 @@ CONTAINS
          IF (nshell > 0) THEN
             CALL set_sto_basis_set(sto_basis,name=scptb_parameter%atomname,&
                  nshell=nshell,symbol=symbol,nq=nq,lq=lq,zet=zet)
-            CALL create_gto_from_sto_basis(sto_basis,atomic_kind%orb_basis_set,&
+            CALL get_qs_kind(qs_kind_set(ikind),orb_basis_set=orb_basis_set)
+            CALL create_gto_from_sto_basis(sto_basis,orb_basis_set,&
                  scptb_control%sto_ng,error=error)
          END IF
 

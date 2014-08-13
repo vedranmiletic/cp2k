@@ -10,6 +10,8 @@
 ! *****************************************************************************
 MODULE mp2_ri_grad
 ! USE f77_blas
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
@@ -113,7 +115,7 @@ MODULE mp2_ri_grad
 !> \param dft_control ...
 !> \param cell ...
 !> \param particle_set ...
-!> \param atomic_kind_set ...
+!> \param qs_kind_set ...
 !> \param mo_coeff ...
 !> \param nmo ...
 !> \param homo ...
@@ -138,7 +140,7 @@ MODULE mp2_ri_grad
 !> \author Mauro Del Ben 
 ! *****************************************************************************
   SUBROUTINE calc_ri_mp2_nonsep(qs_env,mp2_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                atomic_kind_set,mo_coeff,nmo,homo,dimen_RI,Eigenval,&
+                                atomic_kind_set,qs_kind_set,mo_coeff,nmo,homo,dimen_RI,Eigenval,&
                                 my_group_L_start,my_group_L_end,my_group_L_size,rho_r,rho_g,pot_g,&
                                 mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                 unit_nr,blacs_env_sub,error,error_sub)
@@ -152,6 +154,8 @@ MODULE mp2_ri_grad
       POINTER                                :: particle_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     INTEGER                                  :: nmo, homo, dimen_RI
     REAL(KIND=dp), DIMENSION(:)              :: Eigenval
@@ -238,9 +242,7 @@ MODULE mp2_ri_grad
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE (atom_of_kind(natom),STAT=stat)
     CPPrecondition(stat==0,cp_failure_level,routineP,error,failure)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                             kind_of=kind_of,&
-                             atom_of_kind=atom_of_kind)
+    CALL get_atomic_kind_set(atomic_kind_set, kind_of=kind_of, atom_of_kind=atom_of_kind)
 
     itmp=get_limit(dimen_RI,para_env_sub%num_pe,para_env_sub%mepos)
     my_P_start=itmp(1)
@@ -373,7 +375,7 @@ MODULE mp2_ri_grad
       wf_vector(LLL)=1.0_dp
       ! pseudo psi_L
       CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
-                                  atomic_kind_set,cell,dft_control,particle_set, &
+                                  qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=wf_vector,&
                                   error=error_sub)
@@ -414,7 +416,7 @@ MODULE mp2_ri_grad
       DO iatom=1, natom
         ikind=kind_of(iatom)
         atom_a = atom_of_kind(iatom)
-        basis_set_a => atomic_kind_set(ikind)%ri_aux_basis_set
+        basis_set_a => qs_kind_set(ikind)%ri_aux_basis_set
 
         first_sgfa   =>  basis_set_a%first_sgf
         la_max       =>  basis_set_a%lmax
@@ -583,7 +585,7 @@ MODULE mp2_ri_grad
         wf_vector=0.0_dp
         wf_vector(:)=-2.0_dp*G_PQ_local(:,L_counter)
         CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
-                                    atomic_kind_set,cell,dft_control,particle_set, &
+                                    qs_kind_set,cell,dft_control,particle_set, &
                                     pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                     external_vector=wf_vector,&
                                     error=error_sub)
@@ -664,7 +666,7 @@ MODULE mp2_ri_grad
       DO iatom=1, natom
         ikind=kind_of(iatom)
         atom_a = atom_of_kind(iatom)
-        basis_set_a => atomic_kind_set(ikind)%ri_aux_basis_set
+        basis_set_a => qs_kind_set(ikind)%ri_aux_basis_set
 
         first_sgfa   =>  basis_set_a%first_sgf
         la_max       =>  basis_set_a%lmax

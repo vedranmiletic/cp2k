@@ -12,6 +12,7 @@
 ! *****************************************************************************
 MODULE qs_scf_post_se
   USE atomic_kind_types,               ONLY: atomic_kind_type
+  USE qs_kind_types,               ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -882,6 +883,8 @@ CPSourceFileRef,&
     LOGICAL                                  :: failure
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv
@@ -911,7 +914,8 @@ CPSourceFileRef,&
     CPPrecondition(ASSOCIATED(qs_env),cp_failure_level,routineP,error,failure)
     IF (.NOT. failure) THEN
        CALL get_qs_env(qs_env,dft_control=dft_control,molecule_set=molecule_set, &
-            mos=mos,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
+            mos=mos,atomic_kind_set=atomic_kind_set,&
+            qs_kind_set=qs_kind_set,particle_set=particle_set,&
             rho=rho,matrix_ks=ks_rmpv,scf_control=scf_control,&
             input=input,cell=cell,subsys=subsys,error=error)
        CALL cp_subsys_get(subsys,particles=particles,error=error)
@@ -919,12 +923,12 @@ CPSourceFileRef,&
        ! *** if the dft_section tells you to do so, write last wavefunction to screen
        dft_section => section_vals_get_subs_vals(input,"DFT",error=error)
        IF (dft_control%nspins == 2) THEN
-         CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,particle_set,4,&
+         CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                            dft_section,spin="ALPHA",last=.TRUE.,error=error)
-         CALL write_mo_set(mos(2)%mo_set,atomic_kind_set,particle_set,4,&
+         CALL write_mo_set(mos(2)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                            dft_section,spin="BETA",last=.TRUE.,error=error)
        ELSE
-         CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,particle_set,4,&
+         CALL write_mo_set(mos(1)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                            dft_section,last=.TRUE.,error=error)
        END IF
 

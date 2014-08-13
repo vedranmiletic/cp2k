@@ -17,6 +17,8 @@ MODULE xas_methods
   USE ai_overlap,                      ONLY: overlap_ab
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: &
        allocate_sto_basis_set, create_gto_from_sto_basis, &
        deallocate_sto_basis_set, get_gto_basis_set, gto_basis_set_type, &
@@ -174,6 +176,8 @@ CONTAINS
     REAL(dp), DIMENSION(:, :), POINTER       :: vecbuffer
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, op_sm, ostrength_sm
@@ -246,8 +250,8 @@ CONTAINS
     END IF
 
 !   Initialize the type of calculation
-    NULLIFY(atomic_kind_set, scf_control, mos, para_env, particle_set)
-    CALL get_qs_env(qs_env=qs_env, atomic_kind_set=atomic_kind_set, &
+    NULLIFY(atomic_kind_set, qs_kind_set, scf_control, mos, para_env, particle_set)
+    CALL get_qs_env(qs_env=qs_env, atomic_kind_set=atomic_kind_set, qs_kind_set=qs_kind_set,&
          cell = cell, scf_control=scf_control,&
          matrix_ks=matrix_ks,mos=mos, para_env=para_env, &
          particle_set=particle_set ,error=error)
@@ -505,7 +509,7 @@ CONTAINS
 
 !   *** Write last wavefunction to screen ***
         DO ispin=1,dft_control%nspins
-           CALL write_mo_set(mos(ispin)%mo_set,atomic_kind_set,particle_set,4,&
+           CALL write_mo_set(mos(ispin)%mo_set,atomic_kind_set,qs_kind_set,particle_set,4,&
                              dft_section,error=error)
         ENDDO
 
@@ -619,6 +623,8 @@ CONTAINS
                                                 zatom
     REAL(dp), DIMENSION(:), POINTER          :: sto_zet
     TYPE(array_i1d_obj)                      :: row_blk_sizes
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -651,12 +657,13 @@ CONTAINS
 
     IF(.NOT. failure) THEN
 
-      NULLIFY( atomic_kind_set, dft_control, scf_control, matrix_s, mos, mpools )
+      NULLIFY( atomic_kind_set, qs_kind_set, dft_control, scf_control, matrix_s, mos, mpools )
       NULLIFY( para_env, particle_set, scf_env)
       NULLIFY(qs_loc_env)
       NULLIFY(sab_orb)
       CALL get_qs_env(qs_env=qs_env, &
                 atomic_kind_set=atomic_kind_set, &
+                qs_kind_set=qs_kind_set, &
                 dft_control = dft_control, &
                 scf_control = scf_control, &
                 mpools=mpools,&
@@ -1018,9 +1025,8 @@ CONTAINS
         xas_env%my_gto_basis(ik)%gto_basis_set%norm_type = 2
         CALL init_orb_basis_set(xas_env%my_gto_basis(ik)%gto_basis_set,error=error)
 
-        atomic_kind => atomic_kind_set(kind_type_tmp(ik))
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-             orb_basis_set=orb_basis_set)
+        ikind = kind_type_tmp(ik)
+        CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
 
         CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nsgf=nsgf_gto)
         CALL get_gto_basis_set(gto_basis_set=xas_env%my_gto_basis(ik)%gto_basis_set,nsgf=nsgf_sto)

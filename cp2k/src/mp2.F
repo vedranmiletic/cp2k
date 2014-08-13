@@ -15,6 +15,8 @@ MODULE mp2
                                              admm_uncorrect_for_eigenvalues
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE bibliography,                    ONLY: DelBen2012,&
                                              cite_reference
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_info,&
@@ -131,6 +133,8 @@ MODULE mp2
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_ks_aux, &
                                                 matrix_s
@@ -167,6 +171,7 @@ MODULE mp2
     CALL cite_reference(DelBen2012)
 
     CALL get_qs_env(qs_env=qs_env, input=input, atomic_kind_set=atomic_kind_set, &
+                  qs_kind_set=qs_kind_set,&
                   particle_set=particle_set, para_env=para_env,   &
                   energy=energy, rho=rho, mos=mos, scf_env=scf_env,&
                   matrix_ks=matrix_ks, matrix_s=matrix_s, matrix_ks_aux_fit=matrix_ks_aux,&
@@ -237,12 +242,11 @@ MODULE mp2
     ALLOCATE(kind_of(natom),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                               kind_of=kind_of)
+    CALL get_atomic_kind_set(atomic_kind_set, kind_of=kind_of)
     nkind = SIZE(atomic_kind_set,1)
 
 
-    CALL hfx_create_basis_types(basis_parameter,basis_info, atomic_kind_set, do_admm=.FALSE., error=error)
+    CALL hfx_create_basis_types(basis_parameter,basis_info, qs_kind_set, do_admm=.FALSE., error=error)
 
     dimen=0
     max_nset=0

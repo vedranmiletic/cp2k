@@ -391,7 +391,7 @@ CONTAINS
        ! relativistic atomic correction to kinetic energy
        IF(qs_env%rel_control%rel_method /= rel_none)THEN
           IF(qs_env%rel_control%rel_transformation == rel_trans_atom)THEN
-             CALL build_atomic_relmat(matrix_h, atomic_kind_set, particle_set, error)
+             CALL build_atomic_relmat(matrix_h, atomic_kind_set, qs_kind_set, particle_set, error)
           END IF
        END IF
     END IF
@@ -491,11 +491,13 @@ CONTAINS
 !> \param particle_set ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE build_atomic_relmat(matrix_h, atomic_kind_set, particle_set, error)
+  SUBROUTINE build_atomic_relmat(matrix_h, atomic_kind_set, qs_kind_set, particle_set, error)
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -508,7 +510,6 @@ CONTAINS
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: kind_of
     LOGICAL                                  :: failure
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: hblock, reltmat
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cp_dbcsr_iterator)                  :: iter
 
     failure = .FALSE.
@@ -516,15 +517,14 @@ CONTAINS
     ALLOCATE (kind_of(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,kind_of=kind_of)
+    CALL get_atomic_kind_set(atomic_kind_set,kind_of=kind_of)
 
     CALL cp_dbcsr_iterator_start(iter,matrix_h(1)%matrix)
     DO WHILE (cp_dbcsr_iterator_blocks_left(iter))
        CALL cp_dbcsr_iterator_next_block(iter, iatom, jatom, hblock, blk)
        IF (iatom==jatom) THEN
           ikind = kind_of(iatom)
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,reltmat=reltmat)
+          CALL get_qs_kind(qs_kind_set(ikind),reltmat=reltmat)
           hblock = hblock + reltmat
        END IF
     END DO

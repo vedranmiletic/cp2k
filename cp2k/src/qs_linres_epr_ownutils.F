@@ -11,6 +11,8 @@
 MODULE qs_linres_epr_ownutils
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_p_type
@@ -306,13 +308,14 @@ CONTAINS
     LOGICAL                                  :: failure, gapw, paw_atom, &
                                                 success
     REAL(dp)                                 :: eps_r, eps_x, temp_so_soft, &
-                                                vks_ra_idir2, vks_ra_idir3
+                                                vks_ra_idir2, vks_ra_idir3, hard_radius
     REAL(dp), DIMENSION(3, 3)                :: temp_so_gapw
     REAL(dp), DIMENSION(:, :), POINTER       :: g_so, g_total
     REAL(KIND=dp), DIMENSION(3)              :: ra
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -337,7 +340,7 @@ CONTAINS
       POINTER                                :: nablavks_set
     TYPE(section_vals_type), POINTER         :: interp_section, lr_section
 
-    NULLIFY(atomic_kind_set, atom_kind, atom_list, dft_control,&
+    NULLIFY(atomic_kind_set, qs_kind_set, atom_list, dft_control,&
       grid_atom, g_so, g_total, harmonics, interp_section, jrho1_atom_set,&
       jrho1_set, logger, lr_section, nablavks_atom, nablavks_atom_set,&
       nablavks_set, para_env, particle_set)
@@ -352,6 +355,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,dft_control=dft_control,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     para_env=para_env,pw_env=pw_env,&
                     particle_set=particle_set,&
                     error=error)
@@ -366,7 +370,7 @@ CONTAINS
                          error=error)
 
     gapw = dft_control%qs_control%gapw
-    nkind = SIZE(atomic_kind_set,1)
+    nkind = SIZE(qs_kind_set,1)
     nspins = dft_control%nspins
 
     DO idir1=1,3
@@ -430,11 +434,13 @@ CONTAINS
        temp_so_gapw = 0.0_dp
 
        DO ikind = 1, nkind
-          NULLIFY (atom_kind,atom_list,grid_atom,harmonics)
-          atom_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atom_kind,atom_list=atom_list,&
-                               grid_atom=grid_atom,harmonics=harmonics,&
-                               natom=natom, paw_atom=paw_atom)
+          NULLIFY (atom_list,grid_atom,harmonics)
+          CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=natom)
+          CALL get_qs_kind(qs_kind_set(ikind),&
+                           hard_radius=hard_radius,&
+                           grid_atom=grid_atom,&
+                           harmonics=harmonics,&
+                           paw_atom=paw_atom)
 
           IF (.NOT.paw_atom) CYCLE
 
@@ -453,7 +459,7 @@ CONTAINS
                 DO ispin = 1,nspins
                    DO ir = 1,grid_atom%nr
 
-                      IF (grid_atom%rad(ir) >= atom_kind%hard_radius) CYCLE
+                      IF (grid_atom%rad(ir) >= hard_radius) CYCLE
 
                       DO ia = 1,grid_atom%ng_sphere
 
@@ -589,13 +595,14 @@ CONTAINS
                                                 soo_rho_hard, success
     REAL(dp)                                 :: bind_ra_idir1, &
                                                 chi_tensor(3,3,2), eps_r, &
-                                                eps_x, rho_spin, temp_soo_soft
+                                                eps_x, rho_spin, temp_soo_soft, hard_radius
     REAL(dp), DIMENSION(3, 3)                :: temp_soo_gapw
     REAL(dp), DIMENSION(:, :), POINTER       :: g_soo, g_total
     REAL(KIND=dp), DIMENSION(3)              :: ra
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atom_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -619,7 +626,7 @@ CONTAINS
     TYPE(section_vals_type), POINTER         :: g_section, interp_section, &
                                                 lr_section
 
-    NULLIFY(atomic_kind_set, atom_kind, atom_list, bind_set, dft_control, &
+    NULLIFY(atomic_kind_set, qs_kind_set, atom_list, bind_set, dft_control, &
          grid_atom, g_section, g_soo, g_total, harmonics, interp_section, &
          logger, lr_section, para_env, particle_set, rho, rho_atom, &
          rho_atom_set)
@@ -637,7 +644,7 @@ CONTAINS
 
     failure = .FALSE.
 
-    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,&
+    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
                     dft_control=dft_control,para_env=para_env,particle_set=particle_set,&
                     pw_env=pw_env,rho=rho,rho_atom_set=rho_atom_set,error=error)
 
@@ -649,7 +656,7 @@ CONTAINS
                          error=error)
 
     gapw = dft_control%qs_control%gapw
-    nkind = SIZE(atomic_kind_set,1)
+    nkind = SIZE(qs_kind_set,1)
     nspins = dft_control%nspins
 
     DO idir1=1,3
@@ -717,11 +724,13 @@ CONTAINS
        temp_soo_gapw = 0.0_dp
 
        DO ikind = 1,nkind
-          NULLIFY (atom_kind,atom_list,grid_atom,harmonics)
-          atom_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atom_kind,atom_list=atom_list,&
-                               grid_atom=grid_atom,harmonics=harmonics,&
-                               natom=natom, paw_atom=paw_atom)
+          NULLIFY (atom_list,grid_atom,harmonics)
+          CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=natom)
+          CALL get_qs_kind(qs_kind_set(ikind),&
+                           hard_radius=hard_radius,&
+                           grid_atom=grid_atom,&
+                           harmonics=harmonics,&
+                           paw_atom=paw_atom)
 
           IF (.NOT.paw_atom) CYCLE
 
@@ -740,7 +749,7 @@ CONTAINS
                 DO ispin = 1,nspins
                    DO ir = 1,grid_atom%nr
 
-                      IF (grid_atom%rad(ir) >= atom_kind%hard_radius) CYCLE
+                      IF (grid_atom%rad(ir) >= hard_radius) CYCLE
 
                       DO ia = 1,grid_atom%ng_sphere
 

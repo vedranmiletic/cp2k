@@ -10,6 +10,7 @@
 ! *****************************************************************************
 MODULE mp2_gpw
   USE atomic_kind_types,               ONLY: atomic_kind_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_blacs_env,                    ONLY: BLACS_GRID_SQUARE,&
                                              cp_blacs_env_create,&
@@ -187,6 +188,8 @@ MODULE mp2_gpw
     TYPE(array_i1d_obj)                      :: row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env_sub
     TYPE(cp_dbcsr_p_type)                    :: mat_munu
@@ -280,6 +283,7 @@ MODULE mp2_gpw
     subsys=>qs_env%subsys
     particle_set => subsys%particles%els
     atomic_kind_set => subsys%atomic_kinds%els
+    CALL get_qs_env(qs_env, qs_kind_set=qs_kind_set, error=error)
     molecule_set => subsys%molecules_new%els
     molecule_kind_set => subsys%molecule_kinds_new%els
 
@@ -291,11 +295,11 @@ MODULE mp2_gpw
     qs_env%dft_control%qs_control%eps_pgf_orb   =mp2_env%mp2_gpw%eps_grid
     qs_env%dft_control%qs_control%eps_rho_rspace=mp2_env%mp2_gpw%eps_grid
     qs_env%dft_control%qs_control%eps_gvg_rspace=mp2_env%mp2_gpw%eps_grid
-    CALL init_interaction_radii(qs_env%dft_control%qs_control,atomic_kind_set, error_sub)
+    CALL init_interaction_radii(qs_env%dft_control%qs_control,atomic_kind_set, qs_kind_set, error_sub)
 
     ! get a distribution_1d
     NULLIFY(local_particles_sub,local_molecules_sub)
-    CALL distribute_molecules_1d(particle_kind_set=atomic_kind_set,&
+    CALL distribute_molecules_1d(atomic_kind_set=atomic_kind_set,&
                                  particle_set=particle_set,&
                                  local_particles=local_particles_sub,&
                                  molecule_kind_set=molecule_kind_set,&
@@ -308,7 +312,8 @@ MODULE mp2_gpw
     cell=>qs_env%cell
     NULLIFY(distribution_2d_sub)
     CALL distribute_molecules_2d(cell=cell,&
-                                 particle_kind_set=atomic_kind_set,&
+                                 atomic_kind_set=atomic_kind_set,&
+                                 qs_kind_set=qs_kind_set,&
                                  particle_set=particle_set,&
                                  molecule_kind_set=molecule_kind_set,&
                                  molecule_set=molecule_set,&
@@ -331,7 +336,7 @@ MODULE mp2_gpw
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
     CALL atom2d_build(atom2d,orb_radius,orb_present,local_particles_sub,distribution_2d_sub,&
-                      atomic_kind_set,molecule_set,molecule_only=.FALSE.,dftb=.FALSE.,&
+                      atomic_kind_set,qs_kind_set,molecule_set,molecule_only=.FALSE.,dftb=.FALSE.,&
                       particle_set=particle_set,error=error)
     CALL pair_radius_setup(orb_present,orb_present,orb_radius,orb_radius,pair_radius,error)
     CALL build_neighbor_lists(sab_orb_sub,particle_set,atom2d,cell,pair_radius,&
@@ -454,7 +459,7 @@ MODULE mp2_gpw
         ! open shell case (RI) here the (ia|K) integrals are computed for both the alpha and beta components
         CALL mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                   atomic_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
+                                   qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
                                    mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                    mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                                    mp2_env%mp2_memory,mp2_env%calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub,&
@@ -464,7 +469,7 @@ MODULE mp2_gpw
         ! closed shell case (RI)
         CALL mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                   atomic_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
+                                   qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
                                    mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                    mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                                    mp2_env%mp2_memory,mp2_env%calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub)
@@ -476,7 +481,7 @@ MODULE mp2_gpw
         IF (unit_nr>0) WRITE(unit_nr,*)
         IF (unit_nr>0) WRITE(unit_nr,'(T3,A)') 'Alpha (ia|'
         CALL mp2_gpw_compute(Emp2,Emp2_Cou,Emp2_EX,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                             atomic_kind_set,mo_coeff,Eigenval,nmo,homo,rho_r,rho_g,pot_g,&
+                             atomic_kind_set,qs_kind_set,mo_coeff,Eigenval,nmo,homo,rho_r,rho_g,pot_g,&
                              mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                              mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                              mp2_env%mp2_memory,calc_ex,blacs_env_sub,error_sub,&
@@ -486,7 +491,7 @@ MODULE mp2_gpw
         IF (unit_nr>0) WRITE(unit_nr,*)
         IF (unit_nr>0) WRITE(unit_nr,'(T3,A)') 'Beta (ia|'
         CALL mp2_gpw_compute(Emp2_BB,Emp2_Cou_BB,Emp2_EX_BB,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                             atomic_kind_set,mo_coeff_beta,Eigenval_beta,nmo,homo_beta,rho_r,rho_g,pot_g,&
+                             atomic_kind_set,qs_kind_set,mo_coeff_beta,Eigenval_beta,nmo,homo_beta,rho_r,rho_g,pot_g,&
                              mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                              mo_coeff_o_beta,mo_coeff_v_beta,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                              mp2_env%mp2_memory,calc_ex,blacs_env_sub,error_sub)
@@ -494,7 +499,7 @@ MODULE mp2_gpw
       ELSE 
         ! closed shell case
         CALL mp2_gpw_compute(Emp2,Emp2_Cou,Emp2_EX,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                             atomic_kind_set,mo_coeff,Eigenval,nmo,homo,rho_r,rho_g,pot_g,&
+                             atomic_kind_set,qs_kind_set,mo_coeff,Eigenval,nmo,homo,rho_r,rho_g,pot_g,&
                              mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                              mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                              mp2_env%mp2_memory,calc_ex,blacs_env_sub,error_sub)
@@ -645,7 +650,7 @@ MODULE mp2_gpw
           ! CALL array_release (row_blk_sizes)
 
           CALL  calc_ri_mp2_nonsep(qs_env,mp2_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                   atomic_kind_set,mo_coeff,nmo,homo,dimen_RI,Eigenval,&
+                                   atomic_kind_set,qs_kind_set,mo_coeff,nmo,homo,dimen_RI,Eigenval,&
                                    my_group_L_start,my_group_L_end,my_group_L_size,rho_r,rho_g,pot_g,&
                                    mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                    unit_nr,blacs_env_sub,error,error_sub)
@@ -729,7 +734,7 @@ MODULE mp2_gpw
     qs_env%dft_control%qs_control%eps_pgf_orb=eps_pgf_orb_old
     qs_env%dft_control%qs_control%eps_rho_rspace=eps_rho_rspace_old
     qs_env%dft_control%qs_control%eps_gvg_rspace=eps_gvg_rspace_old
-    CALL init_interaction_radii(qs_env%dft_control%qs_control,atomic_kind_set, error_sub)
+    CALL init_interaction_radii(qs_env%dft_control%qs_control,atomic_kind_set, qs_kind_set, error_sub)
 
     ! restore the initial value of the cutoff
     qs_env%dft_control%qs_control%e_cutoff=e_cutoff_old
@@ -802,7 +807,7 @@ MODULE mp2_gpw
 !> \param Emp2_AB ...
 ! *****************************************************************************
   SUBROUTINE mp2_gpw_compute(Emp2,Emp2_Cou,Emp2_EX,qs_env,para_env,para_env_sub,color_sub,dft_control,&
-                 cell,particle_set,atomic_kind_set,mo_coeff,Eigenval,nmo,homo,&
+                 cell,particle_set,atomic_kind_set,qs_kind_set,mo_coeff,Eigenval,nmo,homo,&
                  rho_r,rho_g,pot_g,mat_munu,sab_orb_sub,pw_env_sub,&
                  poisson_env,auxbas_pw_pool,task_list_sub,mo_coeff_o,mo_coeff_v,eps_filter,unit_nr,&
                  mp2_memory,calc_ex,blacs_env_sub,error_sub,homo_beta,mo_coeff_o_beta,mo_coeff_v_beta,Eigenval_beta,Emp2_AB)
@@ -817,6 +822,8 @@ MODULE mp2_gpw
       POINTER                                :: particle_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     REAL(KIND=dp), DIMENSION(:)              :: Eigenval
     INTEGER                                  :: nmo, homo
@@ -1203,7 +1210,7 @@ MODULE mp2_gpw
                             use_data=REALDATA3D,&
                             in_space=REALSPACE,error=error_sub)
       CALL calculate_wavefunction(mo_coeff,i,psi_i(i),rho_g, &
-                        atomic_kind_set,cell,dft_control,particle_set, &
+                        qs_kind_set,cell,dft_control,particle_set, &
                         pw_env_sub,external_vector=my_Cocc(:,i-my_I_occupied_start+1),error=error_sub)
     END DO
 
@@ -1223,7 +1230,7 @@ MODULE mp2_gpw
 
       ! psi_a
       CALL calculate_wavefunction(mo_coeff,a,psi_a,rho_g, &
-                      atomic_kind_set,cell,dft_control,particle_set, &
+                      qs_kind_set,cell,dft_control,particle_set, &
                       pw_env_sub,external_vector=my_Cvirt(:,a-(homo+my_A_virtual_start)+1),error=error_sub)
       i_counter=0
       DO i=my_I_occupied_start, my_I_occupied_end

@@ -103,8 +103,6 @@ MODULE atomic_kind_types
      TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
      TYPE(scptb_parameter_type), POINTER    :: scptb_parameter
      TYPE(paw_proj_set_type),  POINTER      :: paw_proj_set
-     REAL(dp)                               :: hard_radius     ! for hard and soft exp
-     REAL(dp)                               :: hard0_radius    ! for hard exp of rho0
      REAL(dp)                               :: max_rad_local   ! max GTO radius used in GAPW
      ! projectors construction
      LOGICAL                                :: qm_atom         ! needs atomic rho1
@@ -130,7 +128,6 @@ MODULE atomic_kind_types
      TYPE(qs_atom_dispersion_type), POINTER :: dispersion
      TYPE(damping_p_type), POINTER          :: damping
      ! relativistic kinetic energy correction matrix
-     REAL(KIND=dp), DIMENSION(:,:), POINTER :: reltmat
   END TYPE atomic_kind_type
 
 !> Provides a vector of pointers of type atomic_kind_type
@@ -214,15 +211,12 @@ CONTAINS
        atomic_kind_set(ikind)%number_of_grid_points = 0
        atomic_kind_set(ikind)%qm_atom = .FALSE.
        atomic_kind_set(ikind)%gpw_type_forced = .FALSE.
-       atomic_kind_set(ikind)%hard_radius = 0.8_dp*bohr
-       atomic_kind_set(ikind)%hard0_radius = 0.8_dp*bohr
        atomic_kind_set(ikind)%max_rad_local = 13.2_dp*bohr
        atomic_kind_set(ikind)%lmax_rho0 = 0
        atomic_kind_set(ikind)%ghost = .FALSE.
        atomic_kind_set(ikind)%shell_active=.FALSE.
        !atomic_kind_set(ikind)%bs_occupation=.FALSE.
        !atomic_kind_set(ikind)%no_optimize=.TRUE.
-       NULLIFY(atomic_kind_set(ikind)%reltmat)
     END DO
 
   END SUBROUTINE allocate_atomic_kind_set
@@ -316,10 +310,10 @@ CONTAINS
           !   DEALLOCATE (atomic_kind_set(ikind)%laddel,STAT=stat)
           !   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
           !END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%reltmat)) THEN
-             DEALLOCATE (atomic_kind_set(ikind)%reltmat,STAT=stat)
-             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%reltmat)) THEN
+          !   DEALLOCATE (atomic_kind_set(ikind)%reltmat,STAT=stat)
+          !   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+          !END IF
 
           CALL damping_p_release(atomic_kind_set(ikind)%damping,error)
        END DO
@@ -464,8 +458,7 @@ CONTAINS
       POINTER                                :: paw_proj_set
     LOGICAL, INTENT(IN), OPTIONAL            :: softb
     LOGICAL, INTENT(OUT), OPTIONAL           :: qm_atom
-    REAL(dp), INTENT(OUT), OPTIONAL          :: hard_radius, hard0_radius, &
-                                                max_rad_local
+    REAL(dp), INTENT(OUT), OPTIONAL          :: max_rad_local
     LOGICAL, INTENT(OUT), OPTIONAL           :: gpw_type_forced
     INTEGER, INTENT(OUT), OPTIONAL           :: lmax_rho0
     LOGICAL, INTENT(OUT), OPTIONAL           :: ghost
@@ -476,8 +469,8 @@ CONTAINS
       OPTIONAL, POINTER                      :: dispersion
     INTEGER, INTENT(OUT), OPTIONAL           :: npgf
     !LOGICAL, INTENT(OUT), OPTIONAL           :: no_optimize
-    REAL(KIND=dp), DIMENSION(:, :), &
-      OPTIONAL, POINTER                      :: reltmat
+    !REAL(KIND=dp), DIMENSION(:, :), &
+    !  OPTIONAL, POINTER                      :: reltmat
 
     CHARACTER(len=*), PARAMETER :: routineN = 'get_atomic_kind', &
       routineP = moduleN//':'//routineN
@@ -2640,9 +2633,9 @@ CONTAINS
 !>      Creation (11.01.2002,MK)
 ! *****************************************************************************
   SUBROUTINE set_atomic_kind(atomic_kind,element_symbol,name,mass,kind_number,&
-       natom,atom_list,elec_conf,qm_atom,hard_radius,hard0_radius,&
+       natom,atom_list,elec_conf,qm_atom,&
        fist_potential,lmax_rho0,zeff,ghost,shell,&
-       shell_active,dispersion,damping,reltmat,error)
+       shell_active,dispersion,damping,error)
 
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     CHARACTER(LEN=*), INTENT(IN), OPTIONAL   :: element_symbol, name
@@ -2651,7 +2644,6 @@ CONTAINS
     INTEGER, DIMENSION(:), INTENT(IN), &
       OPTIONAL                               :: atom_list, elec_conf
     LOGICAL, INTENT(IN), OPTIONAL            :: qm_atom
-    REAL(dp), INTENT(IN), OPTIONAL           :: hard_radius, hard0_radius
     TYPE(fist_potential_type), OPTIONAL, &
       POINTER                                :: fist_potential
     INTEGER, INTENT(IN), OPTIONAL            :: lmax_rho0
@@ -2662,8 +2654,8 @@ CONTAINS
     TYPE(qs_atom_dispersion_type), &
       OPTIONAL, POINTER                      :: dispersion
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
-    REAL(KIND=dp), DIMENSION(:, :), &
-      OPTIONAL, POINTER                      :: reltmat
+    !REAL(KIND=dp), DIMENSION(:, :), &
+    !  OPTIONAL, POINTER                      :: reltmat
     TYPE(cp_error_type), INTENT(inout), &
       OPTIONAL                               :: error
 

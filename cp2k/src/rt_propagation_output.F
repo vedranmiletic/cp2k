@@ -9,7 +9,8 @@
 ! *****************************************************************************
 
 MODULE rt_propagation_output
-
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE cp_dbcsr_interface,              ONLY: &
@@ -91,6 +92,8 @@ CONTAINS
     REAL(dp)                                 :: orthonormality, tot_rho_r
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_s
     TYPE(cp_fm_p_type), DIMENSION(:), &
@@ -107,7 +110,7 @@ CONTAINS
 
     logger => cp_error_get_logger(error)
     CALL get_qs_env(qs_env=qs_env,rtp=rtp,matrix_s=matrix_s,input=input,rho=rho,particle_set=particle_set,&
-         atomic_kind_set=atomic_kind_set,error=error)
+         atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,error=error)
     rtp_section => section_vals_get_subs_vals(input,"DFT%REAL_TIME_PROPAGATION",error=error)
 
     CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set, &
@@ -174,7 +177,8 @@ CONTAINS
              CALL make_moment(qs_env,error)
              CALL get_rtp(rtp=rtp,mos_new=mos_new,error=error)
              dft_section =>  section_vals_get_subs_vals(input,"DFT",error=error)
-             CALL write_rt_mos_to_restart(qs_env%mos,mos_new,particle_set,dft_section,atomic_kind_set,error)
+             CALL write_rt_mos_to_restart(qs_env%mos,mos_new,particle_set,&
+                            dft_section,atomic_kind_set,qs_kind_set,error)
           END IF
        ELSE
           IF (rtp%linear_scaling) THEN
@@ -185,7 +189,8 @@ CONTAINS
              CALL write_available_results(qs_env=qs_env,error=error)
              CALL get_rtp(rtp=rtp,mos_new=mos_new,error=error)
              dft_section =>  section_vals_get_subs_vals(input,"DFT",error=error)
-             CALL write_rt_mos_to_restart(qs_env%mos,mos_new,particle_set,dft_section,atomic_kind_set,error)
+             CALL write_rt_mos_to_restart(qs_env%mos,mos_new,particle_set,&
+                               dft_section,atomic_kind_set,qs_kind_set,error)
           ENDIF
        END IF
     END IF
