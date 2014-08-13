@@ -12,7 +12,7 @@
 ! *****************************************************************************
 MODULE qs_scf_post_se
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -590,6 +590,8 @@ CPSourceFileRef,&
     LOGICAL                                  :: print_it, scp_nddo
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_type), POINTER             :: pscp
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(distribution_1d_type), POINTER      :: local_particles
@@ -601,6 +603,7 @@ CPSourceFileRef,&
     NULLIFY(particle_set)
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     local_particles=local_particles,&
                     particle_set=particle_set,&
                     scp_env=scp_env,&
@@ -624,7 +627,7 @@ CPSourceFileRef,&
        IF (print_it) print_level = 3
        CALL mulliken_population_analysis(qs_env,unit_nr,print_level,error)
        IF ( scp_nddo ) &
-       CALL multipoles(atomic_kind_set,particle_set,&
+       CALL multipoles(atomic_kind_set,qs_kind_set,particle_set,&
          rho%rho_ao,pscp,matrix_s(1)%matrix,para_env,unit_nr,"DFT%PRINT%MULLIKEN",error=error)
 
        CALL cp_print_key_finished_output(unit_nr, logger,input,"DFT%PRINT%MULLIKEN",error=error)

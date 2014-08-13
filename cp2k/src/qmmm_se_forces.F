@@ -11,6 +11,8 @@
 MODULE qmmm_se_forces
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -100,7 +102,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: Forces_QM, p_block_a
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -115,12 +118,13 @@ CONTAINS
     failure = .FALSE.
     CALL timeset(routineN,handle)
     IF (calc_force) THEN
-       NULLIFY (rho, atomic_kind_set, se_taper)
+       NULLIFY (rho, atomic_kind_set, qs_kind_set, se_taper)
        NULLIFY (se_kind_a, se_kind_mm, particles_qm)
        CALL get_qs_env(qs_env=qs_env,&
                        rho=rho,&
                        se_taper=se_taper,&
                        atomic_kind_set=atomic_kind_set,&
+                       qs_kind_set=qs_kind_set,&
                        ks_qmmm_env=ks_qmmm_env_loc,&
                        dft_control=dft_control,&
                        particle_set=particles_qm,&
@@ -155,11 +159,8 @@ CONTAINS
        DO ispin = 1, dft_control%nspins
           iqm = 0
           Kinds: DO ikind=1,nkind
-             atomic_kind => atomic_kind_set(ikind)
-             CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                                  natom=natom,&
-                                  se_parameter=se_kind_a,&
-                                  atom_list=list)
+             CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=list)
+             CALL get_qs_kind(qs_kind_set(ikind), se_parameter=se_kind_a)
              CALL get_se_param(se_kind_a,&
                                defined=defined,&
                                natorb=natorb_a)
@@ -228,10 +229,8 @@ CONTAINS
        CALL mp_sum(Forces_QM, para_env%group)
        iqm = 0
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               se_parameter=se_kind_a,&
-                               atom_list=list)
+          CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=list)
+          CALL get_qs_kind(qs_kind_set(ikind), se_parameter=se_kind_a)
           CALL get_se_param(se_kind_a,&
                             defined=defined,&
                             natorb=natorb_a)

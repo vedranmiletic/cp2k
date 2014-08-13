@@ -12,6 +12,9 @@ MODULE se_core_matrix
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_add, cp_dbcsr_allocate_matrix_set, cp_dbcsr_copy, &
@@ -104,7 +107,8 @@ CONTAINS
                                                 pabmat, pamat, s_block
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_p, matrix_s
     TYPE(cp_dbcsr_type), POINTER             :: diagmat_h, diagmat_p
@@ -129,7 +133,7 @@ CONTAINS
     NULLIFY(logger)
     logger => cp_error_get_logger(error)
 
-     NULLIFY ( rho,force,atomic_kind_set,sab_orb,&
+     NULLIFY ( rho,force,atomic_kind_set,qs_kind_set,sab_orb,&
                diagmat_h,diagmat_p,particle_set, matrix_p )
 
      ! calculate overlap matrix
@@ -160,6 +164,7 @@ CONTAINS
                      matrix_h=matrix_h,&
                      matrix_s=matrix_s,&
                      atomic_kind_set=atomic_kind_set,&
+                     qs_kind_set=qs_kind_set,&
                      dft_control=dft_control,error=error)
 
      IF(calculate_forces) THEN
@@ -225,8 +230,8 @@ CONTAINS
 
      econst   = 0.0_dp
      DO ikind=1,nkind
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,natom=natom,se_parameter=se_kind_a)
+        CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom)
+        CALL get_qs_kind(qs_kind_set(ikind), se_parameter=se_kind_a)
         CALL get_se_param(se_kind_a,defined=defined,natorb=natorb_a,&
              beta=beta_a,uss=uss,upp=upp,udd=udd,uff=uff,eisol=eisol,eheat=eheat,&
              nr=nr_a,sto_exponents=sto_exponents_a)

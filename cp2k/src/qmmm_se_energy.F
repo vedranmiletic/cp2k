@@ -11,6 +11,8 @@
 MODULE qmmm_se_energy
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -104,7 +106,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: h_block_a
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -121,7 +124,7 @@ CONTAINS
     NULLIFY(logger)
     logger => cp_error_get_logger(error)
 
-    NULLIFY (matrix_s, atomic_kind_set)
+    NULLIFY (matrix_s, atomic_kind_set, qs_kind_set)
     NULLIFY (se_kind_a, se_kind_mm, se_taper, particles_qm)
     CALL build_qs_neighbor_lists(qs_env,para_env,force_env_section=qs_env%input,error=error)
     CALL get_qs_env(qs_env=qs_env, matrix_s=matrix_s, error=error)
@@ -136,6 +139,7 @@ CONTAINS
     CALL get_qs_env(qs_env=qs_env,&
                     se_taper=se_taper,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     ks_qmmm_env=ks_qmmm_env_loc,&
                     dft_control=dft_control,&
                     particle_set=particles_qm,&
@@ -176,11 +180,8 @@ CONTAINS
        nkind    = SIZE(atomic_kind_set)
        enuclear = 0.0_dp
        Kinds: DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               natom=natom,&
-                               se_parameter=se_kind_a,&
-                               atom_list=list)
+          CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=list)
+          CALL get_qs_kind(qs_kind_set(ikind), se_parameter=se_kind_a)
           CALL get_se_param(se_kind_a,&
                             defined=defined,&
                             natorb=natorb_a)

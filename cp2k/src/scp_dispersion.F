@@ -11,6 +11,9 @@ MODULE  scp_dispersion
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type,&
                                              semi_empirical_control_type
@@ -90,7 +93,8 @@ CONTAINS
                                                 rab( 3 ), rab2
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -121,12 +125,12 @@ CONTAINS
 
     e_scp = 0._dp
 
-    NULLIFY( atomic_kind, scp_env, se_taper, store_int_env)
-    NULLIFY( energy, force, para_env, atomic_kind_set )
+    NULLIFY( scp_env, se_taper, store_int_env)
+    NULLIFY( energy, force, para_env, atomic_kind_set, qs_kind_set )
     NULLIFY( cell, sab_se, dft_control, se_control )
 
     CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,&
-         cell=cell, scp_env = scp_env, se_taper = se_taper, &
+         qs_kind_set=qs_kind_set, cell=cell, scp_env=scp_env, se_taper=se_taper, &
          se_store_int_env=store_int_env, &
          para_env=para_env, particle_set=particle_set,&
          sab_se=sab_se, force=force, dft_control=dft_control, &
@@ -155,8 +159,7 @@ CONTAINS
     ALLOCATE (se_defined(nkind),se_kind_list(nkind),se_de(nkind),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     DO ikind=1,nkind
-       atomic_kind => atomic_kind_set(ikind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,scp_se_parameter=se_kind_a)
+       CALL get_qs_kind(qs_kind_set(ikind), scp_se_parameter=se_kind_a)
        se_kind_list(ikind)%se_param => se_kind_a
        CALL get_se_param(se_kind_a,defined=defined,natorb=natorb_a,de=de_a)
        se_defined(ikind) = (defined .AND. natorb_a >= 1)

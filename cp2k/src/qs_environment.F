@@ -958,7 +958,7 @@ CONTAINS
           CALL ewald_env_release(ewald_env,error=error)
           CALL ewald_pw_release(ewald_pw,error=error)
           ! Handle the residual integral part 1/R^3
-          CALL semi_empirical_expns3_setup(atomic_kind_set, se_control,&
+          CALL semi_empirical_expns3_setup(qs_kind_set, se_control,&
                dft_control%qs_control%method_id,error)
        END IF
        ! Taper function

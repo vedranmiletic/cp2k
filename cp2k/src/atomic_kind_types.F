@@ -65,13 +65,13 @@ MODULE atomic_kind_types
   !                                           get_scptb_parameter,&
   !                                           scptb_parameter_type,&
   !                                           write_scptb_parameter
-  USE semi_empirical_types,            ONLY: get_se_param,&
-                                             semi_empirical_create,&
-                                             semi_empirical_release,&
-                                             semi_empirical_type,&
-                                             write_se_param
-  USE semi_empirical_utils,            ONLY: init_se_param,&
-                                             se_param_set_default
+  !USE semi_empirical_types,            ONLY: get_se_param,&
+  !                                           semi_empirical_create,&
+  !                                           semi_empirical_release,&
+  !                                           semi_empirical_type,&
+  !                                           write_se_param
+  !USE semi_empirical_utils,            ONLY: init_se_param,&
+  !                                           se_param_set_default
   USE shell_potential_types,           ONLY: shell_kind_type,&
                                              shell_release,&
                                              shell_retain
@@ -98,8 +98,8 @@ MODULE atomic_kind_types
      TYPE(local_potential_type), POINTER    :: tnadd_potential
      TYPE(fist_potential_type), POINTER     :: fist_potential
      TYPE(gth_potential_type), POINTER      :: gth_potential
-     TYPE(semi_empirical_type), POINTER     :: se_parameter
-     TYPE(semi_empirical_type), POINTER     :: scp_se_parameter
+     !TYPE(semi_empirical_type), POINTER     :: se_parameter
+     !TYPE(semi_empirical_type), POINTER     :: scp_se_parameter
      !TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
      !TYPE(scptb_parameter_type), POINTER    :: scptb_parameter
      !TYPE(paw_proj_set_type),  POINTER      :: paw_proj_set
@@ -190,8 +190,8 @@ CONTAINS
        NULLIFY (atomic_kind_set(ikind)%tnadd_potential)
        NULLIFY (atomic_kind_set(ikind)%fist_potential)
        NULLIFY (atomic_kind_set(ikind)%gth_potential)
-       NULLIFY (atomic_kind_set(ikind)%se_parameter)
-       NULLIFY (atomic_kind_set(ikind)%scp_se_parameter)
+       !NULLIFY (atomic_kind_set(ikind)%se_parameter)
+       !NULLIFY (atomic_kind_set(ikind)%scp_se_parameter)
        !NULLIFY (atomic_kind_set(ikind)%dftb_parameter)
        !NULLIFY (atomic_kind_set(ikind)%scptb_parameter)
        NULLIFY (atomic_kind_set(ikind)%atom_list)
@@ -259,12 +259,12 @@ CONTAINS
           IF (ASSOCIATED(atomic_kind_set(ikind)%gth_potential)) THEN
              CALL deallocate_potential(atomic_kind_set(ikind)%gth_potential,error)
           END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%se_parameter)) THEN
-             CALL semi_empirical_release(atomic_kind_set(ikind)%se_parameter,error)
-          END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%scp_se_parameter)) THEN
-             CALL semi_empirical_release(atomic_kind_set(ikind)%scp_se_parameter,error)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%se_parameter)) THEN
+          !   CALL semi_empirical_release(atomic_kind_set(ikind)%se_parameter,error)
+          !END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%scp_se_parameter)) THEN
+          !   CALL semi_empirical_release(atomic_kind_set(ikind)%scp_se_parameter,error)
+          !END IF
           !IF (ASSOCIATED(atomic_kind_set(ikind)%dftb_parameter)) THEN
           !   CALL deallocate_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,error)
           !END IF
@@ -412,7 +412,7 @@ CONTAINS
 !> \author MK (02.01.2002)
 ! *****************************************************************************
   SUBROUTINE get_atomic_kind(atomic_kind, all_potential, tnadd_potential, fist_potential,&
-       gth_potential, se_parameter, scp_se_parameter, &
+       gth_potential,  &
        element_symbol, name, mass, kind_number, natom, atom_list, &
        alpha_core_charge, ccore_charge, core_charge, alpha_scp, I_scp,&
        core_charge_radius, ncgf, rcov, rvdw, z, zeff, qeff, apol, cpol, mm_radius, &
@@ -431,8 +431,8 @@ CONTAINS
       POINTER                                :: fist_potential
     TYPE(gth_potential_type), OPTIONAL, &
       POINTER                                :: gth_potential
-    TYPE(semi_empirical_type), OPTIONAL, &
-      POINTER                                :: se_parameter, scp_se_parameter
+    !TYPE(semi_empirical_type), OPTIONAL, &
+    !  POINTER                                :: se_parameter, scp_se_parameter
     !TYPE(qs_dftb_atom_type), OPTIONAL, &
     !  POINTER                                :: dftb_parameter
     !TYPE(scptb_parameter_type), OPTIONAL, &
