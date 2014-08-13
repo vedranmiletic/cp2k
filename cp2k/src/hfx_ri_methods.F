@@ -9,11 +9,7 @@
 ! *****************************************************************************
 MODULE hfx_ri_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: geminal_basis_set_type,&
                                              get_geminal_basis_set,&
                                              write_geminal_basis_set
@@ -31,6 +27,9 @@ MODULE hfx_ri_methods
                                              geminal_coulomb,&
                                              geminal_coulomb_diaginv,&
                                              geminal_gto_coulomb
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE ri_environment_types,            ONLY: &
        get_ri_env, ri_env_create, ri_environment_type, ri_vector_add, &
@@ -78,10 +77,10 @@ CONTAINS
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: natoms, nbasis
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(ri_environment_type), POINTER       :: ri_env
     TYPE(ri_vector_type), POINTER            :: ri_coeff, ri_rhs
     TYPE(section_vals_type), POINTER         :: hfx_section

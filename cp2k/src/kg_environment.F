@@ -12,8 +12,6 @@
 MODULE kg_environment
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_types,                      ONLY: cell_type
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE distribution_1d_types,           ONLY: distribution_1d_type
@@ -41,6 +39,7 @@ MODULE kg_environment
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_neighbor_list_types,          ONLY: deallocate_neighbor_list_set,&
                                              get_iterator_info,&
                                              neighbor_list_iterate,&
@@ -281,8 +280,6 @@ CONTAINS
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(distribution_1d_type), POINTER      :: distribution_1d
     TYPE(distribution_2d_type), POINTER      :: distribution_2d
@@ -293,6 +290,8 @@ CONTAINS
       POINTER                                :: molecule_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: neighbor_list_section
 
     CALL timeset(routineN, handle)

@@ -4,12 +4,8 @@
 !-----------------------------------------------------------------------------!
 ! *****************************************************************************
 MODULE  hartree_local_methods
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
+                                             get_atomic_kind
   USE atprop_types,                    ONLY: atprop_array_init
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
@@ -37,6 +33,9 @@ MODULE  hartree_local_methods
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_local_rho_types,              ONLY: rhoz_type
   USE qs_p_env_types,                  ONLY: qs_p_env_type
   USE qs_rho0_types,                   ONLY: get_rho0_mpole,&
@@ -248,8 +247,6 @@ CONTAINS
     REAL(dp), DIMENSION(:, :, :), POINTER    :: my_CG, Qlm_gg
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -261,6 +258,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_poisson_type), POINTER           :: poisson_env
     TYPE(qs_charges_type), POINTER           :: qs_charges
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho0_atom_type), DIMENSION(:), &
       POINTER                                :: rho0_atom_set
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole

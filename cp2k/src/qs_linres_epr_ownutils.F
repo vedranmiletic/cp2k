@@ -11,8 +11,6 @@
 MODULE qs_linres_epr_ownutils
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_p_type
@@ -59,6 +57,8 @@ MODULE qs_linres_epr_ownutils
                                              qs_environment_type
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_linres_nmr_epr_common_utils,  ONLY: mult_G_ov_G2_grid
   USE qs_linres_op,                    ONLY: fac_vecp,&
                                              set_vecp,&
@@ -307,15 +307,14 @@ CONTAINS
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, gapw, paw_atom, &
                                                 success
-    REAL(dp)                                 :: eps_r, eps_x, temp_so_soft, &
-                                                vks_ra_idir2, vks_ra_idir3, hard_radius
+    REAL(dp)                                 :: eps_r, eps_x, hard_radius, &
+                                                temp_so_soft, vks_ra_idir2, &
+                                                vks_ra_idir3
     REAL(dp), DIMENSION(3, 3)                :: temp_so_gapw
     REAL(dp), DIMENSION(:, :), POINTER       :: g_so, g_total
     REAL(KIND=dp), DIMENSION(3)              :: ra
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -334,6 +333,8 @@ CONTAINS
       POINTER                                :: vks_pw_spline
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(pw_spline_precond_type), POINTER    :: precond
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_p_type), DIMENSION(:), &
       POINTER                                :: jrho1_set
     TYPE(qs_rho_p_type), DIMENSION(:, :), &
@@ -595,14 +596,13 @@ CONTAINS
                                                 soo_rho_hard, success
     REAL(dp)                                 :: bind_ra_idir1, &
                                                 chi_tensor(3,3,2), eps_r, &
-                                                eps_x, rho_spin, temp_soo_soft, hard_radius
+                                                eps_x, hard_radius, rho_spin, &
+                                                temp_soo_soft
     REAL(dp), DIMENSION(3, 3)                :: temp_soo_gapw
     REAL(dp), DIMENSION(:, :), POINTER       :: g_soo, g_total
     REAL(KIND=dp), DIMENSION(3)              :: ra
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -615,6 +615,8 @@ CONTAINS
       POINTER                                :: bind_pw_spline
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(pw_spline_precond_type), POINTER    :: precond
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_p_type), DIMENSION(:, :), &
       POINTER                                :: bind_set
     TYPE(qs_rho_type), POINTER               :: rho

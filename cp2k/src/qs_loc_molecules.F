@@ -9,8 +9,6 @@
 MODULE qs_loc_molecules
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_output_handling,              ONLY: cp_p_file,&
@@ -35,7 +33,10 @@ MODULE qs_loc_molecules
   USE moments_utils,                   ONLY: get_reference_point
   USE particle_types,                  ONLY: particle_type
   USE physcon,                         ONLY: debye
-  USE qs_environment_types,            ONLY: qs_environment_type, get_qs_env
+  USE qs_environment_types,            ONLY: get_qs_env,&
+                                             qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_loc_types,                    ONLY: qs_loc_env_new_type
 #include "./common/cp_common_uses.f90"
 
@@ -76,9 +77,9 @@ CONTAINS
 
     COMPLEX(KIND=dp)                         :: zeta
     COMPLEX(KIND=dp), DIMENSION(3)           :: ggamma, zphase
-    INTEGER :: counter, first_atom, i, iatom, ikind, akind, imol, imol_now, istate, &
-      j, local_location, natom, natom_loc, natom_max, nkind, nmol, nstate, &
-      output_unit, reference, stat
+    INTEGER :: akind, counter, first_atom, i, iatom, ikind, imol, imol_now, &
+      istate, j, local_location, natom, natom_loc, natom_max, nkind, nmol, &
+      nstate, output_unit, reference, stat
     INTEGER, POINTER                         :: wfc_to_atom_map( : )
     LOGICAL                                  :: do_berry, failure, ghost
     REAL(KIND=dp)                            :: charge_tot, dipole(3), dr(3), &
@@ -96,9 +97,9 @@ CONTAINS
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(distribution_1d_type), POINTER      :: local_molecules
     TYPE(molecule_kind_type), POINTER        :: molecule_kind
+    TYPE(particle_type), POINTER             :: particle_set( : )
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(particle_type), POINTER             :: particle_set( : )
 
     failure = .FALSE.
     logger => cp_error_get_logger(error)

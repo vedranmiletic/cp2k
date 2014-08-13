@@ -5,7 +5,6 @@
 
 MODULE qs_scf_output
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_p_type
   USE cp_dbcsr_output,                 ONLY: cp_dbcsr_write_sparse_matrix
@@ -28,6 +27,7 @@ MODULE qs_scf_output
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_mo_io,                        ONLY: write_mo_set
   USE qs_mo_methods,                   ONLY: calculate_magnitude,&
                                              calculate_orthonormality

@@ -7,10 +7,6 @@
 !> \brief Utility routines for qs_scf
 ! *****************************************************************************
 MODULE qs_scf_initialization
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set,&
-                                             set_qs_kind
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: &
        array_i1d_obj, array_release, cp_create_bl_distribution, &
@@ -72,6 +68,10 @@ MODULE qs_scf_initialization
   USE qs_gspace_mixing,                ONLY: mixing_allocate,&
                                              mixing_init
   USE qs_initial_guess,                ONLY: calculate_first_density_matrix
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE qs_ks_methods,                   ONLY: qs_ks_did_change
   USE qs_matrix_pools,                 ONLY: mpools_get
   USE qs_mo_types,                     ONLY: get_mo_set,&
@@ -878,9 +878,6 @@ CONTAINS
     LOGICAL :: dft_plus_u_atom, do_kpoints, failure, init_u_ramping_each_scf, &
       my_transition_potential, s_minus_half_available
     REAL(KIND=dp)                            :: u_ramping
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -888,6 +885,9 @@ CONTAINS
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(mo_set_p_type), DIMENSION(:), &
       POINTER                                :: mos
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(scf_control_type), POINTER          :: scf_control
 

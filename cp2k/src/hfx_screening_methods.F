@@ -11,8 +11,6 @@
 ! *****************************************************************************
 MODULE hfx_screening_methods
   USE ao_util,                         ONLY: exp_radius_very_extended
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: gto_basis_set_type
   USE f77_blas
   USE hfx_libint_interface,            ONLY: evaluate_eri_screen
@@ -31,6 +29,8 @@ MODULE hfx_screening_methods
                                              powell_optimize
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE timings,                         ONLY: timeset,&
                                              timestop
 #include "./common/cp_common_uses.f90"
@@ -342,12 +342,12 @@ MODULE hfx_screening_methods
     REAL(dp), DIMENSION(:, :), POINTER       :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
     REAL(dp), SAVE                           :: DATA(2,0:100)
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis
     TYPE(hfx_screen_coeff_type), &
       DIMENSION(:, :), POINTER               :: tmp_R_1
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     failure = .FALSE.
 
@@ -711,10 +711,10 @@ MODULE hfx_screening_methods
     REAL(dp), DIMENSION(:, :), POINTER       :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
     REAL(dp), SAVE                           :: DATA(2,0:100)
+    TYPE(gto_basis_set_type), POINTER        :: orb_basis
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
-    TYPE(gto_basis_set_type), POINTER        :: orb_basis
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     failure = .FALSE.
 

@@ -28,8 +28,6 @@
 MODULE qs_integrate_potential_single
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE atprop_types,                    ONLY: atprop_array_init
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
@@ -62,6 +60,8 @@ MODULE qs_integrate_potential_single
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integrate_potential_low,      ONLY: integrate_pgf_product_rspace
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE realspace_grid_types,            ONLY: &
        pw2rs, realspace_grid_desc_p_type, realspace_grid_desc_type, &
        realspace_grid_p_type, realspace_grid_type, rs_grid_release, &
@@ -127,8 +127,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: hab, pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -137,6 +135,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_type), POINTER  :: auxbas_rs_desc
     TYPE(realspace_grid_type), POINTER       :: rs_v
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
@@ -708,8 +708,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: hab, pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -718,6 +716,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_type), POINTER  :: auxbas_rs_desc
     TYPE(realspace_grid_type), POINTER       :: rs_v
     TYPE(virial_type), POINTER               :: virial
@@ -895,8 +895,6 @@ CONTAINS
                                                 work_f, work_i, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -905,6 +903,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &

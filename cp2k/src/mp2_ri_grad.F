@@ -10,8 +10,6 @@
 ! *****************************************************************************
 MODULE mp2_ri_grad
 ! USE f77_blas
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
@@ -80,6 +78,7 @@ MODULE mp2_ri_grad
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace,&
                                              integrate_v_rspace
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
                                              realspace_grid_p_type,&

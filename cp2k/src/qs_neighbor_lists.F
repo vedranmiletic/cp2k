@@ -20,9 +20,6 @@ MODULE qs_neighbor_lists
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
- USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -71,6 +68,9 @@ MODULE qs_neighbor_lists
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type,&
                                              set_qs_env
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: &
        add_neighbor_list, add_neighbor_node, allocate_neighbor_list_set, &
        deallocate_neighbor_list_set, get_iterator_info, &
@@ -375,8 +375,6 @@ CONTAINS
     TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(distribution_1d_type), POINTER      :: distribution_1d
@@ -400,6 +398,8 @@ CONTAINS
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
     TYPE(qs_dftb_atom_type), POINTER         :: dftb_atom
     TYPE(qs_dispersion_type), POINTER        :: dispersion_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
     TYPE(section_vals_type), POINTER         :: neighbor_list_section
 

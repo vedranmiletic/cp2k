@@ -10,8 +10,6 @@
 !> \author Joost VandeVondele (10.2003)
 ! *****************************************************************************
 MODULE qs_scf_wfn_mix
-  USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_p_type
   USE cp_dbcsr_operations,             ONLY: copy_fm_to_dbcsr
   USE cp_fm_basic_linalg,              ONLY: cp_fm_scale_and_add
@@ -30,6 +28,7 @@ MODULE qs_scf_wfn_mix
                                              section_vals_val_get
   USE kinds,                           ONLY: dp
   USE particle_types,                  ONLY: particle_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_mo_io,                        ONLY: write_mo_set
   USE qs_mo_methods,                   ONLY: calculate_orthonormality
   USE qs_mo_types,                     ONLY: deallocate_mo_set,&

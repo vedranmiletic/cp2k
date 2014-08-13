@@ -15,8 +15,6 @@ MODULE xray_diffraction
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE bibliography,                    ONLY: Krack2002,&
@@ -57,6 +55,8 @@ MODULE xray_diffraction
   USE qs_collocate_density,            ONLY: collocate_pgf_product_gspace
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_rho_atom_types,               ONLY: get_rho_atom,&
                                              rho_atom_coeff,&
                                              rho_atom_type
@@ -563,8 +563,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: delta_cpc, pab, work, zet
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-   TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
@@ -572,6 +570,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
     TYPE(pw_p_type)                          :: rho_elec_gspace
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: cpc_h, cpc_s

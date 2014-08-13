@@ -11,13 +11,12 @@ MODULE scptb_utils
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind, set_qs_kind
   USE basis_set_types,                 ONLY: allocate_sto_basis_set,&
                                              create_gto_from_sto_basis,&
                                              deallocate_sto_basis_set,&
+                                             gto_basis_set_type,&
                                              set_sto_basis_set,&
-                                             sto_basis_set_type,gto_basis_set_type
+                                             sto_basis_set_type
   USE cp_control_types,                ONLY: scptb_control_type
   USE cp_output_handling,              ONLY: cp_p_file,&
                                              cp_print_key_finished_output,&
@@ -30,6 +29,9 @@ MODULE scptb_utils
   USE kinds,                           ONLY: default_string_length,&
                                              dp
   USE message_passing,                 ONLY: mp_bcast
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE scptb_parameters,                ONLY: scptb_default_parameter
   USE scptb_types,                     ONLY: allocate_scptb_parameter,&
                                              scptb_parameter_type,&
@@ -87,9 +89,9 @@ CONTAINS
     REAL(KIND=dp)                            :: a, c, d, eff, r, rmax, rmin
     REAL(KIND=dp), DIMENSION(:), POINTER     :: zet
     TYPE(cp_logger_type), POINTER            :: logger
+    TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
     TYPE(scptb_parameter_type), POINTER      :: scptb_parameter
     TYPE(sto_basis_set_type), POINTER        :: sto_basis
-    TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
 
     failure = .FALSE.
     output_unit = -1

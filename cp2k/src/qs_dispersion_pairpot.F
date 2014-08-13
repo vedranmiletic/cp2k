@@ -11,12 +11,7 @@ MODULE qs_dispersion_pairpot
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
-                                             get_atomic_kind_set,&
-                                             set_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set,&
-                                             set_qs_kind
+                                             get_atomic_kind_set
   USE atprop_types,                    ONLY: atprop_array_init,&
                                              atprop_type
   USE bibliography,                    ONLY: cite_reference,&
@@ -62,6 +57,9 @@ MODULE qs_dispersion_pairpot
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -620,8 +618,6 @@ CONTAINS
       POINTER                                :: atstr
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(atprop_type), POINTER               :: atprop
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
@@ -637,6 +633,8 @@ CONTAINS
     TYPE(qs_atom_dispersion_type), POINTER   :: disp_a, disp_b, disp_c
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(virial_type), POINTER               :: virial
 
     CALL timeset(routineN,handle)

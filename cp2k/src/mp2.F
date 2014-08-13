@@ -15,8 +15,6 @@ MODULE mp2
                                              admm_uncorrect_for_eigenvalues
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE bibliography,                    ONLY: DelBen2012,&
                                              cite_reference
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_info,&
@@ -71,6 +69,7 @@ MODULE mp2
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_matrix_pools,                 ONLY: mpools_create,&
                                              mpools_rebuild_fm_pools,&
                                              mpools_release,&
@@ -133,8 +132,6 @@ MODULE mp2
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_ks_aux, &
                                                 matrix_s
@@ -157,6 +154,8 @@ MODULE mp2
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_matrix_pools_type), POINTER      :: my_mpools
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(qs_scf_env_type), POINTER           :: scf_env

@@ -27,11 +27,7 @@
 ! *****************************************************************************
 MODULE qs_integrate_potential_product
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                           get_atomic_kind,&
-                                           get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -62,6 +58,9 @@ MODULE qs_integrate_potential_product
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integrate_potential_low,      ONLY: integrate_pgf_product_rspace
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
                                              realspace_grid_p_type,&
                                              rs_grid_release,&
@@ -179,8 +178,6 @@ CONTAINS
       POINTER                                :: hadbt, hdabt
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ddv
@@ -196,6 +193,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &

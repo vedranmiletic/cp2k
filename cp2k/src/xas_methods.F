@@ -17,8 +17,6 @@ MODULE xas_methods
   USE ai_overlap,                      ONLY: overlap_ab
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: &
        allocate_sto_basis_set, create_gto_from_sto_basis, &
        deallocate_sto_basis_set, get_gto_basis_set, gto_basis_set_type, &
@@ -79,6 +77,8 @@ MODULE xas_methods
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type,&
                                              set_qs_env
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_loc_methods,                  ONLY: qs_loc_driver,&
                                              qs_print_cubes
   USE qs_loc_types,                    ONLY: localized_wfn_control_type,&
@@ -176,8 +176,6 @@ CONTAINS
     REAL(dp), DIMENSION(:, :), POINTER       :: vecbuffer
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, op_sm, ostrength_sm
@@ -191,6 +189,8 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_loc_env_new_type), POINTER       :: qs_loc_env
     TYPE(qs_scf_env_type), POINTER           :: scf_env
     TYPE(scf_control_type), POINTER          :: scf_control
@@ -623,8 +623,6 @@ CONTAINS
                                                 zatom
     REAL(dp), DIMENSION(:), POINTER          :: sto_zet
     TYPE(array_i1d_obj)                      :: row_blk_sizes
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -642,6 +640,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_loc_env_new_type), POINTER       :: qs_loc_env
     TYPE(qs_matrix_pools_type), POINTER      :: mpools
     TYPE(qs_scf_env_type), POINTER           :: scf_env

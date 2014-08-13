@@ -11,8 +11,6 @@
 ! *****************************************************************************
 MODULE task_list_methods
   USE ao_util,                         ONLY: exp_radius_very_extended
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_p_type,&
                                              gto_basis_set_type
@@ -48,6 +46,8 @@ MODULE task_list_methods
                                              pw_env_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -138,9 +138,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: ra, rab
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cube_info_type), DIMENSION(:), &
       POINTER                                :: cube_info
@@ -157,6 +154,9 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &

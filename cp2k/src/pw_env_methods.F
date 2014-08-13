@@ -14,8 +14,6 @@
 ! *****************************************************************************
 MODULE pw_env_methods
   USE ao_util,                         ONLY: exp_radius
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
@@ -75,6 +73,8 @@ MODULE pw_env_methods
   USE qs_dispersion_types,             ONLY: qs_dispersion_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_rho0_types,                   ONLY: get_rho0_mpole,&
                                              rho0_mpole_type
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
@@ -189,8 +189,6 @@ SUBROUTINE pw_env_rebuild(pw_env, qs_env, external_para_env, error)
                                                 rel_cutoff, zet0
     REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: radius
     REAL(KIND=dp), DIMENSION(:), POINTER     :: cutoff
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell, cell_ref, my_cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -203,6 +201,8 @@ SUBROUTINE pw_env_rebuild(pw_env, qs_env, external_para_env, error)
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(qs_dispersion_type), POINTER        :: dispersion_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_input_type)          :: input_settings
@@ -711,11 +711,11 @@ SUBROUTINE compute_max_radius(radius, pw_env, qs_env, error)
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: zeta, zetb
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole
 
 ! a very small safety factor might be needed for roundoff issues

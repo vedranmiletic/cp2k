@@ -19,14 +19,12 @@ MODULE qs_environment
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_create,&
                                              atomic_kind_list_release,&
                                              atomic_kind_list_type
-  USE atomic_kind_types,               ONLY: &
-       atomic_kind_type, check_atomic_kind_set, get_atomic_kind, &
-       get_atomic_kind_set, init_atomic_kind_set, &
-       read_atomic_kind_set, write_atomic_kind_set
-  USE qs_kind_types,               ONLY: &
-       qs_kind_type, get_qs_kind, get_qs_kind_set,&
-       init_gapw_basis_set, &
-       write_gto_basis_sets
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             check_atomic_kind_set,&
+                                             get_atomic_kind_set,&
+                                             init_atomic_kind_set,&
+                                             read_atomic_kind_set,&
+                                             write_atomic_kind_set
   USE basis_set_types,                 ONLY: copy_gto_basis_set,&
                                              gto_basis_set_type
   USE bibliography,                    ONLY: Iannuzzi2006,&
@@ -170,6 +168,11 @@ MODULE qs_environment
                                              write_pgf_orb_radii,&
                                              write_ppl_radii,&
                                              write_ppnl_radii
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             init_gapw_basis_set,&
+                                             qs_kind_type,&
+                                             write_gto_basis_sets
   USE qs_mo_types,                     ONLY: allocate_mo_set,&
                                              mo_set_p_type
   USE qs_rho0_ggrid,                   ONLY: rho0_s_grid_create
@@ -263,8 +266,6 @@ CONTAINS
     TYPE(atomic_kind_list_type), POINTER     :: atomic_kinds
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: my_cell, my_cell_ref
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cp_subsys_type), POINTER            :: my_subsys
@@ -281,6 +282,8 @@ CONTAINS
     TYPE(particle_list_type), POINTER        :: particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rel_control_type), POINTER          :: rel_control
     TYPE(section_vals_type), POINTER :: cell_section, colvar_section, &
       dft_section, et_coupling_section, harris_section, hfx_ri_section, &
@@ -546,8 +549,6 @@ CONTAINS
                                                 verlet_skin
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -577,6 +578,8 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_wf_history_type), POINTER        :: wf_history
     TYPE(rel_control_type), POINTER          :: rel_control
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole

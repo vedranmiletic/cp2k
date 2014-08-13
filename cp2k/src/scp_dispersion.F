@@ -9,11 +9,7 @@
 !******************************************************************************
 MODULE  scp_dispersion
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type,&
                                              semi_empirical_control_type
@@ -25,6 +21,8 @@ MODULE  scp_dispersion
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -93,8 +91,6 @@ CONTAINS
                                                 rab( 3 ), rab2
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -106,6 +102,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scp_energy_type), POINTER           :: energy
     TYPE(scp_environment_type), POINTER      :: scp_env
     TYPE(se_int_control_type)                :: se_int_control

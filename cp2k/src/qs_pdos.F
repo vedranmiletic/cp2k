@@ -14,9 +14,6 @@ MODULE qs_pdos
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -70,6 +67,9 @@ MODULE qs_pdos
   USE qs_collocate_density,            ONLY: calculate_wavefunction
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_mo_methods,                   ONLY: calculate_subspace_eigenvalues
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_type
@@ -162,12 +162,11 @@ CONTAINS
                                                 my_pos, spin(2)
     CHARACTER(LEN=default_string_length), &
       ALLOCATABLE, DIMENSION(:)              :: ldos_index, r_ldos_index
-    INTEGER :: handle, homo, i, iatom, il, ildos, im, imo, in_x, in_y, in_z, &
-      ir, irow, iset, isgf, ishell, iso, iterstep, iw, j, jx, jy, jz, k, &
-      ikind, lcomponent, lshell, maxl, maxlgto, my_spin, n_dependent, &
-      n_r_ldos, n_rep, nao, natom, ncol_global, nkind, nldos, nlumo, nmo, &
-      np_tot, npoints, nrow_global, nset, nsgf, nvirt, out_each, output_unit, &
-      stat
+    INTEGER :: handle, homo, i, iatom, ikind, il, ildos, im, imo, in_x, in_y, &
+      in_z, ir, irow, iset, isgf, ishell, iso, iterstep, iw, j, jx, jy, jz, &
+      k, lcomponent, lshell, maxl, maxlgto, my_spin, n_dependent, n_r_ldos, &
+      n_rep, nao, natom, ncol_global, nkind, nldos, nlumo, nmo, np_tot, &
+      npoints, nrow_global, nset, nsgf, nvirt, out_each, output_unit, stat
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: firstrow
     INTEGER, DIMENSION(:), POINTER           :: list, nshell
     INTEGER, DIMENSION(:, :), POINTER        :: bo, l

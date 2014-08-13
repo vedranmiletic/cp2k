@@ -10,9 +10,6 @@
 !>      - adapted for nuclear attraction [jhu, 2009-02-24]
 ! *****************************************************************************
 MODULE core_ae
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE ai_verfc,                        ONLY: verfc
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
@@ -31,6 +28,9 @@ MODULE core_ae
                                              ncoset
   USE particle_types,                  ONLY: particle_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&

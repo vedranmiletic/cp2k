@@ -13,12 +13,8 @@
 !> - Created 2009-09-09
 ! *****************************************************************************
 MODULE cp_dbcsr_output
- USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: &
@@ -46,6 +42,9 @@ MODULE cp_dbcsr_output
                                              particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE termination,                     ONLY: stop_program
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -376,19 +375,20 @@ CONTAINS
     CHARACTER(LEN=25)                        :: fmtstr1
     CHARACTER(LEN=35)                        :: fmtstr2
     CHARACTER(LEN=6), DIMENSION(:), POINTER  :: sgf_symbol
-    INTEGER :: from, group, iatom, icol, irow, iset, isgf, ishell, iso, jcol, &
-      l, left, natom, ncol, ndigits, nset, nsgf, right, stat, to, width, ikind
+    INTEGER :: from, group, iatom, icol, ikind, irow, iset, isgf, ishell, &
+      iso, jcol, l, left, natom, ncol, ndigits, nset, nsgf, right, stat, to, &
+      width
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: first_sgf, last_sgf
     INTEGER, DIMENSION(:), POINTER           :: nshell
     INTEGER, DIMENSION(:, :), POINTER        :: lshell
     LOGICAL                                  :: failure
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     group = para_env%group

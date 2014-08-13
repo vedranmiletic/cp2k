@@ -11,11 +11,7 @@
 ! *****************************************************************************
 MODULE scp_coeff_types
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_para_types,                   ONLY: cp_para_env_type
@@ -29,6 +25,9 @@ MODULE scp_coeff_types
   USE kinds,                           ONLY: dp
   USE message_passing,                 ONLY: mp_max,&
                                              mp_sum
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE termination,                     ONLY: stop_program
 #include "./common/cp_common_uses.f90"
 
@@ -106,8 +105,8 @@ CONTAINS
 
     INTEGER                                  :: ikind, n_els, nkind, stat
     LOGICAL                                  :: failure
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: aux_basis_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     failure=.FALSE.
 
@@ -503,7 +502,7 @@ CONTAINS
                                            aux_coeff_set, copy_type_id, copy_out, error )
 
     REAL(dp), DIMENSION(:, :), POINTER       :: rep_coeff
-    TYPE(qs_kind_type), POINTER          :: qs_kind_set( : )
+    TYPE(qs_kind_type), POINTER              :: qs_kind_set( : )
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(aux_coeff_set_type), POINTER        :: aux_coeff_set
     INTEGER, INTENT(IN)                      :: copy_type_id

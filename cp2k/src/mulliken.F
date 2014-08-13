@@ -13,8 +13,6 @@ MODULE mulliken
                                              print_multipoles
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cp_control_types,                ONLY: mulliken_restraint_type
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_get_block_p, cp_dbcsr_get_info, cp_dbcsr_iterator, &
@@ -26,6 +24,8 @@ MODULE mulliken
   USE kinds,                           ONLY: dp
   USE message_passing,                 ONLY: mp_sum
   USE particle_types,                  ONLY: particle_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE semi_empirical_int_arrays,       ONLY: se_orbital_pointer
   USE semi_empirical_mpole_types,      ONLY: semi_empirical_mpole_type
   USE semi_empirical_types,            ONLY: get_se_param,&
@@ -537,10 +537,8 @@ END SUBROUTINE rf_deriv_check
       POINTER                                :: quadrupole
     TYPE(cp_para_env_type), POINTER          :: para_env
 
-    INTEGER                                  :: blk, iatom, iblock_col, &
-                                                iblock_row, indi, indj, &
-                                                ispin, jint, natorb_a, &
-                                                nblock, nspin, size_1c_int, ikind
+    INTEGER :: blk, iatom, iblock_col, iblock_row, ikind, indi, indj, ispin, &
+      jint, natorb_a, nblock, nspin, size_1c_int
     LOGICAL                                  :: defined, found
     REAL(kind=dp)                            :: fac
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: p_block, pscp_block, s_block

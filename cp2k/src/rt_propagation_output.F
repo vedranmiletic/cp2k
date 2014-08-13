@@ -9,8 +9,6 @@
 ! *****************************************************************************
 
 MODULE rt_propagation_output
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE cp_dbcsr_interface,              ONLY: &
@@ -48,7 +46,9 @@ MODULE rt_propagation_output
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_mo_io,                        ONLY: write_rt_mos_to_restart
+  USE qs_mo_types,                     ONLY: write_rt_mos_to_restart
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE qs_scf_post_dftb,                ONLY: scf_post_calculation_dftb
   USE qs_scf_post_gpw,                 ONLY: qs_scf_post_moments,&
@@ -92,8 +92,6 @@ CONTAINS
     REAL(dp)                                 :: orthonormality, tot_rho_r
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_s
     TYPE(cp_fm_p_type), DIMENSION(:), &
@@ -101,6 +99,8 @@ CONTAINS
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(rt_prop_type), POINTER              :: rtp
     TYPE(section_vals_type), POINTER         :: dft_section, input, &

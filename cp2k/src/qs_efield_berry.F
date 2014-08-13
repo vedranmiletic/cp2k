@@ -11,9 +11,6 @@
 !> \author fschiff (06.2010)
 ! *****************************************************************************
 MODULE qs_efield_berry
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE ai_moments,                      ONLY: cossin
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
@@ -64,6 +61,9 @@ MODULE qs_efield_berry
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
@@ -650,8 +650,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(3)         :: cost, sint
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -665,6 +663,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all, sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 

@@ -7,8 +7,6 @@ MODULE qs_rho0_ggrid
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -56,6 +54,8 @@ MODULE qs_rho0_ggrid
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_p_env_types,                  ONLY: qs_p_env_type
   USE qs_rho0_types,                   ONLY: get_rho0_mpole,&
                                              rho0_mpole_type
@@ -98,7 +98,6 @@ MODULE qs_rho0_ggrid
   SUBROUTINE put_rho0_on_grid(qs_env, rho0, tot_rs_int, error)
 
     TYPE(qs_environment_type), POINTER       :: qs_env
-    
     TYPE(rho0_mpole_type), POINTER           :: rho0
     REAL(dp), INTENT(OUT)                    :: tot_rs_int
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -106,10 +105,6 @@ MODULE qs_rho0_ggrid
     CHARACTER(LEN=*), PARAMETER :: routineN = 'put_rho0_on_grid', &
       routineP = moduleN//':'//routineN
 
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     INTEGER :: auxbas_grid, dir, handle, iat, iatom, igrid, ikind, istat, &
       ithread, j, l0_ikind, lmax0, nat, nch_ik, nch_max, npme, tp(3)
     INTEGER, DIMENSION(:), POINTER           :: atom_list, cores
@@ -118,6 +113,8 @@ MODULE qs_rho0_ggrid
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:), POINTER     :: Qlm_c
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type), DIMENSION(:), &
@@ -131,6 +128,8 @@ MODULE qs_rho0_ggrid
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: descs
     TYPE(realspace_grid_desc_type), POINTER  :: desc
@@ -412,8 +411,6 @@ MODULE qs_rho0_ggrid
     REAL(KIND=dp), DIMENSION(3, 3)           :: my_virial_a, my_virial_b
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type), DIMENSION(:), &
@@ -431,6 +428,8 @@ MODULE qs_rho0_ggrid
     TYPE(pw_pool_type), POINTER              :: pw_aux, pw_pool
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_desc_type), POINTER  :: rs_desc

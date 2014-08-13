@@ -12,11 +12,7 @@
 ! *****************************************************************************
 MODULE qs_environment_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+                                             get_atomic_kind
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_deallocate_matrix_set,&
                                              cp_dbcsr_p_type,&
@@ -62,6 +58,8 @@ MODULE qs_environment_methods
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type,&
                                              set_qs_env
+  USE qs_kind_types,                   ONLY: get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change
   USE qs_matrix_pools,                 ONLY: mpools_rebuild_fm_pools
   USE qs_outer_scf,                    ONLY: outer_loop_variables_count
@@ -119,8 +117,6 @@ SUBROUTINE qs_env_setup(qs_env,error)
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: outer_scf_history
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -132,6 +128,8 @@ SUBROUTINE qs_env_setup(qs_env,error)
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_charges_type), POINTER           :: qs_charges
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(scp_environment_type), POINTER      :: scp_env
 

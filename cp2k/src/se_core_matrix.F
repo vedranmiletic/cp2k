@@ -12,9 +12,6 @@ MODULE se_core_matrix
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_add, cp_dbcsr_allocate_matrix_set, cp_dbcsr_copy, &
@@ -40,6 +37,8 @@ MODULE se_core_matrix
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -107,8 +106,6 @@ CONTAINS
                                                 pabmat, pamat, s_block
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_p, matrix_s
     TYPE(cp_dbcsr_type), POINTER             :: diagmat_h, diagmat_p
@@ -122,6 +119,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(semi_empirical_type), POINTER       :: se_kind_a
     TYPE(virial_type), POINTER               :: virial

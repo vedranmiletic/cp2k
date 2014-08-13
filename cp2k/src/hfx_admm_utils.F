@@ -17,7 +17,6 @@ MODULE hfx_admm_utils
                                              admm_fit_mo_coeffs
   USE admm_types,                      ONLY: admm_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_add,&
@@ -62,6 +61,7 @@ MODULE hfx_admm_utils
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
@@ -431,8 +431,6 @@ CONTAINS
                                                 pair_energy, scaling
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: mo_coeff_b
     TYPE(cp_fm_type), POINTER                :: mo_coeff
@@ -446,6 +444,8 @@ CONTAINS
     TYPE(pw_p_type)                          :: pot_g, rho_g, rho_r
     TYPE(pw_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: rho_i, rho_j
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
     failure = .FALSE.

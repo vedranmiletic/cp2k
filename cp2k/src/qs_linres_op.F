@@ -14,8 +14,6 @@
 !> \author MI
 ! *****************************************************************************
 MODULE qs_linres_op
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_array_i_utils,                ONLY: cp_2d_i_p_type
@@ -61,6 +59,8 @@ MODULE qs_linres_op
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_fermi_contact,                ONLY: build_fermi_contact_matrix
+  USE qs_kind_types,                   ONLY: get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_linres_types,                 ONLY: current_env_type,&
                                              get_current_env,&
                                              get_issc_env,&
@@ -126,8 +126,6 @@ CONTAINS
     REAL(dp)                                 :: chk(3), ck(3), ckdk(3), dk(3)
     REAL(dp), DIMENSION(:, :), POINTER       :: basisfun_center, vecbuf_c0
     TYPE(array_i1d_obj)                      :: row_blk_sizes
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_2d_i_p_type), DIMENSION(:), &
       POINTER                                :: center_list
@@ -152,6 +150,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all, sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: lr_section
 
     CALL timeset(routineN,handle)
@@ -483,8 +483,6 @@ CONTAINS
     LOGICAL                                  :: do_dso, do_fc, do_pso, do_sd, &
                                                 failure
     REAL(dp)                                 :: chk(20), r_i(3)
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_dso, matrix_efg, &
@@ -502,6 +500,8 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: lr_section
 
     failure = .FALSE.

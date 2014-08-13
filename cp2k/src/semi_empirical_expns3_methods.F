@@ -8,12 +8,12 @@
 !> \author Teodoro Laino (12.2008) [tlaino]
 ! *****************************************************************************
 MODULE semi_empirical_expns3_methods
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cp_control_types,                ONLY: semi_empirical_control_type
   USE f77_blas
   USE input_constants,                 ONLY: do_method_undef
   USE kinds,                           ONLY: dp
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE semi_empirical_expns3_types,     ONLY: semi_empirical_expns3_create
   USE semi_empirical_int3_utils,       ONLY: coeff_int_3,&
                                              ijkl_low_3

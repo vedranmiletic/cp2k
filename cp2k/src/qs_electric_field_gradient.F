@@ -11,8 +11,6 @@
 !> \author JGH (03-05-2006)
 ! *****************************************************************************
 MODULE qs_electric_field_gradient
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
@@ -66,6 +64,8 @@ MODULE qs_electric_field_gradient
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_methods,                   ONLY: calc_rho_tot_gspace
   USE qs_rho_atom_types,               ONLY: rho_atom_type
   USE qs_rho_types,                    ONLY: qs_rho_type
@@ -116,8 +116,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: rvals
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -132,6 +130,8 @@ CONTAINS
     TYPE(pw_poisson_type), POINTER           :: poisson_env
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(pw_spline_precond_type), POINTER    :: precond
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(rho_atom_type), DIMENSION(:), &
       POINTER                                :: rho_atom_set

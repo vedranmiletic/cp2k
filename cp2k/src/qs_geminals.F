@@ -13,9 +13,6 @@ MODULE qs_geminals
   USE ai_geminals,                     ONLY: g2gemint,&
                                              gemint2,&
                                              gemint2_derivative
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -48,6 +45,9 @@ MODULE qs_geminals
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE ri_environment_types,            ONLY: get_ri_env,&
                                              ri_environment_type,&
@@ -112,9 +112,6 @@ MODULE qs_geminals
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: ivmat, jvmat
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind_a, qs_kind_b
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
@@ -122,6 +119,9 @@ MODULE qs_geminals
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a, qs_kind_b
     TYPE(ri_environment_type), POINTER       :: ri_env
     TYPE(semi_empirical_si_type), POINTER    :: store_int
     TYPE(virial_type), POINTER               :: virial
@@ -317,10 +317,6 @@ MODULE qs_geminals
                                                 p_block1, p_block2
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind_a, qs_kind_b, &
-                                                qs_kind_c
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_p
@@ -333,6 +329,10 @@ MODULE qs_geminals
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a, qs_kind_b, &
+                                                qs_kind_c
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(ri_environment_type), POINTER       :: ri_env
     TYPE(ri_vector_type), POINTER            :: ri_coeff, ri_rhs
@@ -541,14 +541,14 @@ MODULE qs_geminals
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: ivmat
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     TYPE(ri_environment_type), POINTER       :: ri_env
     TYPE(semi_empirical_si_type), POINTER    :: store_int
 
@@ -725,13 +725,13 @@ MODULE qs_geminals
       POINTER                                :: zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(ri_environment_type), POINTER       :: ri_env
 
     failure = .FALSE.
@@ -833,9 +833,9 @@ MODULE qs_geminals
     INTEGER, INTENT(IN)                      :: nga, ngb, nd
     REAL(KIND=dp), DIMENSION(nga, ngb, nd), &
       INTENT(OUT)                            :: intab
-    TYPE(qs_kind_type), POINTER          :: qs_kind_a
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: ra
-    TYPE(qs_kind_type), POINTER          :: qs_kind_b
+    TYPE(qs_kind_type), POINTER              :: qs_kind_b
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rb
     INTEGER, INTENT(IN)                      :: nderivative
     TYPE(semi_empirical_si_type), POINTER    :: store_int
@@ -948,9 +948,9 @@ MODULE qs_geminals
   SUBROUTINE gemgem_integral_atom_calc(intab,qs_kind_a,ra,qs_kind_b,rb,nderivative,error)
     REAL(KIND=dp), DIMENSION(:, :, :), &
       INTENT(OUT)                            :: intab
-    TYPE(qs_kind_type), POINTER          :: qs_kind_a
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: ra
-    TYPE(qs_kind_type), POINTER          :: qs_kind_b
+    TYPE(qs_kind_type), POINTER              :: qs_kind_b
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rb
     INTEGER, INTENT(IN)                      :: nderivative
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -1122,11 +1122,11 @@ MODULE qs_geminals
     REAL(KIND=dp), &
       DIMENSION(na, nb, ngem, nd), &
       INTENT(OUT)                            :: intabc
-    TYPE(qs_kind_type), POINTER          :: qs_kind_a
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: ra
-    TYPE(qs_kind_type), POINTER          :: qs_kind_b
+    TYPE(qs_kind_type), POINTER              :: qs_kind_b
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rb
-    TYPE(qs_kind_type), POINTER          :: qs_kind_c
+    TYPE(qs_kind_type), POINTER              :: qs_kind_c
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rc
     INTEGER, INTENT(IN)                      :: nderivative
     TYPE(semi_empirical_si_type), POINTER    :: store_int
@@ -1252,11 +1252,11 @@ MODULE qs_geminals
                                   qs_kind_c,rc,nderivative,error)
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       INTENT(OUT)                            :: intabc
-    TYPE(qs_kind_type), POINTER          :: qs_kind_a
+    TYPE(qs_kind_type), POINTER              :: qs_kind_a
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: ra
-    TYPE(qs_kind_type), POINTER          :: qs_kind_b
+    TYPE(qs_kind_type), POINTER              :: qs_kind_b
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rb
-    TYPE(qs_kind_type), POINTER          :: qs_kind_c
+    TYPE(qs_kind_type), POINTER              :: qs_kind_c
     REAL(KIND=dp), DIMENSION(3), INTENT(IN)  :: rc
     INTEGER, INTENT(IN)                      :: nderivative
     TYPE(cp_error_type), INTENT(inout)       :: error

@@ -14,14 +14,9 @@
 !> \version 1.0
 ! *****************************************************************************
 MODULE dft_plus_u
- USE qs_kind_types,                    ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set,&
-                                             set_qs_kind
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
-                                             get_atomic_kind_set,&
-                                             set_atomic_kind
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE bibliography,                    ONLY: Dudarev1997,&
@@ -68,6 +63,10 @@ MODULE dft_plus_u
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE qs_scf_types,                    ONLY: qs_scf_env_type
   USE timings,                         ONLY: timeset,&
@@ -242,8 +241,6 @@ CONTAINS
     REAL(KIND=dp), ALLOCATABLE, &
       DIMENSION(:, :)                        :: q_eigvec, q_matrix, q_work
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: q_block, v_block
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -257,6 +254,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(qs_scf_env_type), POINTER           :: scf_env
 
@@ -943,8 +942,6 @@ CONTAINS
                                                 s_block, v_block
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), POINTER          :: kind_a
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p, matrix_s
@@ -954,6 +951,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
 
     CALL timeset(routineN,handle)
@@ -1626,8 +1625,6 @@ CONTAINS
       DIMENSION(:, :)                        :: q_ii
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: h_block, p_block, s_block, &
                                                 w_block
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(cp_dbcsr_iterator)                  :: iter
@@ -1639,6 +1636,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
 
     CALL timeset(routineN,handle)

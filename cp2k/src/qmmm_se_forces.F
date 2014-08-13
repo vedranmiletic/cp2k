@@ -11,8 +11,6 @@
 MODULE qmmm_se_forces
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -33,6 +31,8 @@ MODULE qmmm_se_forces
   USE qmmm_util,                       ONLY: spherical_cutoff_factor
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_qmmm_types,                ONLY: qs_ks_qmmm_env_type
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE semi_empirical_int_arrays,       ONLY: se_orbital_pointer
@@ -102,13 +102,13 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: Forces_QM, p_block_a
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particles_qm
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_ks_qmmm_env_type), POINTER       :: ks_qmmm_env_loc
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(se_int_control_type)                :: se_int_control

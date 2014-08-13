@@ -22,8 +22,6 @@ MODULE almo_scf_special
                                              almo_objectM1_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -67,6 +65,7 @@ MODULE almo_scf_special
                                              set_qs_env
   USE qs_initial_guess,                ONLY: calculate_atomic_block_dm,&
                                              calculate_mopac_dm
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_create,&
                                              qs_ks_did_change,&
                                              qs_ks_update_qs_env
@@ -393,8 +392,6 @@ CONTAINS
     LOGICAL                                  :: has_unit_metric
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -403,6 +400,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_ks_env_type), POINTER            :: ks_env
     TYPE(section_vals_type), POINTER         :: input
 

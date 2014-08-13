@@ -9,8 +9,6 @@
 MODULE xc_pot_saop
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_allocate_matrix_set,&
                                              cp_dbcsr_copy,&
@@ -60,6 +58,8 @@ MODULE xc_pot_saop
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
   USE qs_integrate_potential,          ONLY: integrate_v_rspace
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_atom,                      ONLY: update_ks_atom
   USE qs_local_rho_types,              ONLY: local_rho_set_create,&
                                              local_rho_set_release,&
@@ -550,8 +550,6 @@ CONTAINS
       POINTER                                :: drho_h, drho_s, vxg
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_1d_r_p_type), DIMENSION(:), &
       POINTER                                :: mo_eigenvalues
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -563,6 +561,8 @@ CONTAINS
     TYPE(local_rho_type), POINTER            :: local_rho_set
     TYPE(mo_set_p_type), DIMENSION(:), &
       POINTER                                :: molecular_orbitals
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho_structure
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: dr_h, dr_s, r_h, r_s

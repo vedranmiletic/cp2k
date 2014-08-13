@@ -10,8 +10,6 @@ MODULE qs_dftb_parameters
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,set_qs_kind
   USE cp_control_types,                ONLY: dftb_control_type
   USE cp_files,                        ONLY: close_file,&
                                              get_unit_number,&
@@ -45,6 +43,9 @@ MODULE qs_dftb_parameters
   USE qs_dftb_utils,                   ONLY: allocate_dftb_atom_param,&
                                              get_dftb_atom_param,&
                                              set_dftb_atom_param
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE string_utilities,                ONLY: uppercase
 #include "./common/cp_common_uses.f90"
 

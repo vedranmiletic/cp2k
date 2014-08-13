@@ -7,8 +7,6 @@
 MODULE qs_gapw_densities
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cp_control_types,                ONLY: dft_control_type,&
                                              gapw_control_type
   USE cp_para_types,                   ONLY: cp_para_env_type
@@ -20,6 +18,8 @@ MODULE qs_gapw_densities
                                              qs_environment_type
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_local_rho_types,              ONLY: local_rho_type
   USE qs_rho0_ggrid,                   ONLY: put_rho0_on_grid
   USE qs_rho0_methods,                 ONLY: calculate_rho0_atom
@@ -59,16 +59,13 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle, ikind, ispin, istat, &
-                                                natom, nspins, &
-                                                output_unit
+                                                natom, nspins, output_unit
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, my_do_rho0, paw_atom
     REAL(dp)                                 :: rho0_h_tot, tot_rs_int
     REAL(dp), DIMENSION(:), POINTER          :: rho1_h_tot, rho1_s_tot
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -76,6 +73,8 @@ CONTAINS
     TYPE(grid_atom_type), POINTER            :: grid_atom
     TYPE(harmonics_atom_type), POINTER       :: harmonics
     TYPE(qs_charges_type), POINTER           :: qs_charges
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho0_atom_type), DIMENSION(:), &
       POINTER                                :: rho0_atom_set
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole

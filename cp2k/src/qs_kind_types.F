@@ -19,78 +19,21 @@
 ! *****************************************************************************
 MODULE qs_kind_types
 
-  USE basis_set_types,                 ONLY: &
-       allocate_geminal_basis_set, allocate_gto_basis_set, &
-       deallocate_geminal_basis_set, deallocate_gto_basis_set, &
-       geminal_basis_set_type, get_geminal_basis_set, get_gto_basis_set, &
-       gto_basis_set_type, init_aux_basis_set, init_orb_basis_set, &
-       read_geminal_basis_set, read_gto_basis_set, set_gto_basis_set, &
-       write_gto_basis_set, write_orb_basis_set
+  USE basis_set_types,                 ONLY: geminal_basis_set_type,&
+                                             gto_basis_set_type
   USE cp_control_types,                ONLY: dft_control_type,&
                                              qs_control_type
-  USE cp_output_handling,              ONLY: cp_print_key_finished_output,&
-                                             cp_print_key_unit_nr
   USE cp_para_types,                   ONLY: cp_para_env_type
-  USE external_potential_types,        ONLY: &
-       all_potential_type, allocate_potential, deallocate_potential, &
-       fist_potential_type, get_potential, gth_potential_type, &
-       init_potential, local_potential_type, read_potential, &
-       set_default_all_potential, set_potential, write_potential
   USE f77_blas
-  USE input_constants,                 ONLY: &
-       do_fist, do_method_am1, do_method_dftb, do_method_mndo, &
-       do_method_mndod, do_method_pdg, do_method_pm3, do_method_pm6, &
-       do_method_pnnl, do_method_rm1, do_method_scptb, do_qs, &
-       use_aux_basis_set, use_aux_fit_basis_set, use_lri_basis_set, &
-       use_orb_basis_set, use_ri_aux_basis_set, use_scp_basis_set
-  USE input_section_types,             ONLY: section_vals_get,&
-                                             section_vals_get_subs_vals,&
-                                             section_vals_type,&
-                                             section_vals_val_get
-  USE kinds,                           ONLY: default_string_length,&
-                                             dp
-  USE orbital_pointers,                ONLY: init_orbital_pointers,&
-                                             nco,&
-                                             ncoset
-  USE paw_proj_set_types,              ONLY: allocate_paw_proj_set,&
-                                             deallocate_paw_proj_set,&
-                                             get_paw_proj_set,&
-                                             paw_proj_set_type,&
-                                             projectors
-  USE periodic_table,                  ONLY: get_ptable_info
-  USE physcon,                         ONLY: bohr,&
-                                             evolt,&
-                                             massunit
+  USE input_section_types,             ONLY: section_vals_type
+  USE kinds,                           ONLY: dp
+  USE paw_proj_set_types,              ONLY: paw_proj_set_type
   USE qs_dftb_types,                   ONLY: qs_dftb_atom_type
-  USE qs_dftb_utils,                   ONLY: deallocate_dftb_atom_param,&
-                                             get_dftb_atom_param,&
-                                             write_dftb_atom_param
   USE qs_dispersion_types,             ONLY: qs_atom_dispersion_type
-  USE qs_grid_atom,                    ONLY: allocate_grid_atom,&
-                                             deallocate_grid_atom,&
-                                             grid_atom_type
-  USE qs_harmonics_atom,               ONLY: allocate_harmonics_atom,&
-                                             deallocate_harmonics_atom,&
-                                             harmonics_atom_type
-  USE scptb_types,                     ONLY: deallocate_scptb_parameter,&
-                                             get_scptb_parameter,&
-                                             scptb_parameter_type,&
-                                             write_scptb_parameter
-  USE semi_empirical_types,            ONLY: get_se_param,&
-                                             semi_empirical_create,&
-                                             semi_empirical_release,&
-                                             semi_empirical_type,&
-                                             write_se_param
-  USE semi_empirical_utils,            ONLY: init_se_param,&
-                                             se_param_set_default
-  USE shell_potential_types,           ONLY: shell_kind_type,&
-                                             shell_release,&
-                                             shell_retain
-  USE soft_basis_set,                  ONLY: create_soft_basis
-  USE string_utilities,                ONLY: uppercase
-  USE termination,                     ONLY: stop_program
-  USE timings,                         ONLY: timeset,&
-                                             timestop
+  USE qs_grid_atom,                    ONLY: grid_atom_type
+  USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE scptb_types,                     ONLY: scptb_parameter_type
+  USE semi_empirical_types,            ONLY: semi_empirical_type
 #include "./common/cp_common_uses.f90"
 
   IMPLICIT NONE
@@ -286,9 +229,10 @@ CONTAINS
     LOGICAL, OPTIONAL                        :: smear
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: u_ramping, u_minus_j_target, &
                                                 eps_u_ramping
-    LOGICAL, OPTIONAL                        :: init_u_ramping_each_scf, ghost
+    LOGICAL, OPTIONAL                        :: init_u_ramping_each_scf
     REAL(KIND=dp), DIMENSION(:, :), &
       OPTIONAL, POINTER                      :: reltmat
+    LOGICAL, OPTIONAL                        :: ghost
 
     STOP "qs_kind_types"
   END SUBROUTINE get_qs_kind
@@ -311,11 +255,12 @@ CONTAINS
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     INTEGER, INTENT(OUT), OPTIONAL :: maxatom, maxcgf, maxco, maxco_proj, &
-      maxgtop, maxgtops, maxlgto, maxlprj, &
-      maxnset, maxpgf, maxsgf, maxsgf_set, maxshell, &
-      ncgf, ncgf_aux, ncgf_ri_aux, npgf, nset, nsgf, nshell
-    LOGICAL, INTENT(OUT), OPTIONAL :: &
-      paw_atom_present, qm_atom_present, dft_plus_u_atom_present
+      maxgtop, maxgtops, maxlgto, maxlprj, maxnset, maxpgf, maxsgf, &
+      maxsgf_set, maxshell, ncgf, ncgf_aux, ncgf_ri_aux, npgf, nset, nsgf, &
+      nshell
+    LOGICAL, INTENT(OUT), OPTIONAL           :: paw_atom_present, &
+                                                qm_atom_present, &
+                                                dft_plus_u_atom_present
     INTEGER, INTENT(IN), OPTIONAL            :: maxder
     INTEGER, INTENT(OUT), OPTIONAL           :: maxlgem(2), max_ngrid_rad, &
                                                 max_sph_harm, maxg_iso_not0, &
@@ -336,7 +281,7 @@ CONTAINS
 !>                20.09.2002 adapted for pol/kg use, gtb
 ! *****************************************************************************
   SUBROUTINE init_qs_kind(qs_kind,para_env,force_env_section,error)
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: force_env_section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -401,7 +346,7 @@ CONTAINS
   SUBROUTINE read_qs_kind(qs_kind,kind_section,para_env,force_env_section,&
        no_fail, method_id, error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(section_vals_type), POINTER         :: kind_section
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: force_env_section
@@ -447,7 +392,7 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE check_qs_kind(qs_kind,dft_control,subsys_section,error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(dft_control_type), INTENT(IN)       :: dft_control
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -499,8 +444,10 @@ CONTAINS
     REAL(KIND=dp), INTENT(IN), OPTIONAL      :: u_minus_j
     REAL(KIND=dp), DIMENSION(:, :), &
       OPTIONAL, POINTER                      :: reltmat
-   TYPE(qs_dftb_atom_type), OPTIONAL, POINTER       :: dftb_parameter
-   TYPE(scptb_parameter_type), OPTIONAL, POINTER    :: scptb_parameter
+    TYPE(qs_dftb_atom_type), OPTIONAL, &
+      POINTER                                :: dftb_parameter
+    TYPE(scptb_parameter_type), OPTIONAL, &
+      POINTER                                :: scptb_parameter
     TYPE(cp_error_type), INTENT(inout), &
       OPTIONAL                               :: error
 
@@ -517,7 +464,7 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE write_qs_kind(qs_kind,output_unit,error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     INTEGER, INTENT(in)                      :: output_unit
     TYPE(cp_error_type), INTENT(inout)       :: error
 

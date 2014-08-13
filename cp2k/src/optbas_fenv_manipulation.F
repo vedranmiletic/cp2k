@@ -5,8 +5,8 @@
 MODULE optbas_fenv_manipulation
   USE admm_types,                      ONLY: admm_env_create,&
                                              admm_type
-  USE qs_kind_types,               ONLY: qs_kind_type
-  USE atomic_kind_types,               ONLY: atomic_kind_type, get_atomic_kind
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: gto_basis_set_type,&
                                              init_orb_basis_set
   USE cp_blacs_env,                    ONLY: cp_blacs_env_type
@@ -47,6 +47,7 @@ MODULE optbas_fenv_manipulation
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_interactions,                 ONLY: init_interaction_radii
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change,&
                                              qs_ks_update_qs_env
   USE qs_matrix_pools,                 ONLY: mpools_get
@@ -167,8 +168,6 @@ CONTAINS
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_fm_pool_p_type), DIMENSION(:), &
       POINTER                                :: ao_mo_fm_pools, &
                                                 ao_mo_fm_pools_aux_fit
@@ -177,6 +176,8 @@ CONTAINS
       POINTER                                :: mos, mos_aux_fit
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(section_vals_type), POINTER         :: dft_section
 
@@ -394,9 +395,9 @@ CONTAINS
     INTEGER                                  :: ibasis, ikind, jkind
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(dft_control_type), POINTER          :: dft_control
 
     CALL get_qs_env(qs_env=qs_env,dft_control=dft_control,&
          atomic_kind_set=atomic_kind_set, qs_kind_set=qs_kind_set,error=error)

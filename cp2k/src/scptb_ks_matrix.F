@@ -12,9 +12,6 @@ MODULE scptb_ks_matrix
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
@@ -77,6 +74,8 @@ MODULE scptb_ks_matrix
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integrate_potential,          ONLY: integrate_scp_rspace
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
@@ -146,8 +145,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: charges, dmcharge
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_p, matrix_s, &
                                                 mo_derivs
@@ -162,6 +159,8 @@ CONTAINS
       POINTER                                :: mo_array
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_control_type), POINTER        :: scptb_control
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
     TYPE(section_vals_type), POINTER         :: scf_section
@@ -362,8 +361,6 @@ CONTAINS
                                                 sblock
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -382,6 +379,8 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_control_type), POINTER        :: scptb_control
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
     TYPE(virial_type), POINTER               :: virial
@@ -833,8 +832,6 @@ CONTAINS
       DIMENSION(ndiis+1, ndiis+1)            :: bdiis
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p
@@ -843,6 +840,8 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scp_vector_p_type), &
       DIMENSION(ndiis)                       :: cres, cval
     TYPE(scp_vector_type), POINTER           :: cp, cpol, cself, cvec, cw
@@ -1163,8 +1162,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: cii, cij, coi, coj
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(particle_type), DIMENSION(:), &
@@ -1177,6 +1174,8 @@ CONTAINS
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
     TYPE(virial_type), POINTER               :: virial
 

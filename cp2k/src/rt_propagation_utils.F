@@ -10,9 +10,6 @@
 
 MODULE  rt_propagation_utils
 
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE cp_control_types,                ONLY: dft_control_type
@@ -48,6 +45,7 @@ MODULE  rt_propagation_utils
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_mo_io,                        ONLY: read_mo_set,&
                                              read_rt_mos_from_restart
   USE qs_mo_methods,                   ONLY: calculate_density_matrix
@@ -250,8 +248,6 @@ MODULE  rt_propagation_utils
     REAL(KIND=dp)                            :: alpha
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: p_rmpv, rho_old
     TYPE(cp_fm_p_type), DIMENSION(:), &
@@ -261,6 +257,8 @@ MODULE  rt_propagation_utils
       POINTER                                :: mo_array
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rt_prop_type), POINTER              :: rtp
     TYPE(section_vals_type), POINTER         :: dft_section, input
 

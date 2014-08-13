@@ -7,9 +7,6 @@
 !> \brief calculate the orbitals for a given atomic kind type
 ! *****************************************************************************
 MODULE atom_kind_orbitals
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE ai_onecenter,                    ONLY: sg_erfc
   USE atom_electronic_structure,       ONLY: calculate_atom
   USE atom_fit,                        ONLY: atom_fit_density
@@ -47,6 +44,8 @@ MODULE atom_kind_orbitals
   USE qs_grid_atom,                    ONLY: allocate_grid_atom,&
                                              create_grid_atom,&
                                              grid_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE rel_control_types,               ONLY: rel_control_type
 #include "./common/cp_common_uses.f90"
 

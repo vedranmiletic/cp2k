@@ -9,9 +9,6 @@
 !>      - adapted from core_ppl 
 ! *****************************************************************************
 MODULE kg_tnadd_mat
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE ai_overlap_ppl,                  ONLY: ppl_integral
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
@@ -35,6 +32,9 @@ MODULE kg_tnadd_mat
   USE particle_types,                  ONLY: get_particle_set,&
                                              particle_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&

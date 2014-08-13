@@ -14,8 +14,6 @@
 MODULE molecule_kind_types
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE colvar_types,                    ONLY: &
@@ -45,6 +43,8 @@ MODULE molecule_kind_types
   USE input_section_types,             ONLY: section_vals_type
   USE kinds,                           ONLY: default_string_length,&
                                              dp
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE shell_potential_types,           ONLY: shell_kind_type
   USE termination,                     ONLY: stop_program
   USE timings,                         ONLY: timeset,&
@@ -871,9 +871,9 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'num_ao_el_per_molecule', &
       routineP = moduleN//':'//routineN
 
-    INTEGER                                  :: iatom, imol, my_charge, n_ao, &
-                                                natom, nelectron, nmol_kind, &
-                                                nsgf, ikind
+    INTEGER                                  :: iatom, ikind, imol, &
+                                                my_charge, n_ao, natom, &
+                                                nelectron, nmol_kind, nsgf
     REAL(KIND=dp)                            :: zeff, zeff_correction
     TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), POINTER          :: atomic_kind

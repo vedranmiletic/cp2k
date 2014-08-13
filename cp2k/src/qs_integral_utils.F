@@ -11,14 +11,14 @@
 ! *****************************************************************************
 MODULE qs_integral_utils
 
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE input_constants,                 ONLY: use_aux_fit_basis_set,&
                                              use_orb_basis_set
   USE orbital_pointers,                ONLY: init_orbital_pointers
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
 #include "./common/cp_common_uses.f90"
 
   IMPLICIT NONE
@@ -175,8 +175,8 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: ikind
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: basis_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
 ! set up basis sets
 

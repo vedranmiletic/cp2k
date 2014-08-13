@@ -16,11 +16,7 @@ MODULE qs_interactions
 
   USE ao_util,                         ONLY: exp_radius
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: geminal_basis_set_type,&
                                              get_geminal_basis_set,&
                                              get_gto_basis_set,&
@@ -44,6 +40,9 @@ MODULE qs_interactions
   USE paw_proj_set_types,              ONLY: get_paw_proj_set,&
                                              paw_proj_set_type,&
                                              set_paw_proj_set
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE string_utilities,                ONLY: uppercase
   USE termination,                     ONLY: stop_program
   USE timings,                         ONLY: timeset,&
@@ -490,8 +489,8 @@ CONTAINS
 
     INTEGER                                  :: ikind, nkind
     REAL(KIND=dp)                            :: kind_radius
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     NULLIFY (orb_basis_set,qs_kind)
 

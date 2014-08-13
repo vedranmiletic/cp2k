@@ -14,9 +14,6 @@ MODULE distribution_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -59,6 +56,8 @@ MODULE distribution_methods
                                              molecule_kind_type
   USE molecule_types_new,              ONLY: molecule_type
   USE particle_types,                  ONLY: particle_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE termination,                     ONLY: stop_memory
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -566,10 +565,10 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER :: cluster_price, cost_model, group, handle, iatom, iatom_mol, &
-      iatom_one, imol, imolecule, imolecule_kind, iparticle_kind, ipcol, &
-      iprow, istat, iw, kind_a, mypcol, myprow, n, natom, natom_mol, &
+      iatom_one, ikind, imol, imolecule, imolecule_kind, iparticle_kind, &
+      ipcol, iprow, istat, iw, kind_a, mypcol, myprow, n, natom, natom_mol, &
       nclusters, nele, nmolecule, nmolecule_kind, nparticle_kind, npcol, &
-      nprow, nsgf, output_unit, ikind
+      nprow, nsgf, output_unit
     INTEGER, ALLOCATABLE, DIMENSION(:) :: cluster_list, cluster_prices, &
       col_ele, nparticle_local_col, nparticle_local_row, row_ele, work
     INTEGER, ALLOCATABLE, DIMENSION(:, :)    :: cost_ele_pair
@@ -1052,9 +1051,9 @@ CONTAINS
 
     CHARACTER(LEN=20)                        :: cost_model_used
     INTEGER :: cost_block_ab, cost_model, handle, iatom_a, iatom_b, &
-      iatom_mol_a, iatom_mol_b, imol_a, imol_b, imolecule_a, imolecule_b, &
-      imolecule_kind_a, imolecule_kind_b, iparticle, natom, natom_mol_a, &
-      natom_mol_b, nmolecule_kind, ikind
+      iatom_mol_a, iatom_mol_b, ikind, imol_a, imol_b, imolecule_a, &
+      imolecule_b, imolecule_kind_a, imolecule_kind_b, iparticle, natom, &
+      natom_mol_a, natom_mol_b, nmolecule_kind
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: lmax, nsgf
     INTEGER, DIMENSION(:), POINTER           :: lmax_basis, molecule_list_a, &
                                                 molecule_list_b

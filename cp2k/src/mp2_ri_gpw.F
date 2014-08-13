@@ -11,8 +11,6 @@
 MODULE mp2_ri_gpw
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_type
   USE bibliography,                    ONLY: DelBen2013,&
                                              cite_reference
@@ -79,9 +77,11 @@ MODULE mp2_ri_gpw
                                              REALSPACE,&
                                              pw_p_type
   USE qs_collocate_density,            ONLY: calculate_wavefunction
-  USE qs_environment_types,            ONLY: qs_environment_type,get_qs_env
+  USE qs_environment_types,            ONLY: get_qs_env,&
+                                             qs_environment_type
   USE qs_integrate_potential,          ONLY: integrate_pgf_product_rspace,&
                                              integrate_v_rspace
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
   USE realspace_grid_types,            ONLY: realspace_grid_desc_p_type,&
                                              realspace_grid_p_type,&
@@ -675,8 +675,6 @@ MODULE mp2_ri_gpw
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: I_tmp2, rpgfa, sphi_a, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env_L
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct
@@ -690,6 +688,8 @@ MODULE mp2_ri_gpw
       POINTER                                :: molecule_set
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &

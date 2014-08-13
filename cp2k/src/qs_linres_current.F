@@ -14,9 +14,6 @@
 ! *****************************************************************************
 MODULE qs_linres_current
 
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_p_type,&
                                              gto_basis_set_type
@@ -90,6 +87,9 @@ MODULE qs_linres_current
   USE qs_collocate_density,            ONLY: collocate_pgf_product_rspace
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_linres_atom_current,          ONLY: calculate_jrho_atom,&
                                              calculate_jrho_atom_coeff,&
                                              calculate_jrho_atom_rad
@@ -656,9 +656,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: jpabt_a, jpabt_b, jpabt_c, &
                                                 jpabt_d, workt
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: deltajp_a, deltajp_b, &
                                                 deltajp_c, deltajp_d, mat_a, &
@@ -680,6 +677,9 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &
@@ -1453,11 +1453,11 @@ CONTAINS
                                                 kbox, natms
     REAL(dp)                                 :: offset(3)
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: ratom
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
       CALL get_qs_env(qs_env=qs_env,&
            qs_kind_set=qs_kind_set,&
@@ -1552,11 +1552,11 @@ CONTAINS
       DIMENSION(:, :)                        :: atms_pnt, ratom
     REAL(kind=dp), DIMENSION(:, :, :), &
       POINTER                                :: grid_x, grid_y, grid_z
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
 !
 
@@ -1721,11 +1721,11 @@ CONTAINS
     REAL(kind=dp)                            :: box_center(3), &
                                                 box_center_wrap(3), &
                                                 box_size_guess, r(3)
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
       CALL timeset(routineN,handle)
 
@@ -1969,11 +1969,11 @@ CONTAINS
       DIMENSION(:, :)                        :: atms_pnt, ratom
     REAL(kind=dp), DIMENSION(:, :, :), &
       POINTER                                :: grid_x, grid_y, grid_z
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
       CALL timeset(routineN,handle)
 

@@ -12,11 +12,7 @@
 ! *****************************************************************************
 MODULE mp2_ri_libint
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type,&
                                              init_aux_basis_set
@@ -65,6 +61,9 @@ MODULE mp2_ri_libint
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE t_sh_p_s_c,                      ONLY: free_C0,&
                                              init
   USE termination,                     ONLY: stop_program
@@ -205,10 +204,10 @@ MODULE mp2_ri_libint
     INTEGER, DIMENSION(:, :), POINTER        :: first_sgfa, nl_a
     LOGICAL                                  :: failure
     REAL(dp), DIMENSION(:, :), POINTER       :: sphi_a
+    TYPE(gto_basis_set_type), POINTER        :: orb_basis_a
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: atom_kind
-    TYPE(gto_basis_set_type), POINTER        :: orb_basis_a
+    TYPE(qs_kind_type), POINTER              :: atom_kind
 
     failure = .FALSE.
 
@@ -558,8 +557,6 @@ MODULE mp2_ri_libint
                                                 sphi_c_ext, sphi_d_ext
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct_L
@@ -597,6 +594,8 @@ MODULE mp2_ri_libint
       DIMENSION(:)                           :: set_list_kl
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 

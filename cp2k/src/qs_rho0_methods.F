@@ -9,14 +9,9 @@ MODULE qs_rho0_methods
   USE ao_util,                         ONLY: exp_radius,&
                                              gaussint_sph,&
                                              trace_r_AxB
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set,&
-                                             set_qs_kind
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
-                                             get_atomic_kind_set,&
-                                             set_atomic_kind
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_control_types,                ONLY: dft_control_type,&
@@ -45,6 +40,9 @@ MODULE qs_rho0_methods
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type,&
+                                             set_qs_kind
   USE qs_local_rho_types,              ONLY: allocate_rhoz,&
                                              calculate_rhoz,&
                                              local_rho_type,&
@@ -381,8 +379,8 @@ MODULE qs_rho0_methods
 
     CHARACTER(LEN=default_string_length)     :: unit_str
     INTEGER :: handle, iat, iatom, ikind, l, l_rho1_max, laddg, lmaxg, maxl, &
-      maxnset, maxso, nat, natom, nchan_c, nchan_s, nr, nset, nsotot, &
-      output_unit, nkind
+      maxnset, maxso, nat, natom, nchan_c, nchan_s, nkind, nr, nset, nsotot, &
+      output_unit
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, my_tddft, paw_atom
     REAL(dp)                                 :: alpha_core, eps_Vrho0, &
@@ -391,13 +389,13 @@ MODULE qs_rho0_methods
     REAL(KIND=dp)                            :: zeff
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(grid_atom_type), POINTER            :: grid_atom
     TYPE(gto_basis_set_type), POINTER        :: orb_basis
     TYPE(harmonics_atom_type), POINTER       :: harmonics
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho0_atom_type), DIMENSION(:), &
       POINTER                                :: rho0_atom_set
     TYPE(rho0_mpole_type), POINTER           :: rho0_mpole

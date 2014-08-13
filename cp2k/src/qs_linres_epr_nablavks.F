@@ -12,8 +12,6 @@
 MODULE qs_linres_epr_nablavks
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_output_handling,              ONLY: cp_p_file,&
@@ -64,6 +62,8 @@ MODULE qs_linres_epr_nablavks
   USE qs_gapw_densities,               ONLY: prepare_gapw_den
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_methods,                   ONLY: calc_rho_tot_gspace
   USE qs_linres_types,                 ONLY: epr_env_type,&
                                              get_epr_env,&
@@ -123,7 +123,8 @@ CONTAINS
                                                 gth_gspace, ionode, &
                                                 make_soft, paw_atom
     REAL(KIND=dp) :: alpha, alpha_core, arg, charge, ehartree, exc, exp_rap, &
-      gapw_max_alpha, hard_value, soft_value, sqrt_alpha, sqrt_rap, hard_radius
+      gapw_max_alpha, hard_radius, hard_value, soft_value, sqrt_alpha, &
+      sqrt_rap
     REAL(KIND=dp), ALLOCATABLE, &
       DIMENSION(:, :)                        :: vh1_rad_h, vh1_rad_s
     REAL(KIND=dp), DIMENSION(3)              :: rap, ratom, roffset, rpoint
@@ -132,8 +133,6 @@ CONTAINS
     TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -155,6 +154,8 @@ CONTAINS
     TYPE(pw_poisson_type), POINTER           :: poisson_env
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(pw_type), POINTER                   :: pwx, pwy, pwz
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_p_type), DIMENSION(:, :), &
       POINTER                                :: nablavks_set
     TYPE(qs_rho_type), POINTER               :: rho

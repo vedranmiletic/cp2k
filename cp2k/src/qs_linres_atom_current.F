@@ -13,12 +13,8 @@
 !> \author MI
 ! *****************************************************************************
 MODULE qs_linres_atom_current
- USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_p_type,&
                                              gto_basis_set_type
@@ -43,6 +39,9 @@ MODULE qs_linres_atom_current
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_linres_op,                    ONLY: fac_vecp,&
                                              set_vecp,&
                                              set_vecp_rev
@@ -131,8 +130,6 @@ CONTAINS
     TYPE(alist_type), POINTER                :: alist_ac, alist_bc
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: mat_a, mat_b, mat_c, mat_d
     TYPE(cp_logger_type), POINTER            :: logger
@@ -150,6 +147,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all
     TYPE(oce_matrix_type), POINTER           :: oce
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: a_block, b_block, c_block, &
                                                 d_block, jp2_RARnu, jp_RARnu
@@ -597,8 +596,6 @@ CONTAINS
     REAL(dp), DIMENSION(:, :, :, :), POINTER :: my_CG_dxyz_asym
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(grid_atom_type), POINTER            :: grid_atom
@@ -608,6 +605,8 @@ CONTAINS
       POINTER                                :: jrho1_atom_set
     TYPE(jrho_atom_type), POINTER            :: jrho1_atom
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
 !
 !
@@ -1384,8 +1383,6 @@ CONTAINS
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: ratom
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -1396,6 +1393,8 @@ CONTAINS
     TYPE(jrho_atom_type), POINTER            :: jrho1_atom
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
 

@@ -13,9 +13,6 @@ MODULE qs_operators_ao
                                              diffop,&
                                              moment
   USE ai_os_rr,                        ONLY: os_rr_ovlp
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE block_p_types,                   ONLY: block_p_type
@@ -35,6 +32,9 @@ MODULE qs_operators_ao
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -94,9 +94,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: integral
     TYPE(cell_type), POINTER                 :: cell
@@ -111,6 +108,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 
@@ -474,9 +474,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: integral
     TYPE(cell_type), POINTER                 :: cell
@@ -491,6 +488,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 
@@ -879,9 +879,6 @@ CONTAINS
                                                 work, zeta, zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: difab
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: op_dip
     TYPE(cell_type), POINTER                 :: cell
@@ -894,6 +891,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 
@@ -1168,9 +1168,6 @@ CONTAINS
                                                 work, zeta, zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: mab
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: op_dip
     TYPE(cell_type), POINTER                 :: cell
@@ -1183,6 +1180,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 
@@ -1457,9 +1457,6 @@ CONTAINS
       POINTER                                :: mab, mab_tmp
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: difmab
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: op_dip
     TYPE(block_p_type), DIMENSION(:, :), &
@@ -1475,6 +1472,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 

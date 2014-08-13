@@ -9,9 +9,6 @@
 ! *****************************************************************************
 MODULE qs_ks_atom
   USE ao_util,                         ONLY: trace_r_AxB
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -29,6 +26,9 @@ MODULE qs_ks_atom
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -120,8 +120,6 @@ CONTAINS
     TYPE(alist_type), POINTER                :: alist_ac, alist_bc
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_2d_r_p_type), DIMENSION(:), &
       POINTER                                :: mat_h, mat_p
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -136,6 +134,8 @@ CONTAINS
     TYPE(oce_matrix_type), POINTER           :: oce
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho_atom_type), DIMENSION(:), &
       POINTER                                :: rho_atom
     TYPE(rho_atom_type), POINTER             :: rho_at

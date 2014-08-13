@@ -20,7 +20,6 @@ MODULE qs_loc_methods
                                              atomic_kind_type,&
                                              deallocate_atomic_kind_set,&
                                              set_atomic_kind
-  USE qs_kind_types,               ONLY:     qs_kind_type
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -86,6 +85,7 @@ MODULE qs_loc_methods
   USE qs_collocate_density,            ONLY: calculate_wavefunction
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_loc_types,                    ONLY: get_qs_loc_env,&
                                              localized_wfn_control_type,&
                                              qs_loc_env_new_type
@@ -945,8 +945,6 @@ CONTAINS
     LOGICAL                                  :: add_idir, add_spin, failure
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_subsys_type), POINTER            :: subsys
@@ -957,6 +955,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_p_type)                          :: wf_g, wf_r
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     CALL timeset(routineN,handle)

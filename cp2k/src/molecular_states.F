@@ -9,7 +9,6 @@
 ! *****************************************************************************
 MODULE molecular_states
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
   USE bibliography,                    ONLY: Hunt2003,&
                                              cite_reference
   USE cell_types,                      ONLY: cell_type
@@ -52,6 +51,7 @@ MODULE molecular_states
   USE qs_collocate_density,            ONLY: calculate_wavefunction
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE termination,                     ONLY: stop_memory
   USE timings,                         ONLY: timeset,&
                                              timestop
@@ -123,8 +123,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: eval_range
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct_tmp
     TYPE(cp_fm_type), POINTER                :: b, c, d, D_igk, e_vectors, &
@@ -135,6 +133,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL cite_reference(Hunt2003)
 

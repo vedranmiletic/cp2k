@@ -10,11 +10,7 @@
 MODULE qs_dftb_dispersion
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atprop_types,                    ONLY: atprop_array_init
   USE cp_control_types,                ONLY: dft_control_type,&
                                              dftb_control_type
@@ -33,6 +29,8 @@ MODULE qs_dftb_dispersion
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -130,8 +128,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: fdij, rij
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(dftb_control_type), POINTER         :: dftb_control
     TYPE(neighbor_list_iterator_p_type), &
@@ -147,6 +143,8 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(virial_type), POINTER               :: virial
 
     CALL timeset(routineN,handle)

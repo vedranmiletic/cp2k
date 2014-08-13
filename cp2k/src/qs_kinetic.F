@@ -19,8 +19,6 @@ MODULE qs_kinetic
   USE ai_kinetic,                      ONLY: kinetic
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_allocate_matrix_set,&
@@ -39,6 +37,7 @@ MODULE qs_kinetic
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integral_utils,               ONLY: basis_set_list_setup,&
                                              get_memory_usage
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              get_neighbor_list_set_p,&
                                              neighbor_list_iterate,&
@@ -137,8 +136,6 @@ CONTAINS
       POINTER                                :: dab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(gto_basis_set_p_type), &
       DIMENSION(:), POINTER                  :: basis_set_list
@@ -148,6 +145,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: nl_iterator
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(virial_type), POINTER               :: virial
 
      failure = .FALSE.

@@ -10,7 +10,6 @@
 ! *****************************************************************************
 MODULE mp2_gpw
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_blacs_env,                    ONLY: BLACS_GRID_SQUARE,&
                                              cp_blacs_env_create,&
@@ -93,6 +92,7 @@ MODULE mp2_gpw
                                              qs_environment_type
   USE qs_integrate_potential,          ONLY: integrate_v_rspace
   USE qs_interactions,                 ONLY: init_interaction_radii
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
   USE qs_neighbor_list_types,          ONLY: deallocate_neighbor_list_set,&
@@ -188,8 +188,6 @@ MODULE mp2_gpw
     TYPE(array_i1d_obj)                      :: row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_blacs_env_type), POINTER         :: blacs_env_sub
     TYPE(cp_dbcsr_p_type)                    :: mat_munu
@@ -219,6 +217,8 @@ MODULE mp2_gpw
     TYPE(pw_p_type)                          :: pot_g, rho_g, rho_r
     TYPE(pw_poisson_type), POINTER           :: poisson_env
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(task_list_type), POINTER            :: task_list_sub
 
     CALL timeset(routineN,handle)

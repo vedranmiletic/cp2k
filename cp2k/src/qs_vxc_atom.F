@@ -10,8 +10,6 @@
 MODULE qs_vxc_atom
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -34,6 +32,8 @@ MODULE qs_vxc_atom
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_linres_types,                 ONLY: nablavks_atom_type
   USE qs_p_env_types,                  ONLY: qs_p_env_type
   USE qs_rho_atom_types,               ONLY: get_rho_atom,&
@@ -91,8 +91,10 @@ CONTAINS
     CHARACTER(LEN=*), PARAMETER :: routineN = 'calculate_vxc_atom', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: bo(2), handle, ia, iat, iatom, idir, ikind, ir, ispin, istat, &
-      mepos, myfun, na, natom, nr, nspins, num_pe
+    INTEGER                                  :: bo(2), handle, ia, iat, &
+                                                iatom, idir, ikind, ir, &
+                                                ispin, istat, mepos, myfun, &
+                                                na, natom, nr, nspins, num_pe
     INTEGER, DIMENSION(2, 3)                 :: bounds
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: epr_xc, failure, gradient_f, &
@@ -107,14 +109,14 @@ CONTAINS
     REAL(dp), DIMENSION(:, :, :, :), POINTER :: drho_h, drho_s, vxg_h, vxg_s
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(grid_atom_type), POINTER            :: grid_atom
     TYPE(harmonics_atom_type), POINTER       :: harmonics
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: dr_h, dr_s, r_h, r_s
     TYPE(rho_atom_coeff), DIMENSION(:, :), &
@@ -474,8 +476,7 @@ CONTAINS
 
     INTEGER                                  :: atom, excitations, handle, &
                                                 iatom, ikind, ir, na, natom, &
-                                                nr, nspins, res_etype, &
-                                                stat
+                                                nr, nspins, res_etype, stat
     INTEGER, DIMENSION(2)                    :: local_loop_limit
     INTEGER, DIMENSION(2, 3)                 :: bounds
     INTEGER, DIMENSION(:), POINTER           :: atom_list
@@ -494,12 +495,12 @@ CONTAINS
                                                 drho_s, vxg_h, vxg_s
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(grid_atom_type), POINTER            :: grid_atom
     TYPE(harmonics_atom_type), POINTER       :: harmonics
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: dr1_h, dr1_s, dr_h, dr_s, &
                                                 r1_h, r1_s, r_h, r_s

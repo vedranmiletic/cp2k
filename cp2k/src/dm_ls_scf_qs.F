@@ -12,7 +12,6 @@
 ! *****************************************************************************
 MODULE dm_ls_scf_qs
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_cp2k_link,              ONLY: cp_dbcsr_alloc_block_from_nbl
   USE cp_dbcsr_interface,              ONLY: &
@@ -58,6 +57,7 @@ MODULE dm_ls_scf_qs
                                              set_qs_env
   USE qs_initial_guess,                ONLY: calculate_atomic_block_dm,&
                                              calculate_mopac_dm
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_create,&
                                              qs_ks_did_change,&
                                              qs_ks_update_qs_env
@@ -408,8 +408,6 @@ CONTAINS
     LOGICAL                                  :: has_unit_metric
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -418,6 +416,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_energy_type), POINTER            :: qs_energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_ks_env_type), POINTER            :: ks_env
 
     CALL timeset(routineN,handle)

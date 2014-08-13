@@ -13,10 +13,7 @@
 !> \author Mauro Del Ben
 ! *****************************************************************************
 MODULE mp2_optimize_ri_basis
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
+  USE atomic_kind_types,               ONLY: atomic_kind_type
   USE basis_set_types,                 ONLY: allocate_gto_basis_set,&
                                              deallocate_gto_basis_set,&
                                              gto_basis_set_type
@@ -50,6 +47,8 @@ MODULE mp2_optimize_ri_basis
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE termination,                     ONLY: stop_program
   USE timings,                         ONLY: timeset,&
@@ -155,8 +154,6 @@ MODULE mp2_optimize_ri_basis
                                                 Integ_MP2_AB, Integ_MP2_BB
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_error_type)                      :: error_sub
     TYPE(cp_logger_type), POINTER            :: logger, logger_sub
     TYPE(cp_para_env_type), POINTER          :: para_env_sub
@@ -165,6 +162,8 @@ MODULE mp2_optimize_ri_basis
     TYPE(hfx_basis_info_type)                :: RI_basis_info
     TYPE(hfx_basis_type), DIMENSION(:), &
       POINTER                                :: basis_S0, RI_basis_parameter
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
     failure=.FALSE.
@@ -1351,10 +1350,10 @@ MODULE mp2_optimize_ri_basis
     REAL(dp), DIMENSION(:, :), POINTER       :: sphi_a, zet
     REAL(dp), DIMENSION(:, :, :), POINTER    :: gcc
     REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: max_rel_dev, max_rel_dev_prev
+    TYPE(gto_basis_set_type), POINTER        :: orb_basis_a
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: atom_kind
-    TYPE(gto_basis_set_type), POINTER        :: orb_basis_a
+    TYPE(qs_kind_type), POINTER              :: atom_kind
 
     CALL timeset(routineN,handle)
     failure = .FALSE.

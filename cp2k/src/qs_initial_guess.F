@@ -13,9 +13,6 @@ MODULE qs_initial_guess
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -62,6 +59,9 @@ MODULE qs_initial_guess
   USE qs_dftb_utils,                   ONLY: get_dftb_atom_param
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change,&
                                              qs_ks_update_qs_env
   USE qs_mo_io,                        ONLY: read_mo_set,&
@@ -147,9 +147,6 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: col_blk_size, col_dist
     TYPE(atom_matrix_type), DIMENSION(:), &
       POINTER                                :: pmat
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -172,6 +169,9 @@ CONTAINS
       POINTER                                :: mo_array
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(scp_environment_type), POINTER      :: scp_env
     TYPE(section_vals_type), POINTER         :: dft_section, input, &
@@ -1025,8 +1025,8 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     TYPE(atom_matrix_type), ALLOCATABLE, &
       DIMENSION(:)                           :: pmat
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_dbcsr_iterator)                  :: iter
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     failure = .FALSE.
 

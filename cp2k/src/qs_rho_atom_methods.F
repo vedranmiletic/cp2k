@@ -5,11 +5,8 @@
 ! *****************************************************************************
 MODULE qs_rho_atom_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                           get_atomic_kind,&
-                                           get_atomic_kind_set
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_p_type,&
                                              gto_basis_set_type
@@ -41,6 +38,9 @@ MODULE qs_rho_atom_methods
                                              get_maxl_CG,&
                                              get_none0_cg_list,&
                                              harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_linres_types,                 ONLY: linres_control_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
@@ -521,8 +521,6 @@ MODULE qs_rho_atom_methods
     TYPE(alist_type), POINTER                :: alist_ac, alist_bc
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(gto_basis_set_p_type), &
@@ -535,6 +533,8 @@ MODULE qs_rho_atom_methods
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(oce_matrix_type), POINTER           :: oce
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho_atom_coeff), DIMENSION(:), &
       POINTER                                :: p_block_spin
     TYPE(rho_atom_type), DIMENSION(:), &
@@ -783,21 +783,21 @@ MODULE qs_rho_atom_methods
 
     INTEGER :: handle, ikind, il, iso, iso1, iso2, istat, l1, l1l2, l2, la, &
       lc1, lc2, lcleb, ll, llmax, lmax_sphere, lp, m1, m2, max_s_harm, &
-      max_s_set, maxl, maxlgto, maxs, mm, mp, na, nat, natom,  nr, &
-      nspins, quadrature
+      max_s_set, maxl, maxlgto, maxs, mm, mp, na, nat, natom, nr, nspins, &
+      quadrature
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, paw_atom
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: rga
     REAL(dp), DIMENSION(:, :, :), POINTER    :: my_CG
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(grid_atom_type), POINTER            :: grid_atom
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
     TYPE(harmonics_atom_type), POINTER       :: harmonics
     TYPE(linres_control_type), POINTER       :: linres_control
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(rho_atom_type), DIMENSION(:), &
       POINTER                                :: rho_atom_set
 
@@ -955,17 +955,16 @@ MODULE qs_rho_atom_methods
       routineP = moduleN//':'//routineN
 
     INTEGER :: bo(2), handle, iat, iatom, ikind, ispin, istat, j, &
-      max_iso_not0, mepos, nat, natom, nr, nsatbas, nsotot, nspins, &
-      num_pe
+      max_iso_not0, mepos, nat, natom, nr, nsatbas, nsotot, nspins, num_pe
     INTEGER, DIMENSION(:), POINTER           :: atom_list
     LOGICAL                                  :: failure, paw_atom
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(harmonics_atom_type), POINTER       :: harmonics
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 

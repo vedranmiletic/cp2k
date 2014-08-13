@@ -10,8 +10,6 @@
 !> \author JHU (03.2013)
 ! *****************************************************************************
 MODULE qs_scf_post_dftb
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
   USE cell_methods,                    ONLY: cell_type,&
@@ -53,6 +51,8 @@ MODULE qs_scf_post_dftb
   USE qs_dftb_utils,                   ONLY: get_dftb_atom_param
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
   USE qs_rho_types,                    ONLY: qs_rho_type
@@ -103,14 +103,14 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: charges
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(qs_dftb_atom_type), POINTER         :: dftb_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(section_vals_type), POINTER         :: input, moments_section, &
                                                 print_key, wfn_mix_section
@@ -355,8 +355,6 @@ CONTAINS
 
     INTEGER                                  :: ispin, nao, nmo, output_unit
     REAL(dp), DIMENSION(:), POINTER          :: mo_eigenvalues
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_fm_p_type), DIMENSION(:), &
@@ -369,6 +367,8 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: wfn_mix_section
 
     logger => cp_error_get_logger(error)

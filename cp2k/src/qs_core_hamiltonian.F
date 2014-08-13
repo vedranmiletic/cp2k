@@ -72,11 +72,7 @@
 !> \author Matthias Krack (14.09.2000,21.03.02)
 ! *****************************************************************************
 MODULE qs_core_hamiltonian
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
   USE core_ae,                         ONLY: build_core_ae
   USE core_ppl,                        ONLY: build_core_ppl
@@ -112,6 +108,8 @@ MODULE qs_core_hamiltonian
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_kinetic,                      ONLY: build_kinetic_matrix
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
   USE qs_oce_methods,                  ONLY: build_oce_matrices
@@ -164,8 +162,6 @@ CONTAINS
     REAL(KIND=dp)                            :: eps_filter, eps_fit, eps_ppnl
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), POINTER :: matrix_h, matrix_p, &
       matrix_s, matrix_s_aux_fit, matrix_s_aux_fit_vs_orb, matrix_t, matrix_w
     TYPE(cp_logger_type), POINTER            :: logger
@@ -184,6 +180,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(virial_type), POINTER               :: virial

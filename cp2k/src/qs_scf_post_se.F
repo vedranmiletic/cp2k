@@ -12,7 +12,6 @@
 ! *****************************************************************************
 MODULE qs_scf_post_se
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -68,6 +67,7 @@ MODULE qs_scf_post_se
                                              pw_p_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change,&
                                              qs_ks_update_qs_env
   USE qs_loc_methods,                  ONLY: qs_loc_driver
@@ -590,13 +590,13 @@ CPSourceFileRef,&
     LOGICAL                                  :: print_it, scp_nddo
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_type), POINTER             :: pscp
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scp_environment_type), POINTER      :: scp_env
     TYPE(section_vals_type), POINTER         :: print_key
 
@@ -886,8 +886,6 @@ CPSourceFileRef,&
     LOGICAL                                  :: failure
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv
@@ -901,6 +899,8 @@ CPSourceFileRef,&
     TYPE(particle_list_type), POINTER        :: particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(section_vals_type), POINTER         :: dft_section, input

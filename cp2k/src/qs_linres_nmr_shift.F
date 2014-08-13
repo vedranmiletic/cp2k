@@ -13,8 +13,6 @@
 MODULE qs_linres_nmr_shift
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -62,6 +60,8 @@ MODULE qs_linres_nmr_shift
                                              qs_environment_type
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_linres_nmr_epr_common_utils,  ONLY: mult_G_ov_G2_grid
   USE qs_linres_op,                    ONLY: fac_vecp,&
                                              set_vecp,&
@@ -298,8 +298,6 @@ CONTAINS
                                                 chemical_shift_nics_loc
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -311,6 +309,8 @@ CONTAINS
     TYPE(jrho_atom_type), POINTER            :: jrho1_atom
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
     !

@@ -8,9 +8,6 @@
 !> \author MI
 ! *****************************************************************************
 MODULE qs_linres_types
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -24,6 +21,8 @@ MODULE qs_linres_types
   USE kinds,                           ONLY: dp
   USE qs_grid_atom,                    ONLY: grid_atom_type
   USE qs_harmonics_atom,               ONLY: harmonics_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_loc_types,                    ONLY: qs_loc_env_new_type,&
                                              qs_loc_env_release
   USE qs_rho_atom_types,               ONLY: rho_atom_coeff,&
@@ -1592,9 +1591,9 @@ CONTAINS
     TYPE(nablavks_atom_type), DIMENSION(:), &
       POINTER                                :: nablavks_atom_set
     TYPE(atomic_kind_type), DIMENSION(:), &
-     POINTER                                 :: atomic_kind_set
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
-     POINTER                                 :: qs_kind_set
+      POINTER                                :: qs_kind_set
     INTEGER, INTENT(IN)                      :: nspins
     TYPE(cp_error_type), INTENT(inout), &
       OPTIONAL                               :: error

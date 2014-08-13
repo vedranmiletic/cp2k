@@ -17,8 +17,6 @@ MODULE qs_scf_post_gpw
   USE atom_kind_orbitals,              ONLY: calculate_atomic_density
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              get_cell,&
                                              pbc
@@ -120,6 +118,8 @@ MODULE qs_scf_post_gpw
                                              set_qs_env
   USE qs_epr_hyp,                      ONLY: qs_epr_hyp_calc
   USE qs_grid_atom,                    ONLY: grid_atom_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change,&
                                              qs_ks_update_qs_env
   USE qs_loc_methods,                  ONLY: qs_loc_driver
@@ -213,8 +213,6 @@ CONTAINS
     REAL(KIND=dp)                            :: gap, homo_lumo(2,2)
     REAL(KIND=dp), DIMENSION(:), POINTER     :: mo_eigenvalues
     TYPE(admm_type), POINTER                 :: admm_env
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_1d_r_p_type), DIMENSION(:), &
       POINTER                                :: occupied_evals, &
                                                 unoccupied_evals, &
@@ -241,6 +239,8 @@ CONTAINS
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_loc_env_new_type), POINTER       :: qs_loc_env_homo, &
                                                 qs_loc_env_lumo
     TYPE(qs_rho_type), POINTER               :: rho
@@ -1015,8 +1015,8 @@ CONTAINS
                                                 descriptionThisDip, iter
     COMPLEX(KIND=dp)                         :: zeta
     COMPLEX(KIND=dp), DIMENSION(3)           :: ggamma, zphase
-    INTEGER                                  :: handle, i, ispins, j, n_rep, &
-                                                reference, unit_nr, ikind
+    INTEGER                                  :: handle, i, ikind, ispins, j, &
+                                                n_rep, reference, unit_nr
     LOGICAL                                  :: do_berry, failure, &
                                                 first_time, ghost
     REAL(KIND=dp)                            :: charge_tot, theta, zeff, zwfc
@@ -1026,9 +1026,9 @@ CONTAINS
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
-    TYPE(section_vals_type), POINTER         :: print_key
-    TYPE(qs_kind_type), DIMENSION(:),&
+    TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
+    TYPE(section_vals_type), POINTER         :: print_key
 
     CALL timeset(routineN,handle)
 
@@ -1192,12 +1192,12 @@ CONTAINS
     LOGICAL                                  :: append_cube
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 
@@ -1281,12 +1281,12 @@ CONTAINS
     LOGICAL                                  :: append_cube
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 
@@ -2157,8 +2157,6 @@ CONTAINS
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv, matrix_s
@@ -2180,6 +2178,8 @@ CONTAINS
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(section_vals_type), POINTER         :: dft_section, input
@@ -2349,10 +2349,7 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: dr
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-   TYPE(atomic_kind_type), POINTER           :: atomic_kind
-   TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind
+    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv, matrix_s
@@ -2372,6 +2369,9 @@ CONTAINS
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(rho_atom_type), DIMENSION(:), &
       POINTER                                :: rho_atom_set

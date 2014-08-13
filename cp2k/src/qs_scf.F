@@ -42,7 +42,6 @@
 ! *****************************************************************************
 MODULE qs_scf
   USE atomic_kind_types,               ONLY: atomic_kind_type
-  USE qs_kind_types,               ONLY: qs_kind_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_copy,&
                                              cp_dbcsr_deallocate_matrix,&
@@ -95,6 +94,7 @@ MODULE qs_scf
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_methods,                   ONLY: qs_ks_did_change
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_mo_io,                        ONLY: write_mo_set
@@ -255,8 +255,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: res_val_3
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -270,6 +268,8 @@ CONTAINS
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(qs_charges_type), POINTER           :: qs_charges
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_ks_env_type), POINTER            :: ks_env
     TYPE(qs_rho_type), POINTER               :: rho, rho_xc
     TYPE(scf_control_type), POINTER          :: scf_control

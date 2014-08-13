@@ -10,7 +10,6 @@
 !> \author MK (23.01.2002)
 ! *****************************************************************************
 MODULE qs_environment_types
-  USE qs_kind_types,                   ONLY: qs_kind_type
   USE admm_types,                      ONLY: admm_env_release,&
                                              admm_type
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
@@ -121,6 +120,7 @@ MODULE qs_environment_types
                                              qs_energy_type
   USE qs_force_types,                  ONLY: deallocate_qs_force,&
                                              qs_force_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_ks_qmmm_types,                ONLY: qs_ks_qmmm_env_type,&
                                              qs_ks_qmmm_release,&
                                              qs_ks_qmmm_retain

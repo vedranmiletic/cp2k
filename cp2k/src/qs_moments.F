@@ -15,12 +15,8 @@ MODULE qs_moments
   USE ai_moments,                      ONLY: contract_cossin,&
                                              cossin,&
                                              moment
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
+                                             get_atomic_kind
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE block_p_types,                   ONLY: block_p_type
@@ -66,6 +62,9 @@ MODULE qs_moments
                                              debye
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
@@ -134,9 +133,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: mint
     TYPE(cell_type), POINTER                 :: cell
@@ -151,6 +147,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     IF ( nmoments < 1 ) RETURN
 
@@ -397,9 +396,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: mint
     TYPE(cell_type), POINTER                 :: cell
@@ -414,6 +410,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     IF ( nmoments < 1 ) RETURN
 
@@ -654,9 +653,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
                                                 zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(gto_basis_set_p_type), &
       DIMENSION(:), POINTER                  :: basis_set_list
@@ -667,6 +663,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 
@@ -833,10 +832,10 @@ CONTAINS
     COMPLEX(dp)                              :: xphase(3), zdet, zdeta, &
                                                 zi(3), zij(3,3), zijk(3,3,3), &
                                                 zijkl(3,3,3,3), zphase(3), zz
-    INTEGER                                  :: handle, i, ia, idim, ispin, &
-                                                istat, ix, iy, iz, j, k, l, &
-                                                nao, nm, nmo, nmom, nmotot, &
-                                                tmp_dim, ikind
+    INTEGER                                  :: handle, i, ia, idim, ikind, &
+                                                ispin, istat, ix, iy, iz, j, &
+                                                k, l, nao, nm, nmo, nmom, &
+                                                nmotot, tmp_dim
     LOGICAL                                  :: failure, ghost, uniform
     REAL(dp)                                 :: charge, ci(3), cij(3,3), dd, &
                                                 occ, trace
@@ -844,8 +843,6 @@ CONTAINS
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: rmom
     REAL(dp), DIMENSION(3)                   :: kvec, rcc, ria
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(qs_kind_type), DIMENSION(:),&
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_cfm_p_type), DIMENSION(:), &
       POINTER                                :: eigrmat
@@ -865,6 +862,8 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(rt_prop_type), POINTER              :: rtp
 

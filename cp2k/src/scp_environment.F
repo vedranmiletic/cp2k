@@ -8,12 +8,8 @@
 !> \author CJM
 ! *****************************************************************************
 MODULE scp_environment
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                           get_atomic_kind,&
-                                           get_atomic_kind_set
+                                             get_atomic_kind
   USE cp_dbcsr_interface,              ONLY: &
        array_i1d_obj, array_new, array_nullify, array_release, &
        convert_offsets_to_sizes, cp_dbcsr_add_block_node, cp_dbcsr_copy, &
@@ -30,9 +26,11 @@ MODULE scp_environment
   USE kinds,                           ONLY: dp
   USE particle_types,                  ONLY: get_particle_set,&
                                              particle_type
-  USE periodic_table,                  ONLY: get_ptable_info
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE scp_energy_types,                ONLY: allocate_scp_energy,&
                                              scp_energy_type
   USE scp_environment_types,           ONLY: scp_environment_type,&
@@ -89,14 +87,14 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: col_blk_sizes, row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cp_dbcsr_type), POINTER             :: ks_scp, pscp
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(scp_energy_type), POINTER           :: energy
     TYPE(section_vals_type), POINTER         :: dft_section, input, &
                                                 qs_section, se_section

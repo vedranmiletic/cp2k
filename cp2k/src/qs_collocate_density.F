@@ -33,12 +33,6 @@
 ! *****************************************************************************
 MODULE qs_collocate_density
   USE ao_util,                         ONLY: exp_radius_very_extended
-  USE atomic_kind_types,                   ONLY: atomic_kind_type,&
-                                           get_atomic_kind,&
-                                           get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -111,6 +105,9 @@ MODULE qs_collocate_density
                                              pw_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_modify_pab_block,             ONLY: &
        FUNC_AB, FUNC_ADBmDAB, FUNC_ARB, FUNC_ARDBmDARB, FUNC_DABpADB, &
        FUNC_DADB, FUNC_DER, FUNC_DX, FUNC_DXDX, FUNC_DXDY, FUNC_DY, &
@@ -195,8 +192,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -205,6 +200,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_type), POINTER  :: auxbas_rs_desc
     TYPE(realspace_grid_type), POINTER       :: rs_rho
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind
@@ -707,8 +704,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab, sphi_a, work, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cube_info_type), DIMENSION(:), &
@@ -722,6 +717,8 @@ CONTAINS
     TYPE(pw_p_type), DIMENSION(:), POINTER   :: mgrid_gspace, mgrid_rspace
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho_struct
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
@@ -895,8 +892,8 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER :: atom_a, dir, group_size, handle, iatom, ierr, igrid_level, &
-      ikind, ipgf, iset, m1, maxco, my_pos, na1, natom, ncoa, nseta, &
-      offset, sgfa
+      ikind, ipgf, iset, m1, maxco, my_pos, na1, natom, ncoa, nseta, offset, &
+      sgfa
     INTEGER, DIMENSION(3)                    :: lb, location, tp, ub
     INTEGER, DIMENSION(:), POINTER           :: atom_list, la_max, la_min, &
                                                 npgfa, nsgfa
@@ -909,8 +906,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab, sphi_a, work, zeta
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -925,6 +920,8 @@ CONTAINS
     TYPE(pw_p_type), DIMENSION(:), POINTER   :: mgrid_gspace, mgrid_rspace
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &
@@ -1130,8 +1127,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -1141,6 +1136,8 @@ CONTAINS
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_p_type)                          :: rhoc_r
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(realspace_grid_desc_type), POINTER  :: auxbas_rs_desc
     TYPE(realspace_grid_type), POINTER       :: rs_rho
 
@@ -1711,9 +1708,6 @@ END SUBROUTINE calculate_rho_resp_all
                                                 zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: pabt, workt
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: deltap
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -1726,6 +1720,9 @@ END SUBROUTINE calculate_rho_resp_all
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &
@@ -2255,9 +2252,6 @@ END SUBROUTINE calculate_rho_resp_all
                                                 zetb
     REAL(KIND=dp), DIMENSION(:, :, :), &
       POINTER                                :: pabt, workt
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_type), POINTER             :: deltap
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -2271,6 +2265,9 @@ END SUBROUTINE calculate_rho_resp_all
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(realspace_grid_desc_p_type), &
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &
@@ -2654,9 +2651,9 @@ END SUBROUTINE calculate_rho_resp_all
     CHARACTER(LEN=*), PARAMETER :: routineN = 'calculate_wavefunction', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: dir, group, group_size, handle, i, iatom, igrid_level, ipgf, &
-      iset, maxco, maxsgf_set, my_basis_set_id, my_pos, na1, na2, nao, natom, &
-      ncoa, nseta, offset, sgfa, stat, ikind
+    INTEGER :: dir, group, group_size, handle, i, iatom, igrid_level, ikind, &
+      ipgf, iset, maxco, maxsgf_set, my_basis_set_id, my_pos, na1, na2, nao, &
+      natom, ncoa, nseta, offset, sgfa, stat
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: where_is_the_point
     INTEGER, DIMENSION(3)                    :: lb, location, tp, ub
     INTEGER, DIMENSION(:), POINTER           :: la_max, la_min, npgfa, nsgfa

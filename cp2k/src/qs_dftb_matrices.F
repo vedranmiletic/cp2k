@@ -12,9 +12,6 @@ MODULE qs_dftb_matrices
                                              get_atomic_kind,&
                                              get_atomic_kind_set,&
                                              is_hydrogen
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atprop_types,                    ONLY: atprop_array_init
   USE block_p_types,                   ONLY: block_p_type
   USE cp_control_types,                ONLY: dft_control_type,&
@@ -50,6 +47,9 @@ MODULE qs_dftb_matrices
                                              qs_environment_type,&
                                              set_qs_env
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_ks_types,                     ONLY: qs_ks_env_type
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type
@@ -133,8 +133,6 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(2:4)       :: dgblocks, dsblocks
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: gamma_matrix, matrix_h, &
@@ -156,6 +154,8 @@ CONTAINS
     TYPE(qs_energy_type), POINTER            :: energy
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
     TYPE(virial_type), POINTER               :: virial
 
@@ -635,8 +635,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: charges
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_p, matrix_s, &
                                                 mo_derivs
@@ -649,6 +647,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(qs_dftb_atom_type), POINTER         :: dftb_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: scf_section
 
     CALL timeset(routineN,handle)
@@ -792,8 +792,6 @@ CONTAINS
       POINTER                                :: dsblock1
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(2:10)      :: dsblocks
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -806,6 +804,8 @@ CONTAINS
     TYPE(qs_dftb_pairpot_type), &
       DIMENSION(:, :), POINTER               :: dftb_potential
     TYPE(qs_dftb_pairpot_type), POINTER      :: dftb_param_ij, dftb_param_ji
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 
@@ -1053,13 +1053,13 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(neighbor_list_set_p_type), &
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     NULLIFY(particle_set, sab_orb, atomic_kind_set)
 

@@ -18,7 +18,6 @@
 !> \author MI
 ! *****************************************************************************
 MODULE qs_linres_epr_utils
-  USE qs_kind_types,                   ONLY: qs_kind_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -44,6 +43,7 @@ MODULE qs_linres_epr_utils
                                              pw_release
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_linres_types,                 ONLY: deallocate_nablavks_atom_set,&
                                              epr_env_create,&
                                              epr_env_type,&
@@ -93,8 +93,6 @@ CONTAINS
     LOGICAL                                  :: failure, gapw
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -107,6 +105,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_matrix_pools_type), POINTER      :: mpools
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(section_vals_type), POINTER         :: lr_section

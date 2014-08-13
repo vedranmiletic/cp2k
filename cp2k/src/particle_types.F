@@ -17,8 +17,7 @@
 MODULE particle_types
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE basis_set_types,                 ONLY: get_gto_basis_set,&
-                                             gto_basis_set_p_type
+  USE basis_set_types,                 ONLY: gto_basis_set_p_type
   USE cell_methods,                    ONLY: cell_clone,&
                                              cell_create,&
                                              cell_release,&
@@ -206,10 +205,6 @@ CONTAINS
 
     CHARACTER(len=*), PARAMETER :: routineN = 'get_particle_set', &
       routineP = moduleN//':'//routineN
-
-    INTEGER                                  :: ikind, iparticle, isgf, &
-                                                nparticle, ns
-    LOGICAL                                  :: failure
 
     STOP "TODO:   get_particle_set"
    ! failure = .FALSE.

@@ -12,9 +12,6 @@ MODULE qs_loc_utils
 
   USE ai_moments,                      ONLY: contract_cossin,&
                                              cossin
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
                                              gto_basis_set_type
   USE block_p_types,                   ONLY: block_p_type
@@ -66,6 +63,9 @@ MODULE qs_loc_utils
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_loc_types,                    ONLY: get_qs_loc_env,&
                                              localized_wfn_control_create,&
                                              localized_wfn_control_release,&
@@ -746,9 +746,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: cosab, rpgfa, rpgfb, sinab, &
                                                 sphi_a, sphi_b, work, zeta, &
                                                 zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: op_cos, op_sin
     TYPE(cell_type), POINTER                 :: cell
@@ -764,6 +761,9 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
 
     CALL timeset(routineN,handle)
 

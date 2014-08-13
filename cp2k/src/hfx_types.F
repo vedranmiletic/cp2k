@@ -10,9 +10,6 @@
 !> \author Manuel Guidon
 ! *****************************************************************************
 MODULE hfx_types
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
@@ -63,6 +60,9 @@ MODULE hfx_types
   USE orbital_pointers,                ONLY: nco,&
                                              ncoset,&
                                              nso
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE string_utilities,                ONLY: compress
   USE t_c_g0,                          ONLY: free_C0
   USE timings,                         ONLY: timeset,&

@@ -10,14 +10,14 @@
 MODULE scp_nddo_utils
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_get_block_p,&
                                              cp_dbcsr_get_diag,&
                                              cp_dbcsr_get_info,&
                                              cp_dbcsr_set_diag,&
                                              cp_dbcsr_type
   USE kinds,                           ONLY: dp
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE semi_empirical_types,            ONLY: get_se_param,&
                                              semi_empirical_type
 #include "./common/cp_common_uses.f90"

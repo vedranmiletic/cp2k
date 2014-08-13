@@ -15,9 +15,6 @@ MODULE qs_oce_methods
 
   USE ai_overlap,                      ONLY: overlap
   USE ao_util,                         ONLY: exp_radius
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE block_p_types,                   ONLY: block_p_type
@@ -33,6 +30,9 @@ MODULE qs_oce_methods
   USE particle_types,                  ONLY: particle_type
   USE paw_proj_set_types,              ONLY: get_paw_proj_set,&
                                              paw_proj_set_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              neighbor_list_iterate,&
                                              neighbor_list_iterator_create,&
@@ -79,7 +79,7 @@ CONTAINS
 
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: oces
-    TYPE(qs_kind_type), POINTER          :: atom_ka, atom_kb
+    TYPE(qs_kind_type), POINTER              :: atom_ka, atom_kb
     REAL(dp), DIMENSION(3)                   :: rab
     INTEGER, INTENT(IN)                      :: nder
     INTEGER, DIMENSION(:), INTENT(OUT)       :: sgf_list
@@ -288,7 +288,7 @@ CONTAINS
 
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: oceh, oces
-    TYPE(qs_kind_type), POINTER          :: atom_ka
+    TYPE(qs_kind_type), POINTER              :: atom_ka
     INTEGER, DIMENSION(:), INTENT(OUT)       :: sgf_list
     INTEGER, INTENT(OUT)                     :: nsgf_cnt
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -413,7 +413,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rzetprj, sphi_a, zeta, &
                                                 zetb
-    TYPE(qs_kind_type), POINTER          :: at_a, at_b, qs_kind
     TYPE(block_p_type), DIMENSION(:), &
       POINTER                                :: oceh, oces
     TYPE(clist_type), POINTER                :: clist
@@ -421,6 +420,7 @@ CONTAINS
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: nl_iterator
     TYPE(paw_proj_set_type), POINTER         :: paw_proj_b
+    TYPE(qs_kind_type), POINTER              :: at_a, at_b, qs_kind
 
     failure = .FALSE.
     IF (calculate_forces) THEN

@@ -20,8 +20,6 @@ MODULE qs_overlap
                                              decontraction,&
                                              force_trace
   USE ai_overlap,                      ONLY: overlap_ab
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind_set
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
   USE basis_set_types,                 ONLY: gto_basis_set_p_type,&
@@ -48,6 +46,7 @@ MODULE qs_overlap
   USE qs_force_types,                  ONLY: qs_force_type
   USE qs_integral_utils,               ONLY: basis_set_list_setup,&
                                              get_memory_usage
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE qs_neighbor_list_types,          ONLY: get_iterator_info,&
                                              get_neighbor_list_set_p,&
                                              neighbor_list_iterate,&
@@ -161,8 +160,6 @@ CONTAINS
                                                 scon_a, scon_b, zeta, zetb
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(block_p_type), ALLOCATABLE, &
       DIMENSION(:)                           :: sint
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
@@ -175,6 +172,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: nl_iterator
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(virial_type), POINTER               :: virial
 
      failure = .FALSE.
@@ -504,14 +503,14 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: set_radius_a, set_radius_b
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: p_block, rpgfa, rpgfb, &
                                                 scon_a, scon_b, zeta, zetb
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(gto_basis_set_p_type), &
       DIMENSION(:), POINTER                  :: basis_set_list_a, &
                                                 basis_set_list_b
     TYPE(gto_basis_set_type), POINTER        :: basis_set_a, basis_set_b
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: nl_iterator
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(virial_type), POINTER               :: virial
 
      failure = .FALSE.

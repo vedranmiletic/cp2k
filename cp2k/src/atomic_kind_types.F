@@ -148,8 +148,7 @@ CONTAINS
     INTEGER, DIMENSION(:), OPTIONAL, POINTER :: atom_list
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: alpha_core_charge, &
                                                 ccore_charge, core_charge, &
-                                                core_charge_radius
-    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: rcov, rvdw
+                                                core_charge_radius, rcov, rvdw
     INTEGER, INTENT(OUT), OPTIONAL           :: z
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: zeff, qeff, apol, cpol, &
                                                 mm_radius
@@ -177,14 +176,15 @@ CONTAINS
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    INTEGER, INTENT(OUT), OPTIONAL :: maxatom, &
-      maxlppl, maxlppnl, maxpol, maxppnl, &
-      natom, nelectron, nset, nshell
+    INTEGER, DIMENSION(:), INTENT(OUT), &
+      OPTIONAL                               :: atom_of_kind, kind_of, &
+                                                natom_of_kind
+    INTEGER, INTENT(OUT), OPTIONAL           :: maxatom, maxlppl, maxlppnl, &
+                                                maxppnl, maxpol, natom, &
+                                                nelectron, nset, nshell
     LOGICAL, INTENT(OUT), OPTIONAL :: all_potential_present, &
       tnadd_potential_present, fist_potential_present, gth_potential_present, &
       shell_present, shell_adiabatic, shell_check_distance, damping_present
-    INTEGER, DIMENSION(:), INTENT(OUT), &
-      OPTIONAL                               :: atom_of_kind, kind_of, natom_of_kind
 
     STOP "atomic_kind_types"
   END SUBROUTINE get_atomic_kind_set

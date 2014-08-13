@@ -16,11 +16,7 @@
 ! *****************************************************************************
 MODULE se_fock_matrix_coulomb_ga
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type,&
@@ -56,6 +52,8 @@ MODULE se_fock_matrix_coulomb_ga
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE se_fock_matrix_integrals,        ONLY: &
        dfock2C, dfock2C_r3, dfock2_1el, dfock2_1el_r3, fock2C, fock2C_ew, &
        fock2C_r3, fock2_1el, fock2_1el_ew, fock2_1el_r3, &
@@ -167,8 +165,6 @@ CONTAINS
       pbuff_a, pbuff_b
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -179,6 +175,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(se_int_control_type)                :: se_int_control
     TYPE(se_taper_type), POINTER             :: se_taper
     TYPE(semi_empirical_control_type), &
@@ -631,8 +629,6 @@ CONTAINS
                                                 pa_block_a, pbuff_a
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -647,6 +643,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: se_section
     TYPE(semi_empirical_control_type), &
       POINTER                                :: se_control
@@ -1063,8 +1061,6 @@ CONTAINS
       pb_block_a, pbuff_a, pbuff_b
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -1073,6 +1069,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(se_int_control_type)                :: se_int_control
     TYPE(se_taper_type), POINTER             :: se_taper
     TYPE(semi_empirical_control_type), &
@@ -1488,8 +1486,6 @@ CONTAINS
       pbuff_a, pbuff_b
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -1504,6 +1500,8 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: se_section
     TYPE(semi_empirical_control_type), &
       POINTER                                :: se_control

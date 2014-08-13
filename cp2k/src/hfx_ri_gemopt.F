@@ -8,10 +8,6 @@
 !> \author JGH October 2009
 ! *****************************************************************************
 MODULE hfx_ri_gemopt
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind
-  USE qs_kind_types,               ONLY: qs_kind_type,&
-                                             get_qs_kind
   USE basis_set_types,                 ONLY: geminal_basis_set_type,&
                                              get_geminal_basis_set,&
                                              write_geminal_basis_set
@@ -30,6 +26,8 @@ MODULE hfx_ri_gemopt
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             qs_kind_type
   USE ri_environment_types,            ONLY: get_ri_env,&
                                              ri_environment_type,&
                                              ri_vector_set,&
@@ -185,9 +183,9 @@ CONTAINS
     REAL(KIND=dp)                            :: a, b, c
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: zet
+    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
     failure = .FALSE.
     NULLIFY(qs_kind_set)
@@ -275,9 +273,9 @@ CONTAINS
     REAL(KIND=dp)                            :: a, b, c
     REAL(KIND=dp), DIMENSION(:, :, :, :), &
       POINTER                                :: zet, zeth
+    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
     failure = .FALSE.
     NULLIFY(qs_kind_set)
@@ -371,9 +369,9 @@ CONTAINS
 
     INTEGER                                  :: ikind, nkind
     LOGICAL                                  :: noopt
+    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
 
     NULLIFY(qs_kind_set)
 
