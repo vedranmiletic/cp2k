@@ -12,7 +12,7 @@ MODULE scptb_utils
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
   USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind
+                                             get_qs_kind, set_qs_kind
   USE basis_set_types,                 ONLY: allocate_sto_basis_set,&
                                              create_gto_from_sto_basis,&
                                              deallocate_sto_basis_set,&
@@ -90,11 +90,10 @@ CONTAINS
     TYPE(scptb_parameter_type), POINTER      :: scptb_parameter
     TYPE(sto_basis_set_type), POINTER        :: sto_basis
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
 
     failure = .FALSE.
     output_unit = -1
-    NULLIFY(logger, atomic_kind)
+    NULLIFY(logger)
     logger => cp_error_get_logger(error)
     print_info = (BTEST(cp_print_key_should_output(logger%iter_info,print_section,&
          "KINDS/BASIS_SET",error=error),cp_p_file))
@@ -115,7 +114,6 @@ CONTAINS
 
     nkind  = SIZE(atomic_kind_set)
     DO ikind = 1, nkind
-      atomic_kind => atomic_kind_set(ikind)
       CALL get_atomic_kind(atomic_kind_set(ikind), name=iname)
       CALL uppercase(iname)
       NULLIFY(scptb_parameter)
@@ -140,7 +138,7 @@ CONTAINS
       !initialization
 
       IF (scptb_parameter%defined) THEN
-         CALL set_potential(potential=atomic_kind%all_potential,zeff=scptb_parameter%zeff,&
+         CALL set_potential(potential=atomic_kind_set(ikind)%all_potential,zeff=scptb_parameter%zeff,&
               zeff_correction=0.0_dp)
          ! basis set
          NULLIFY(sto_basis)
@@ -210,7 +208,7 @@ CONTAINS
 
       END IF
 
-      atomic_kind%scptb_parameter => scptb_parameter
+      CALL set_qs_kind(qs_kind_set(ikind), scptb_parameter=scptb_parameter)
 
     END DO
 

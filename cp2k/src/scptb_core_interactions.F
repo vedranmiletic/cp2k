@@ -13,6 +13,9 @@ MODULE scptb_core_interactions
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE atprop_types,                    ONLY: atprop_array_init
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -76,7 +79,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: force_ab, rij
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -115,7 +119,8 @@ CONTAINS
     END IF
 
     IF (.NOT. failure) THEN
-       CALL get_qs_env(qs_env=qs_env,sab_core=sab_core,atomic_kind_set=atomic_kind_set,error=error)
+       CALL get_qs_env(qs_env=qs_env,sab_core=sab_core, atomic_kind_set=atomic_kind_set,&
+                      qs_kind_set=qs_kind_set,error=error)
 
        nkind = SIZE(atomic_kind_set)
        ! Possibly compute forces
@@ -124,14 +129,13 @@ CONTAINS
           natom = SIZE (particle_set)
           ALLOCATE (atom_of_kind(natom),STAT=stat)
           CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-          CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,atom_of_kind=atom_of_kind)
+          CALL get_atomic_kind_set(atomic_kind_set,atom_of_kind=atom_of_kind)
        END IF
 
        ALLOCATE (scptb_kind_param(nkind),scptb_defined(nkind),STAT=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,scptb_parameter=scptb_kind_a)
+          CALL get_qs_kind(qs_kind_set(ikind),scptb_parameter=scptb_kind_a)
           scptb_kind_param(ikind)%scptb_param => scptb_kind_a
           CALL get_scptb_parameter(scptb_kind_a,defined=defined)
           scptb_defined(ikind)=defined

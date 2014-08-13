@@ -60,11 +60,11 @@ MODULE atomic_kind_types
   !USE qs_dftb_utils,                   ONLY: deallocate_dftb_atom_param,&
   !                                           get_dftb_atom_param,&
   !                                           write_dftb_atom_param
-  USE qs_dispersion_types,             ONLY: qs_atom_dispersion_type
-  USE scptb_types,                     ONLY: deallocate_scptb_parameter,&
-                                             get_scptb_parameter,&
-                                             scptb_parameter_type,&
-                                             write_scptb_parameter
+  !USE qs_dispersion_types,             ONLY: qs_atom_dispersion_type
+  !USE scptb_types,                     ONLY: deallocate_scptb_parameter,&
+  !                                           get_scptb_parameter,&
+  !                                           scptb_parameter_type,&
+  !                                           write_scptb_parameter
   USE semi_empirical_types,            ONLY: get_se_param,&
                                              semi_empirical_create,&
                                              semi_empirical_release,&
@@ -101,7 +101,7 @@ MODULE atomic_kind_types
      TYPE(semi_empirical_type), POINTER     :: se_parameter
      TYPE(semi_empirical_type), POINTER     :: scp_se_parameter
      !TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
-     TYPE(scptb_parameter_type), POINTER    :: scptb_parameter
+     !TYPE(scptb_parameter_type), POINTER    :: scptb_parameter
      !TYPE(paw_proj_set_type),  POINTER      :: paw_proj_set
      REAL(dp)                               :: max_rad_local   ! max GTO radius used in GAPW
      ! projectors construction
@@ -125,7 +125,7 @@ MODULE atomic_kind_types
      TYPE(shell_kind_type), POINTER         :: shell
      !LOGICAL                                :: no_optimize
      !
-     TYPE(qs_atom_dispersion_type), POINTER :: dispersion
+     !TYPE(qs_atom_dispersion_type), POINTER :: dispersion
      TYPE(damping_p_type), POINTER          :: damping
      ! relativistic kinetic energy correction matrix
   END TYPE atomic_kind_type
@@ -193,12 +193,12 @@ CONTAINS
        NULLIFY (atomic_kind_set(ikind)%se_parameter)
        NULLIFY (atomic_kind_set(ikind)%scp_se_parameter)
        !NULLIFY (atomic_kind_set(ikind)%dftb_parameter)
-       NULLIFY (atomic_kind_set(ikind)%scptb_parameter)
+       !NULLIFY (atomic_kind_set(ikind)%scptb_parameter)
        NULLIFY (atomic_kind_set(ikind)%atom_list)
        NULLIFY (atomic_kind_set(ikind)%elec_conf)
        !NULLIFY (atomic_kind_set(ikind)%paw_proj_set)
        NULLIFY (atomic_kind_set(ikind)%shell)
-       NULLIFY (atomic_kind_set(ikind)%dispersion)
+       !NULLIFY (atomic_kind_set(ikind)%dispersion)
        NULLIFY (atomic_kind_set(ikind)%damping)
        atomic_kind_set(ikind)%name = ""
        atomic_kind_set(ikind)%element_symbol = ""
@@ -268,9 +268,9 @@ CONTAINS
           !IF (ASSOCIATED(atomic_kind_set(ikind)%dftb_parameter)) THEN
           !   CALL deallocate_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,error)
           !END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%scptb_parameter)) THEN
-             CALL deallocate_scptb_parameter(atomic_kind_set(ikind)%scptb_parameter,error)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%scptb_parameter)) THEN
+          !   CALL deallocate_scptb_parameter(atomic_kind_set(ikind)%scptb_parameter,error)
+          !END IF
           !IF (ASSOCIATED(atomic_kind_set(ikind)%paw_proj_set)) THEN
           !   CALL deallocate_paw_proj_set(atomic_kind_set(ikind)%paw_proj_set,error)
           !END IF
@@ -294,10 +294,10 @@ CONTAINS
           !   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
           !END IF
 
-          IF (ASSOCIATED(atomic_kind_set(ikind)%dispersion)) THEN
-             DEALLOCATE (atomic_kind_set(ikind)%dispersion,STAT=stat)
-             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%dispersion)) THEN
+          !   DEALLOCATE (atomic_kind_set(ikind)%dispersion,STAT=stat)
+          !   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+          !END IF
           !IF (ASSOCIATED(atomic_kind_set(ikind)%addel)) THEN
           !   DEALLOCATE (atomic_kind_set(ikind)%addel,STAT=stat)
           !   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -412,7 +412,7 @@ CONTAINS
 !> \author MK (02.01.2002)
 ! *****************************************************************************
   SUBROUTINE get_atomic_kind(atomic_kind, all_potential, tnadd_potential, fist_potential,&
-       gth_potential, se_parameter, scp_se_parameter, scptb_parameter, &
+       gth_potential, se_parameter, scp_se_parameter, &
        element_symbol, name, mass, kind_number, natom, atom_list, &
        alpha_core_charge, ccore_charge, core_charge, alpha_scp, I_scp,&
        core_charge_radius, ncgf, rcov, rvdw, z, zeff, qeff, apol, cpol, mm_radius, &
@@ -420,7 +420,6 @@ CONTAINS
        qm_atom, max_rad_local, &
        gpw_type_forced, &
        lmax_rho0, ghost,shell, shell_active, damping, &
-       dispersion, &
        npgf)
 
     TYPE(atomic_kind_type)                   :: atomic_kind
@@ -436,8 +435,8 @@ CONTAINS
       POINTER                                :: se_parameter, scp_se_parameter
     !TYPE(qs_dftb_atom_type), OPTIONAL, &
     !  POINTER                                :: dftb_parameter
-    TYPE(scptb_parameter_type), OPTIONAL, &
-      POINTER                                :: scptb_parameter
+    !TYPE(scptb_parameter_type), OPTIONAL, &
+    !  POINTER                                :: scptb_parameter
     CHARACTER(LEN=2), INTENT(OUT), OPTIONAL  :: element_symbol
     CHARACTER(LEN=default_string_length), &
       INTENT(OUT), OPTIONAL                  :: name
@@ -463,8 +462,8 @@ CONTAINS
     TYPE(shell_kind_type), OPTIONAL, POINTER :: shell
     LOGICAL, INTENT(OUT), OPTIONAL           :: shell_active
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
-    TYPE(qs_atom_dispersion_type), &
-      OPTIONAL, POINTER                      :: dispersion
+    !TYPE(qs_atom_dispersion_type), &
+    !  OPTIONAL, POINTER                      :: dispersion
     INTEGER, INTENT(OUT), OPTIONAL           :: npgf
     !LOGICAL, INTENT(OUT), OPTIONAL           :: no_optimize
     !REAL(KIND=dp), DIMENSION(:, :), &
@@ -2633,7 +2632,7 @@ CONTAINS
   SUBROUTINE set_atomic_kind(atomic_kind,element_symbol,name,mass,kind_number,&
        natom,atom_list,elec_conf,qm_atom,&
        fist_potential,lmax_rho0,zeff,ghost,shell,&
-       shell_active,dispersion,damping,error)
+       shell_active,damping,error)
 
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     CHARACTER(LEN=*), INTENT(IN), OPTIONAL   :: element_symbol, name
@@ -2649,8 +2648,8 @@ CONTAINS
     LOGICAL, INTENT(IN), OPTIONAL            :: ghost
     TYPE(shell_kind_type), OPTIONAL, POINTER :: shell
     LOGICAL, INTENT(IN), OPTIONAL            :: shell_active
-    TYPE(qs_atom_dispersion_type), &
-      OPTIONAL, POINTER                      :: dispersion
+    !TYPE(qs_atom_dispersion_type), &
+    !  OPTIONAL, POINTER                      :: dispersion
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
     !REAL(KIND=dp), DIMENSION(:, :), &
     !  OPTIONAL, POINTER                      :: reltmat

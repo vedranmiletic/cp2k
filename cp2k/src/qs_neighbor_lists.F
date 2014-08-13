@@ -806,7 +806,7 @@ CONTAINS
        ! Build the neighbor lists for the Core term
        default_present = .FALSE.
        DO ikind = 1, nkind
-          CALL get_atomic_kind(atomic_kind_set(ikind),scptb_parameter=scptb_kind)
+          CALL get_qs_kind(qs_kind_set(ikind),scptb_parameter=scptb_kind)
           CALL get_scptb_parameter(scptb_kind,rcpair=c_radius(ikind),defined=default_present(ikind))
        END DO
        CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
@@ -827,7 +827,7 @@ CONTAINS
           CALL set_qs_env(qs_env=qs_env,sab_tbe=sab_tbe,error=error)
           ! Correction term for Gaussians
           DO ikind = 1, nkind
-             CALL get_atomic_kind(atomic_kind_set(ikind),scptb_parameter=scptb_kind)
+             CALL get_qs_kind(qs_kind_set(ikind),scptb_parameter=scptb_kind)
              CALL get_scptb_parameter(scptb_kind,ag=alpha)
              alpha = SQRT(alpha)
              c_radius(ikind) = 0.5_dp*SQRT(-LOG(3.5_dp*alpha**3*1.e-12_dp))/alpha

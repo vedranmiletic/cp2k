@@ -987,7 +987,7 @@ CONTAINS
       IF ( dispersion_env%type == xc_vdw_fun_pairpot ) THEN
         NULLIFY(pp_section)
         pp_section =>  section_vals_get_subs_vals(xc_section,"VDW_POTENTIAL%PAIR_POTENTIAL",error=error)
-        CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,pp_section,para_env,error)
+        CALL qs_dispersion_pairpot_init(atomic_kind_set,qs_kind_set,dispersion_env,pp_section,para_env,error)
       ELSE IF ( dispersion_env%type == xc_vdw_fun_nonloc ) THEN
         NULLIFY(nl_section)
         nl_section =>  section_vals_get_subs_vals(xc_section,"VDW_POTENTIAL%NON_LOCAL",error=error)
@@ -1018,7 +1018,7 @@ CONTAINS
          dispersion_env%exp_pre = 0._dp
          dispersion_env%scaling = 0._dp
          dispersion_env%parameter_file_name = scptb_control%dispersion_parameter_file
-         CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,para_env=para_env,error=error)
+         CALL qs_dispersion_pairpot_init(atomic_kind_set,qs_kind_set,dispersion_env,para_env=para_env,error=error)
       ELSE
          dispersion_env%type = xc_vdw_fun_none
       END IF
