@@ -103,7 +103,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: charges
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_p, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -126,7 +127,7 @@ CONTAINS
     ! Here we start with data that needs a postprocessing...
     IF (.NOT. failure) THEN
        NULLIFY(dft_control,input,rho,para_env,matrix_s,matrix_p)
-       CALL get_qs_env(qs_env,atomic_kind_set=atomic_kind_set,&
+       CALL get_qs_env(qs_env,atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
             dft_control=dft_control,input=input,rho=rho,&
             natom=natom,para_env=para_env,matrix_s=matrix_s,error=error)
        nspins = dft_control%nspins 
@@ -139,11 +140,11 @@ CONTAINS
        !
        nkind = SIZE(atomic_kind_set)
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,natom=nat,dftb_parameter=dftb_kind)
+          CALL get_atomic_kind(atomic_kind_set(ikind), natom=nat)
+          CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_kind)
           CALL get_dftb_atom_param(dftb_kind,zeff=zeff)
           DO iatom=1,nat
-             iat = atomic_kind%atom_list(iatom)
+             iat = atomic_kind_set(ikind)%atom_list(iatom)
              mcharge(iat) = zeff - SUM(charges(iat,1:nspins))
           END DO
        END DO
@@ -158,12 +159,12 @@ CONTAINS
                 WRITE (UNIT=unit_nr,FMT="(/,T2,A,T70,A)")&
                        " # Atom   Element   Kind        Atomic population"," Net charge"
                 DO ikind=1,nkind
-                   atomic_kind => atomic_kind_set(ikind)
-                   CALL get_atomic_kind(atomic_kind=atomic_kind,natom=nat,dftb_parameter=dftb_kind)
+                   CALL get_atomic_kind(atomic_kind_set(ikind),natom=nat)
+                   CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_kind)
                    CALL get_dftb_atom_param(dftb_kind,name=aname)
                    ana = ADJUSTR(TRIM(ADJUSTL(aname)))
                    DO iatom=1,nat
-                      iat = atomic_kind%atom_list(iatom)
+                      iat = atomic_kind_set(ikind)%atom_list(iatom)
                       WRITE (UNIT=unit_nr,&
                              FMT="(T2,I7,6X,A2,3X,I6,T39,F12.6,T69,F12.6)")&
                              iat,ana,ikind,charges(iat,1),mcharge(iat)
@@ -176,12 +177,12 @@ CONTAINS
                 WRITE (UNIT=unit_nr,FMT="(/,T2,A)")&
                        "# Atom  Element  Kind  Atomic population (alpha,beta)   Net charge  Spin moment"
                 DO ikind=1,nkind
-                   atomic_kind => atomic_kind_set(ikind)
-                   CALL get_atomic_kind(atomic_kind=atomic_kind,natom=nat,dftb_parameter=dftb_kind)
+                   CALL get_atomic_kind(atomic_kind_set(ikind),natom=nat)
+                   CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_kind)
                    CALL get_dftb_atom_param(dftb_kind,name=aname)
                    ana = ADJUSTR(TRIM(ADJUSTL(aname)))
                    DO iatom=1,nat
-                      iat = atomic_kind%atom_list(iatom)
+                      iat = atomic_kind_set(ikind)%atom_list(iatom)
                       WRITE (UNIT=unit_nr,&
                              FMT="(T2,I6,5X,A2,2X,I6,T29,4(1X,F12.6))")&
                              iat,ana,ikind,charges(iat,1:2),mcharge(iat),charges(iat,1)-charges(iat,2)
@@ -252,7 +253,6 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:), POINTER     :: ref_point
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
@@ -287,10 +287,9 @@ CONTAINS
        ggamma  = CMPLX(1.0_dp,0.0_dp,KIND=dp)
        dggamma = CMPLX(0.0_dp,0.0_dp,KIND=dp)
        DO ikind = 1, SIZE(atomic_kind_set)
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,natom=nat)
+          CALL get_atomic_kind(atomic_kind_set(ikind),natom=nat)
           DO i = 1, nat
-             iat = atomic_kind%atom_list(i)
+             iat = atomic_kind_set(ikind)%atom_list(i)
              ria = particle_set(iat)%r(:)
              ria = pbc(ria,cell)
              via = particle_set(iat)%v(:)

@@ -685,7 +685,7 @@ CONTAINS
     IF ( dft_control%qs_control%method == "DFTB" ) THEN
        NULLIFY (ewald_env,ewald_pw,dftb_potential)
        dftb_control => dft_control%qs_control%dftb_control
-       CALL qs_dftb_param_init (atomic_kind_set,dftb_control,dftb_potential,&
+       CALL qs_dftb_param_init (atomic_kind_set,qs_kind_set,dftb_control,dftb_potential,&
             subsys_section=subsys_section,para_env=para_env,error=error)
        CALL set_qs_env(qs_env,dftb_potential=dftb_potential,error=error)
        ! check for Ewald

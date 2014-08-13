@@ -133,7 +133,8 @@ CONTAINS
     TYPE(array_i1d_obj)                      :: row_blk_sizes
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(2:4)       :: dgblocks, dsblocks
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: gamma_matrix, matrix_h, &
@@ -179,10 +180,11 @@ CONTAINS
     NULLIFY(logger)
     logger => cp_error_get_logger(error)
 
-    NULLIFY (matrix_h,matrix_s,matrix_p,matrix_w,gamma_matrix,atomic_kind_set,sab_orb)
+    NULLIFY (matrix_h,matrix_s,matrix_p,matrix_w,gamma_matrix,atomic_kind_set,qs_kind_set,sab_orb)
     CALL get_qs_env(qs_env=qs_env,&
                     energy=energy,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     matrix_h=matrix_h,matrix_s=matrix_s,&
                     dft_control=dft_control,error=error)
     
@@ -297,20 +299,14 @@ CONTAINS
     DO WHILE (neighbor_list_iterate(nl_iterator)==0)
        CALL get_iterator_info(nl_iterator,ikind=ikind,jkind=jkind,&
             iatom=iatom,jatom=jatom,inode=inode,r=rij)
-
-       atomic_kind => atomic_kind_set(ikind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                            natom=natom,&
-                            dftb_parameter=dftb_kind_a)
+       CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom)
+       CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_kind_a)
        CALL get_dftb_atom_param(dftb_kind_a,&
               defined=defined,lmax=lmaxi,skself=skself,&
               eta=eta_a,natorb=natorb_a)
 
        IF (.NOT.defined .OR. natorb_a < 1) CYCLE
-
-       atomic_kind => atomic_kind_set(jkind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                            dftb_parameter=dftb_kind_b)
+       CALL get_qs_kind(qs_kind_set(jkind), dftb_parameter=dftb_kind_b)
        CALL get_dftb_atom_param(dftb_kind_b,&
               defined=defined,lmax=lmaxj,eta=eta_b,natorb=natorb_b)
 
@@ -639,7 +635,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: charges
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_h, matrix_p, matrix_s, &
                                                 mo_derivs
@@ -672,6 +669,7 @@ CONTAINS
        CALL get_qs_env(qs_env=qs_env,&
             dft_control=dft_control,&
             atomic_kind_set=atomic_kind_set,&
+            qs_kind_set=qs_kind_set,&
             matrix_h=matrix_h,&
             para_env=para_env,error=error)
 
@@ -702,12 +700,11 @@ CONTAINS
          CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
          nkind = SIZE(atomic_kind_set)
          DO ikind=1,nkind
-            atomic_kind => atomic_kind_set(ikind)
-            CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                               natom=natom,dftb_parameter=dftb_kind)
+            CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom)
+            CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_kind)
             CALL get_dftb_atom_param(dftb_kind,zeff=zeff)
             DO iatom=1,natom
-              atom_a = atomic_kind%atom_list(iatom)
+              atom_a = atomic_kind_set(ikind)%atom_list(iatom)
               mcharge(atom_a) = zeff - SUM(charges(atom_a,1:nspins))
             END DO
          END DO
@@ -795,7 +792,8 @@ CONTAINS
       POINTER                                :: dsblock1
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(block_p_type), DIMENSION(2:10)      :: dsblocks
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -833,10 +831,10 @@ CONTAINS
     ! Allocate the overlap matrix
     CALL setup_matrices(qs_env,nderivative,matrix_s,'OVERLAP',error)
 
-    NULLIFY ( atomic_kind_set, sab_orb)
+    NULLIFY ( atomic_kind_set, qs_kind_set, sab_orb)
 
     CALL get_qs_env(qs_env=qs_env,&
-                    atomic_kind_set=atomic_kind_set,&
+                    atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
                     dft_control=dft_control,error=error)
 
     dftb_control => dft_control%qs_control%dftb_control
@@ -854,19 +852,15 @@ CONTAINS
        CALL get_iterator_info(nl_iterator,ikind=ikind,jkind=jkind,&
             iatom=iatom,jatom=jatom,inode=inode,r=rij)
 
-       atomic_kind => atomic_kind_set(ikind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                            natom=natom,&
-                            dftb_parameter=dftb_kind_a)
+       CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom)
+       CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_kind_a)
        CALL get_dftb_atom_param(dftb_kind_a,&
               defined=defined,lmax=lmaxi,skself=skself,&
               natorb=natorb_a)
 
        IF (.NOT.defined .OR. natorb_a < 1) CYCLE
 
-       atomic_kind => atomic_kind_set(jkind)
-       CALL get_atomic_kind(atomic_kind=atomic_kind,&
-                            dftb_parameter=dftb_kind_b)
+       CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_kind_b)
        CALL get_dftb_atom_param(dftb_kind_b,&
               defined=defined,lmax=lmaxj,natorb=natorb_b)
 

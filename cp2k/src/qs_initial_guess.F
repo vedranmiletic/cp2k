@@ -1204,7 +1204,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
           CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
 
           IF ( dft_control%qs_control%dftb ) THEN
-             CALL get_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,&
+             CALL get_dftb_atom_param(qs_kind_set(ikind)%dftb_parameter,&
                   lmax=maxll,occupation=edftb)
              maxll = MIN(maxll,maxl)
              econf(0:maxl)=edftb(0:maxl)

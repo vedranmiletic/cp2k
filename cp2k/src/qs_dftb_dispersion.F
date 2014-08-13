@@ -12,6 +12,9 @@ MODULE qs_dftb_dispersion
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE atprop_types,                    ONLY: atprop_array_init
   USE cp_control_types,                ONLY: dft_control_type,&
                                              dftb_control_type
@@ -127,7 +130,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(3)              :: fdij, rij
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(dftb_control_type), POINTER         :: dftb_control
     TYPE(neighbor_list_iterator_p_type), &
@@ -152,6 +156,7 @@ CONTAINS
     CALL get_qs_env(qs_env=qs_env,&
                     energy=energy,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     virial=virial,&
                     dft_control=dft_control,error=error)
 
@@ -178,8 +183,7 @@ CONTAINS
        ALLOCATE (define_kind(nkind),rc_kind(nkind),STAT=istat)
        CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
        DO ikind=1,nkind
-          atomic_kind => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind,dftb_parameter=dftb_kind_a)
+          CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_kind_a)
           CALL get_dftb_atom_param(dftb_kind_a,defined=define_kind(ikind),rcdisp=rc_kind(ikind))
        END DO
 

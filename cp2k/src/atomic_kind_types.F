@@ -47,19 +47,19 @@ MODULE atomic_kind_types
   USE orbital_pointers,                ONLY: init_orbital_pointers,&
                                              nco,&
                                              ncoset
-  USE paw_proj_set_types,              ONLY: allocate_paw_proj_set,&
-                                             deallocate_paw_proj_set,&
-                                             get_paw_proj_set,&
-                                             paw_proj_set_type,&
-                                             projectors
+  !USE paw_proj_set_types,              ONLY: allocate_paw_proj_set,&
+  !                                           deallocate_paw_proj_set,&
+  !                                           get_paw_proj_set,&
+  !                                           paw_proj_set_type,&
+  !                                           projectors
   USE periodic_table,                  ONLY: get_ptable_info
   USE physcon,                         ONLY: bohr,&
                                              evolt,&
                                              massunit
-  USE qs_dftb_types,                   ONLY: qs_dftb_atom_type
-  USE qs_dftb_utils,                   ONLY: deallocate_dftb_atom_param,&
-                                             get_dftb_atom_param,&
-                                             write_dftb_atom_param
+  !USE qs_dftb_types,                   ONLY: qs_dftb_atom_type
+  !USE qs_dftb_utils,                   ONLY: deallocate_dftb_atom_param,&
+  !                                           get_dftb_atom_param,&
+  !                                           write_dftb_atom_param
   USE qs_dispersion_types,             ONLY: qs_atom_dispersion_type
   USE scptb_types,                     ONLY: deallocate_scptb_parameter,&
                                              get_scptb_parameter,&
@@ -100,9 +100,9 @@ MODULE atomic_kind_types
      TYPE(gth_potential_type), POINTER      :: gth_potential
      TYPE(semi_empirical_type), POINTER     :: se_parameter
      TYPE(semi_empirical_type), POINTER     :: scp_se_parameter
-     TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
+     !TYPE(qs_dftb_atom_type), POINTER       :: dftb_parameter
      TYPE(scptb_parameter_type), POINTER    :: scptb_parameter
-     TYPE(paw_proj_set_type),  POINTER      :: paw_proj_set
+     !TYPE(paw_proj_set_type),  POINTER      :: paw_proj_set
      REAL(dp)                               :: max_rad_local   ! max GTO radius used in GAPW
      ! projectors construction
      LOGICAL                                :: qm_atom         ! needs atomic rho1
@@ -192,11 +192,11 @@ CONTAINS
        NULLIFY (atomic_kind_set(ikind)%gth_potential)
        NULLIFY (atomic_kind_set(ikind)%se_parameter)
        NULLIFY (atomic_kind_set(ikind)%scp_se_parameter)
-       NULLIFY (atomic_kind_set(ikind)%dftb_parameter)
+       !NULLIFY (atomic_kind_set(ikind)%dftb_parameter)
        NULLIFY (atomic_kind_set(ikind)%scptb_parameter)
        NULLIFY (atomic_kind_set(ikind)%atom_list)
        NULLIFY (atomic_kind_set(ikind)%elec_conf)
-       NULLIFY (atomic_kind_set(ikind)%paw_proj_set)
+       !NULLIFY (atomic_kind_set(ikind)%paw_proj_set)
        NULLIFY (atomic_kind_set(ikind)%shell)
        NULLIFY (atomic_kind_set(ikind)%dispersion)
        NULLIFY (atomic_kind_set(ikind)%damping)
@@ -265,15 +265,15 @@ CONTAINS
           IF (ASSOCIATED(atomic_kind_set(ikind)%scp_se_parameter)) THEN
              CALL semi_empirical_release(atomic_kind_set(ikind)%scp_se_parameter,error)
           END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%dftb_parameter)) THEN
-             CALL deallocate_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,error)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%dftb_parameter)) THEN
+          !   CALL deallocate_dftb_atom_param(atomic_kind_set(ikind)%dftb_parameter,error)
+          !END IF
           IF (ASSOCIATED(atomic_kind_set(ikind)%scptb_parameter)) THEN
              CALL deallocate_scptb_parameter(atomic_kind_set(ikind)%scptb_parameter,error)
           END IF
-          IF (ASSOCIATED(atomic_kind_set(ikind)%paw_proj_set)) THEN
-             CALL deallocate_paw_proj_set(atomic_kind_set(ikind)%paw_proj_set,error)
-          END IF
+          !IF (ASSOCIATED(atomic_kind_set(ikind)%paw_proj_set)) THEN
+          !   CALL deallocate_paw_proj_set(atomic_kind_set(ikind)%paw_proj_set,error)
+          !END IF
 
           IF (ASSOCIATED(atomic_kind_set(ikind)%atom_list)) THEN
              DEALLOCATE (atomic_kind_set(ikind)%atom_list,STAT=stat)
@@ -412,18 +412,16 @@ CONTAINS
 !> \author MK (02.01.2002)
 ! *****************************************************************************
   SUBROUTINE get_atomic_kind(atomic_kind, all_potential, tnadd_potential, fist_potential,&
-       gth_potential, se_parameter, scp_se_parameter, dftb_parameter, scptb_parameter, &
+       gth_potential, se_parameter, scp_se_parameter, scptb_parameter, &
        element_symbol, name, mass, kind_number, natom, atom_list, &
-       alpha_core_charge, ccore_charge, core_charge, alpha_scp, I_scp, dftb3_param,&
-       core_charge_radius, ncgf, nsgf, rcov, rvdw, z, zeff, qeff, apol, cpol, mm_radius, &
-       soft_basis_set, elec_conf, hard_basis_set, paw_proj_set, softb, &
-       paw_atom,qm_atom, hard_radius, hard0_radius, max_rad_local, &
-       gpw_type_forced, max_iso_not0, &
-       ngrid_ang, ngrid_rad, lmax_rho0, ghost,shell, shell_active, damping, &
-       dft_plus_u_atom, l_of_dft_plus_u, u_minus_j, dispersion, &
-       npgf, bs_occupation, no_optimize, addel, laddel, naddel, orbitals, &
-       max_scf, eps_scf, smear, u_ramping, u_minus_j_target, eps_u_ramping, &
-       init_u_ramping_each_scf, reltmat)
+       alpha_core_charge, ccore_charge, core_charge, alpha_scp, I_scp,&
+       core_charge_radius, ncgf, rcov, rvdw, z, zeff, qeff, apol, cpol, mm_radius, &
+       elec_conf, softb, &
+       qm_atom, max_rad_local, &
+       gpw_type_forced, &
+       lmax_rho0, ghost,shell, shell_active, damping, &
+       dispersion, &
+       npgf)
 
     TYPE(atomic_kind_type)                   :: atomic_kind
     TYPE(all_potential_type), OPTIONAL, &
@@ -436,8 +434,8 @@ CONTAINS
       POINTER                                :: gth_potential
     TYPE(semi_empirical_type), OPTIONAL, &
       POINTER                                :: se_parameter, scp_se_parameter
-    TYPE(qs_dftb_atom_type), OPTIONAL, &
-      POINTER                                :: dftb_parameter
+    !TYPE(qs_dftb_atom_type), OPTIONAL, &
+    !  POINTER                                :: dftb_parameter
     TYPE(scptb_parameter_type), OPTIONAL, &
       POINTER                                :: scptb_parameter
     CHARACTER(LEN=2), INTENT(OUT), OPTIONAL  :: element_symbol
@@ -454,8 +452,8 @@ CONTAINS
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: zeff, qeff, apol, cpol, &
                                                 mm_radius
     INTEGER, DIMENSION(:), OPTIONAL, POINTER :: elec_conf
-    TYPE(paw_proj_set_type), OPTIONAL, &
-      POINTER                                :: paw_proj_set
+    !TYPE(paw_proj_set_type), OPTIONAL, &
+    !  POINTER                                :: paw_proj_set
     LOGICAL, INTENT(IN), OPTIONAL            :: softb
     LOGICAL, INTENT(OUT), OPTIONAL           :: qm_atom
     REAL(dp), INTENT(OUT), OPTIONAL          :: max_rad_local

@@ -12,6 +12,9 @@ MODULE qs_dftb_coulomb
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind,&
+                                             get_qs_kind_set
   USE atprop_types,                    ONLY: atprop_array_init,&
                                              atprop_type
   USE cell_methods,                    ONLY: cell_type,&
@@ -144,7 +147,8 @@ CONTAINS
                                                 mcout, pblock, sblock
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_iterator)                  :: iter
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
@@ -284,6 +288,7 @@ CONTAINS
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     force=force,para_env=para_env,error=error)
     CALL mp_sum(gmcharge(:,1),para_env%group)
 
@@ -300,8 +305,7 @@ CONTAINS
       CALL get_qs_env(qs_env=qs_env,&
                       local_particles=local_particles,error=error)
       DO ikind=1,SIZE(local_particles%n_el)
-        atomic_kind => atomic_kind_set(ikind)
-        CALL get_atomic_kind(atomic_kind=atomic_kind,dftb_parameter=dftb_kind)
+        CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_kind)
         CALL get_dftb_atom_param(dftb_kind,zeff=zeff)
         DO ia=1,local_particles%n_el(ikind)
           iatom=local_particles%list(ikind)%array(ia)

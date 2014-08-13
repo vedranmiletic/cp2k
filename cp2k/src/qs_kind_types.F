@@ -2788,7 +2788,7 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE set_qs_kind(qs_kind,elec_conf,paw_atom,qm_atom,hard_radius,hard0_radius,&
        soft_basis_set,hard_basis_set,lmax_rho0,zeff,&
-       no_optimize,dispersion,damping,u_minus_j,reltmat,error)
+       no_optimize,dispersion,damping,u_minus_j,reltmat,dftb_parameter,error)
 
     TYPE(qs_kind_type), INTENT(INOUT)        :: qs_kind
     INTEGER, DIMENSION(:), INTENT(IN), &
@@ -2810,6 +2810,7 @@ CONTAINS
     REAL(KIND=dp), INTENT(IN), OPTIONAL      :: u_minus_j
     REAL(KIND=dp), DIMENSION(:, :), &
       OPTIONAL, POINTER                      :: reltmat
+   TYPE(qs_dftb_atom_type), OPTIONAL, POINTER       :: dftb_parameter
     TYPE(cp_error_type), INTENT(inout), &
       OPTIONAL                               :: error
 
