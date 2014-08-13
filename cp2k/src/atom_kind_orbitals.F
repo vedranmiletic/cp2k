@@ -486,7 +486,7 @@ CONTAINS
       END DO
     END IF
 
-    IF ( atomic_kind%ghost ) THEN
+    IF ( qs_kind%ghost ) THEN
       nelem = 0
       ncore = 0
       ncalc = 0
@@ -590,10 +590,11 @@ CONTAINS
 !> \param confine ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE calculate_atomic_density (density,atomic_kind,ngto,iunit,allelectron,confine,error)
+  SUBROUTINE calculate_atomic_density (density,atomic_kind,qs_kind,ngto,iunit,allelectron,confine,error)
     REAL(KIND=dp), DIMENSION(:, :), &
       INTENT(INOUT)                          :: density
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     INTEGER, INTENT(IN)                      :: ngto
     INTEGER, INTENT(IN), OPTIONAL            :: iunit
     LOGICAL, INTENT(IN), OPTIONAL            :: allelectron, confine
@@ -923,7 +924,7 @@ CONTAINS
       ncalc = nelem - ncore
     END IF
 
-    IF ( atomic_kind%ghost ) THEN
+    IF ( qs_kind%ghost ) THEN
       nelem = 0
       ncore = 0
       ncalc = 0
@@ -1243,7 +1244,7 @@ CONTAINS
        END DO
        ncalc = nelem - ncore
 
-       IF ( atomic_kind%ghost ) THEN
+       IF ( qs_kind%ghost ) THEN
           nelem = 0
           ncore = 0
           ncalc = 0

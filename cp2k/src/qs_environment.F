@@ -742,7 +742,8 @@ CONTAINS
 
     !   *** Initialize the spherical harmonics and ***
     !   *** the orbital transformation matrices    ***
-    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxlgto,maxlppl=maxlppl,maxlppnl=maxlppnl)
+    CALL get_atomic_kind_set(atomic_kind_set, maxlppl=maxlppl,maxlppnl=maxlppnl)
+    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxlgto)
 
     lmax_sphere = dft_control%qs_control%gapw_control%lmax_sphere
     IF(lmax_sphere .LT.0) THEN
@@ -1300,7 +1301,6 @@ CONTAINS
       CALL get_atomic_kind_set(atomic_kind_set, nelectron=nelectron)
       CALL get_qs_kind_set(qs_kind_set,&
                            nsgf=n_ao_aux_fit,&
-                           nelectron=nelectron,&
                            basis_set_id=use_aux_fit_basis_set)
       ALLOCATE (mos_aux_fit(dft_control%nspins),STAT=istat)
       CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
@@ -1354,7 +1354,7 @@ CONTAINS
     CALL write_molecule_kind_set(molecule_kind_set,subsys_section,error)
 
     ! Print the total number of kinds, atoms, basis functions etc.
-    CALL write_total_numbers(qs_kind_set,particle_set,qs_env%input,error)
+    CALL write_total_numbers(atomic_kind_set, qs_kind_set,particle_set,qs_env%input,error)
 
     ! Print the atomic coordinates
     CALL write_qs_particle_coordinates(particle_set,subsys_section,label="QUICKSTEP",error=error)
@@ -1397,8 +1397,10 @@ CONTAINS
 !> \param error ...
 !> \author Creation (06.10.2000)
 ! *****************************************************************************
-  SUBROUTINE write_total_numbers(qs_kind_set,particle_set,force_env_section,error)
+  SUBROUTINE write_total_numbers(atomic_kind_set,qs_kind_set,particle_set,force_env_section,error)
 
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(particle_type), DIMENSION(:), &
@@ -1424,10 +1426,11 @@ CONTAINS
        natom = SIZE(particle_set)
        nkind = SIZE(qs_kind_set)
 
+       CALL get_atomic_kind_set(atomic_kind_set,&
+                            maxlppl=maxlppl,&
+                            maxlppnl=maxlppnl)
        CALL get_qs_kind_set(qs_kind_set,&
                                 maxlgto=maxlgto,&
-                                maxlppl=maxlppl,&
-                                maxlppnl=maxlppnl,&
                                 ncgf=ncgf,&
                                 npgf=npgf,&
                                 nset=nset,&

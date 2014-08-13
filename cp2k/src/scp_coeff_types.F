@@ -10,6 +10,9 @@
 !> \author CJM
 ! *****************************************************************************
 MODULE scp_coeff_types
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
   USE qs_kind_types,               ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
@@ -409,12 +412,13 @@ CONTAINS
 !> \param copy_in ...
 !> \param error ...
 ! *****************************************************************************
-  SUBROUTINE create_replicated_coeff ( rep_coeff, qs_kind_set, &
+  SUBROUTINE create_replicated_coeff ( rep_coeff, atomic_kind_set, qs_kind_set, &
                                       local_particles, aux_coeff_set, para_env, &
                                       copy_type_id, copy_in, error )
 
     REAL(dp), DIMENSION(:, :), POINTER       :: rep_coeff
-    TYPE(qs_kind_type), POINTER          :: qs_kind_set( : )
+    TYPE(atomic_kind_type), POINTER          :: atomic_kind_set( : )
+    TYPE(qs_kind_type), POINTER              :: qs_kind_set( : )
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(aux_coeff_set_type), POINTER        :: aux_coeff_set
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -445,8 +449,8 @@ CONTAINS
   END IF
 
 ! Getting dimensions of the replicated coeff array
-  CALL get_qs_kind_set ( qs_kind_set, maxgtops=maxgtops,  &
-                             basis_set_id=use_aux_basis_set, natom=natoms )
+  CALL get_atomic_kind_set(atomic_kind_set, natom=natoms)
+  CALL get_qs_kind_set ( qs_kind_set, maxgtops=maxgtops, basis_set_id=use_aux_basis_set)
 
 ! Allocating the pointer: MAXGTOPS is the maximum number of spherical orbitals in a set * number of sets
   ALLOCATE(rep_coeff ( natoms, maxgtops ), stat=stat)

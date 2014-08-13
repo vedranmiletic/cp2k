@@ -571,9 +571,8 @@ MODULE qs_rho_atom_methods
       NULLIFY(p_block_spin(ispin)%r_coef)
     END DO
 
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                             maxsgf=max_nsgf,&
-                             maxgtops=max_gau,natom=natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
+    CALL get_qs_kind_set(qs_kind_set, maxsgf=max_nsgf, maxgtops=max_gau)
 
     ALLOCATE (PC1(max_nsgf*max_gau),CPC(max_gau*max_gau),p_matrix(max_nsgf,max_nsgf),&
               STAT=istat)
@@ -813,7 +812,8 @@ MODULE qs_rho_atom_methods
 
     CALL get_qs_env(qs_env=qs_env, qs_kind_set=qs_kind_set, atomic_kind_set=atomic_kind_set,&
                     dft_control=dft_control,linres_control=linres_control,error=error)
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,maxlgto=maxlgto,natom=natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
+    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxlgto)
 
     nspins = dft_control%nspins
 
@@ -976,8 +976,7 @@ MODULE qs_rho_atom_methods
                     atomic_kind_set=atomic_kind_set,&
                     para_env=para_env,error=error)
 
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                             natom = natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
 
     nspins = qs_env%dft_control%nspins
 

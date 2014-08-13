@@ -686,9 +686,8 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
                 CALL get_atomic_kind(atomic_kind=atomic_kind,&
                                      natom=natom,&
                                      atom_list=atom_list,&
-                                     z=z, zeff=zeff,&
-                                     elec_conf=elec_conf)
-                CALL get_qs_kind(qs_kind, nsgf=nsgf, orb_basis_set=orb_basis_set)
+                                     z=z, zeff=zeff)
+                CALL get_qs_kind(qs_kind, nsgf=nsgf,elec_conf=elec_conf, orb_basis_set=orb_basis_set)
                 nelec_kind(ikind) = SUM(elec_conf)
              ENDDO
              CALL sort(nelec_kind,size_atomic_kind_set,sort_kind)
@@ -1209,14 +1208,14 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
              maxll = MIN(maxll,maxl)
              econf(0:maxl)=edftb(0:maxl)
           ELSEIF (ASSOCIATED(all_potential)) THEN
-             CALL get_atomic_kind(atomic_kind_set(ikind),elec_conf=elec_conf, z=z, zeff=zeff)
-             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf)
+             CALL get_atomic_kind(atomic_kind_set(ikind), z=z, zeff=zeff)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)
           ELSE IF (ASSOCIATED(gth_potential)) THEN
-             CALL get_atomic_kind(atomic_kind_set(ikind),elec_conf=elec_conf, z=z, zeff=zeff)
-             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf)
+             CALL get_atomic_kind(atomic_kind_set(ikind), z=z, zeff=zeff)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)

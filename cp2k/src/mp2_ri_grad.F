@@ -374,7 +374,7 @@ MODULE mp2_ri_grad
       wf_vector=0.0_dp
       wf_vector(LLL)=1.0_dp
       ! pseudo psi_L
-      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
+      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, atomic_kind_set,&
                                   qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=wf_vector,&
@@ -584,7 +584,7 @@ MODULE mp2_ri_grad
         CALL timeset(routineN//"_Virial",handle3)
         wf_vector=0.0_dp
         wf_vector(:)=-2.0_dp*G_PQ_local(:,L_counter)
-        CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
+        CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, atomic_kind_set, &
                                     qs_kind_set,cell,dft_control,particle_set, &
                                     pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                     external_vector=wf_vector,&

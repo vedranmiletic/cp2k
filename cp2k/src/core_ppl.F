@@ -162,8 +162,8 @@ CONTAINS
 
     maxder = ncoset(nder)
 
-    CALL get_qs_kind_set(qs_kind_set, maxco=maxco,maxlgto=maxlgto,&
-                         maxlppl=maxlppl,maxsgf=maxsgf,maxnset=maxnset)
+    CALL get_atomic_kind_set(atomic_kind_set,maxlppl=maxlppl)
+    CALL get_qs_kind_set(qs_kind_set, maxco=maxco,maxlgto=maxlgto, maxsgf=maxsgf,maxnset=maxnset)
 
     maxl = MAX(maxlgto,maxlppl)
     CALL init_orbital_pointers(2*maxl+2*nder+1)

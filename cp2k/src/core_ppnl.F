@@ -170,11 +170,13 @@ CONTAINS
 
       maxder = ncoset(nder)
 
+      CALL get_atomic_kind_set(atomic_kind_set,&
+                               maxlppnl=maxlppnl,&
+                               maxppnl=maxppnl)
+
       CALL get_qs_kind_set(qs_kind_set,&
                                maxco=maxco,&
                                maxlgto=maxlgto,&
-                               maxlppnl=maxlppnl,&
-                               maxppnl=maxppnl,&
                                maxsgf=maxsgf)
 
       maxl = MAX(maxlgto,maxlppnl)

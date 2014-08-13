@@ -486,7 +486,6 @@ MODULE hfx_types
     INTEGER, DIMENSION(:), POINTER           :: atom2kind, kind_of
     LOGICAL                                  :: exist, failure, logic_val
     REAL(dp)                                 :: real_val
-    TYPE(qs_kind_type), POINTER          :: atom_kind
     TYPE(hfx_type), POINTER                  :: actual_x_data
     TYPE(section_vals_type), POINTER         :: hf_pbc_section, hf_sub_section
 
@@ -760,16 +759,10 @@ MODULE hfx_types
             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
             i = 1
             DO ikind=1,nkind
-              NULLIFY(atom_kind)
-              atom_kind => qs_kind_set(ikind)
-              CALL get_qs_kind(qs_kind=atom_kind,&
-                                   natom=natom_a)
+              CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom_a)
               nseta=actual_x_data%basis_parameter(ikind)%nset
               DO jkind=ikind,nkind
-                NULLIFY(atom_kind)
-                atom_kind => qs_kind_set(jkind)
-                CALL get_qs_kind(qs_kind=atom_kind,&
-                                     natom=natom_b)
+                CALL get_atomic_kind(atomic_kind_set(jkind), natom=natom_b)
                 nsetb=actual_x_data%basis_parameter(jkind)%nset
                 ALLOCATE(actual_x_data%initial_p(i)%p_kind(nseta, nsetb, natom_a, natom_b),STAT=stat)
                 CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -786,16 +779,10 @@ MODULE hfx_types
               CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
               i = 1
               DO ikind=1,nkind
-                NULLIFY(atom_kind)
-                atom_kind => qs_kind_set(ikind)
-                CALL get_qs_kind(qs_kind=atom_kind,&
-                                     natom=natom_a)
+                CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom_a)
                 nseta=actual_x_data%basis_parameter(ikind)%nset
                 DO jkind=ikind,nkind
-                  NULLIFY(atom_kind)
-                  atom_kind => qs_kind_set(jkind)
-                  CALL get_qs_kind(qs_kind=atom_kind,&
-                                       natom=natom_b)
+                  CALL get_atomic_kind(atomic_kind_set(jkind), natom=natom_b)
                   nsetb=actual_x_data%basis_parameter(jkind)%nset
                   ALLOCATE(actual_x_data%initial_p_forces(i)%p_kind(nseta, nsetb, natom_a, natom_b),STAT=stat)
                   CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -970,7 +957,6 @@ MODULE hfx_types
     INTEGER, DIMENSION(:, :), POINTER        :: first_sgfa, nl_a
     LOGICAL                                  :: failure
     REAL(dp), DIMENSION(:, :), POINTER       :: sphi_a
-    TYPE(qs_kind_type), POINTER          :: atom_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_a
 
     CALL timeset(routineN,handle)
@@ -983,24 +969,20 @@ MODULE hfx_types
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     max_set = 0
     DO ikind = 1,nkind
-        NULLIFY(atom_kind)
-        atom_kind => qs_kind_set(ikind)
         IF( .NOT. do_admm ) THEN
-          CALL get_qs_kind(qs_kind=atom_kind,&
-                               orb_basis_set=orb_basis_a)
-          CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                                   maxsgf=basis_info%max_sgf,&
-                                   maxnset=basis_info%max_set,&
-                                   maxlgto=basis_info%max_am)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_a)
+          CALL get_qs_kind_set(qs_kind_set,&
+                               maxsgf=basis_info%max_sgf,&
+                               maxnset=basis_info%max_set,&
+                               maxlgto=basis_info%max_am)
 
         ELSE
-          CALL get_qs_kind(qs_kind=atom_kind,&
-                               aux_fit_basis_set=orb_basis_a)
-          CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                                   maxsgf=basis_info%max_sgf,&
-                                   maxnset=basis_info%max_set,&
-                                   maxlgto=basis_info%max_am,&
-                                   basis_set_id=use_aux_fit_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), aux_fit_basis_set=orb_basis_a)
+          CALL get_qs_kind_set(qs_kind_set,&
+                               maxsgf=basis_info%max_sgf,&
+                               maxnset=basis_info%max_set,&
+                               maxlgto=basis_info%max_am,&
+                               basis_set_id=use_aux_fit_basis_set)
         END IF
         IF (basis_info%max_set<max_set) STOP "UNEXPECTED MAX_SET"
         max_set = MAX(max_set,basis_info%max_set)

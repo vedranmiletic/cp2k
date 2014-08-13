@@ -433,7 +433,7 @@ MODULE qs_rho0_methods
 !   in gapw rhoz is calculated on local the lebedev grids
     total_rho_core_rspace = 0.0_dp
 
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,natom=natom)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
 
 !   Initialize the multipole and the compensation charge type
     CALL allocate_rho0_mpole(rho0_mpole,error=error)

@@ -8,6 +8,7 @@
 !> \author CJM
 ! *****************************************************************************
 MODULE molecular_states
+  USE atomic_kind_types,               ONLY: atomic_kind_type
   USE qs_kind_types,               ONLY: qs_kind_type
   USE bibliography,                    ONLY: Hunt2003,&
                                              cite_reference
@@ -120,6 +121,8 @@ CONTAINS
     REAL(KIND=dp)                            :: tmp
     REAL(KIND=dp), ALLOCATABLE               :: evals( : )
     REAL(KIND=dp), DIMENSION(:), POINTER     :: eval_range
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -326,6 +329,7 @@ CONTAINS
             "MOLECULAR_STATES%CUBES",error=error),cp_p_file) ) THEN
 
           CALL get_qs_env(qs_env=qs_env,&
+               atomic_kind_set=atomic_kind_set,&
                qs_kind_set=qs_kind_set,&
                cell=cell,&
                dft_control=dft_control,&
@@ -336,7 +340,7 @@ CONTAINS
              IF (evals(i)<eval_range(1) .OR. evals(i)>eval_range(2)) CYCLE
 
              CALL calculate_wavefunction(rot_e_vectors,i,wf_r, &
-                  wf_g, qs_kind_set,cell,dft_control,particle_set, &
+                  wf_g, atomic_kind_set, qs_kind_set, cell,dft_control,particle_set, &
                   pw_env, error = error )
 
              WRITE(filename,'(a9,I4.4,a1,I5.5,a4)')"MOLECULE_",imol,"_",i,tag

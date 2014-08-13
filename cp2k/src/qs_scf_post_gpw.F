@@ -1016,7 +1016,7 @@ CONTAINS
     COMPLEX(KIND=dp)                         :: zeta
     COMPLEX(KIND=dp), DIMENSION(3)           :: ggamma, zphase
     INTEGER                                  :: handle, i, ispins, j, n_rep, &
-                                                reference, unit_nr
+                                                reference, unit_nr, ikind
     LOGICAL                                  :: do_berry, failure, &
                                                 first_time, ghost
     REAL(KIND=dp)                            :: charge_tot, theta, zeff, zwfc
@@ -1027,6 +1027,8 @@ CONTAINS
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
     TYPE(section_vals_type), POINTER         :: print_key
+    TYPE(qs_kind_type), DIMENSION(:),&
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
 
@@ -1034,10 +1036,11 @@ CONTAINS
     print_key => section_vals_get_subs_vals(input,"DFT%LOCALIZE%PRINT%TOTAL_DIPOLE", error=error)
     IF (BTEST(cp_print_key_should_output(logger%iter_info,print_key,first_time=first_time,&
          error=error),cp_p_file)) THEN
-       NULLIFY(cell, particle_set, ref_point)
+       NULLIFY(cell, particle_set, qs_kind_set, ref_point)
        CALL get_qs_env(qs_env=qs_env,&
                        cell=cell,&
                        particle_set=particle_set,&
+                       qs_kind_set=qs_kind_set,&
                        error=error)
 
        reference = section_get_ival(print_key,keyword_name="REFERENCE",error=error)
@@ -1057,7 +1060,8 @@ CONTAINS
 
           ! Nuclear charges
           DO i=1,SIZE(particle_set)
-             CALL get_atomic_kind(particle_set(i)%atomic_kind,ghost=ghost)
+             CALL get_atomic_kind(particle_set(i)%atomic_kind,kind_number=ikind)
+             CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
              IF (.NOT.ghost) THEN
                 CALL get_atomic_kind(particle_set(i)%atomic_kind,core_charge=zeff)
                 ria = pbc(particle_set(i)%r, cell)
@@ -1091,7 +1095,8 @@ CONTAINS
        ELSE
           ! Charges of the atoms involved
           DO i=1,SIZE(particle_set)
-             CALL get_atomic_kind(particle_set(i)%atomic_kind,ghost=ghost)
+             CALL get_atomic_kind(particle_set(i)%atomic_kind, kind_number=ikind)
+             CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
              IF (.NOT.ghost) THEN
                 CALL get_atomic_kind(particle_set(i)%atomic_kind,core_charge=zeff)
                 ria = pbc(particle_set(i)%r, cell)
@@ -1185,6 +1190,8 @@ CONTAINS
                                                 my_basis_set_id, nhomo, &
                                                 unit_nr
     LOGICAL                                  :: append_cube
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -1211,12 +1218,13 @@ CONTAINS
        IF (nhomo==-1) nhomo=homo
        DO ivector=MAX(1,homo-nhomo+1),homo
           CALL get_qs_env(qs_env=qs_env,&
+                          atomic_kind_set=atomic_kind_set,&
                           qs_kind_set=qs_kind_set,&
                           cell=cell,&
                           particle_set=particle_set,&
                           pw_env=pw_env,&
                           error=error)
-          CALL calculate_wavefunction(mo_coeff,ivector,wf_r,wf_g,qs_kind_set,&
+          CALL calculate_wavefunction(mo_coeff,ivector,wf_r,wf_g,atomic_kind_set,qs_kind_set,&
                cell,dft_control,particle_set,pw_env ,basis_set_id=my_basis_set_id, error=error)
           WRITE(filename,'(a4,I5.5,a1,I1.1)')"WFN_",ivector,"_",ispin
           unit_nr=cp_print_key_unit_nr(logger,input,"DFT%PRINT%MO_CUBES",extension=".cube",&
@@ -1271,6 +1279,8 @@ CONTAINS
     INTEGER                                  :: handle, ifirst, index_mo, &
                                                 ivector, unit_nr
     LOGICAL                                  :: append_cube
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -1292,13 +1302,14 @@ CONTAINS
        IF(PRESENT(lumo)) ifirst = lumo
        DO ivector=ifirst, ifirst+nlumos-1
           CALL get_qs_env(qs_env=qs_env,&
+                          atomic_kind_set=atomic_kind_set,&
                           qs_kind_set=qs_kind_set,&
                           cell=cell,&
                           particle_set=particle_set,&
                           pw_env=pw_env,&
                           error=error)
-          CALL calculate_wavefunction(unoccupied_orbs, ivector, wf_r, wf_g, qs_kind_set,&
-               cell, dft_control, particle_set, pw_env, error=error)
+          CALL calculate_wavefunction(unoccupied_orbs, ivector, wf_r, wf_g, atomic_kind_set, &
+                           qs_kind_set, cell, dft_control, particle_set, pw_env, error=error)
 
           IF(ifirst==1) THEN
              index_mo =  homo+ivector
@@ -2341,6 +2352,7 @@ CONTAINS
    TYPE(atomic_kind_type), POINTER           :: atomic_kind
    TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: ks_rmpv, matrix_s
@@ -2477,11 +2489,12 @@ CONTAINS
              CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
              DO ikind=1,nkind
                atomic_kind => atomic_kind_set(ikind)
+               qs_kind     => qs_kind_set(ikind)
                CALL get_atomic_kind(atomic_kind,name=name,element_symbol=element_symbol)
-               CALL calculate_atomic_density(ppdens(:,:,ikind),atomic_kind,ngto,iunit=output_unit,&
-                    confine=.TRUE.,error=error)
-               CALL calculate_atomic_density(aedens(:,:,ikind),atomic_kind,ngto,iunit=output_unit,&
-                    allelectron=.TRUE.,confine=.TRUE.,error=error)
+               CALL calculate_atomic_density(ppdens(:,:,ikind),atomic_kind,qs_kind, ngto,&
+                                             iunit=output_unit, confine=.TRUE.,error=error)
+               CALL calculate_atomic_density(aedens(:,:,ikind),atomic_kind,qs_kind, ngto,&
+                           iunit=output_unit,allelectron=.TRUE.,confine=.TRUE.,error=error)
                ccdens(:,1,ikind) = aedens(:,1,ikind)
                ccdens(:,2,ikind) = 0._dp
                CALL project_function_a(ccdens(1:ngto,2,ikind),ccdens(1:ngto,1,ikind),&

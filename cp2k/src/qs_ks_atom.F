@@ -175,8 +175,7 @@ CONTAINS
     eps_cpc = qs_env%dft_control%qs_control%gapw_control%eps_cpc
 
     CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,maxsgf=max_nsgf,&
-                             maxgtops=max_gau,natom=natom)
+    CALL get_qs_kind_set(qs_kind_set,maxsgf=max_nsgf,maxgtops=max_gau)
 
     ALLOCATE (C_int_h(max_gau*max_nsgf),C_int_s(max_gau*max_nsgf),coc(max_gau*max_gau),&
               a_matrix(max_gau,max_gau),p_matrix(max_nsgf,max_nsgf),STAT=istat)

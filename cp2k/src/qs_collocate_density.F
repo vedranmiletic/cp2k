@@ -33,6 +33,9 @@
 ! *****************************************************************************
 MODULE qs_collocate_density
   USE ao_util,                         ONLY: exp_radius_very_extended
+  USE atomic_kind_types,                   ONLY: atomic_kind_type,&
+                                           get_atomic_kind,&
+                                           get_atomic_kind_set
   USE qs_kind_types,                   ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
@@ -2629,12 +2632,14 @@ END SUBROUTINE calculate_rho_resp_all
 !>      i.e. is only correct if the basis functions are localised enough to be just in 1 cell ?
 ! *****************************************************************************
   SUBROUTINE calculate_wavefunction(mo_vectors,ivector,rho,rho_gspace, &
-                   qs_kind_set,cell,dft_control,particle_set, &
+                   atomic_kind_set, qs_kind_set,cell,dft_control,particle_set, &
                    pw_env,basis_set_id, external_vector, error)
 
     TYPE(cp_fm_type), POINTER                :: mo_vectors
     INTEGER                                  :: ivector
     TYPE(pw_p_type), INTENT(INOUT)           :: rho, rho_gspace
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -2725,11 +2730,11 @@ END SUBROUTINE calculate_rho_resp_all
 
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 !   *** Allocate work storage ***
-    CALL get_qs_kind_set(qs_kind_set=qs_kind_set,&
-                             maxco=maxco,&
-                             natom=natom,&
-                             maxsgf_set=maxsgf_set,&
-                             basis_set_id=my_basis_set_id)
+    CALL get_atomic_kind_set(atomic_kind_set, natom=natom)
+    CALL get_qs_kind_set(qs_kind_set,&
+                         maxco=maxco,&
+                         maxsgf_set=maxsgf_set,&
+                         basis_set_id=my_basis_set_id)
 
     ALLOCATE (pab(maxco,1),STAT=stat)
     IF (stat /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&

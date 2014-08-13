@@ -16,7 +16,8 @@ MODULE hfx_admm_utils
   USE admm_methods,                    ONLY: admm_calculate_density_matrix,&
                                              admm_fit_mo_coeffs
   USE admm_types,                      ONLY: admm_type
-  USE qs_kind_types,               ONLY: qs_kind_type
+  USE atomic_kind_types,               ONLY: atomic_kind_type
+  USE qs_kind_types,                   ONLY: qs_kind_type
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: dft_control_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_add,&
@@ -428,6 +429,8 @@ CONTAINS
     LOGICAL                                  :: do_pw_hfx, failure
     REAL(KIND=dp)                            :: exchange_energy, fraction, &
                                                 pair_energy, scaling
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
@@ -456,7 +459,7 @@ CONTAINS
 
        CALL get_qs_env(qs_env,mos=mo_array,pw_env=pw_env, dft_control=dft_control, &
                        cell=cell, particle_set=particle_set, &
-                       qs_kind_set=qs_kind_set, error=error)
+                       atomic_kind_set=atomic_kind_set, qs_kind_set=qs_kind_set, error=error)
 
        ! limit the blocksize by the number of orbitals
        CALL get_mo_set(mo_set=mo_array(1)%mo_set,mo_coeff=mo_coeff)
@@ -504,7 +507,7 @@ CONTAINS
 
                  iloc=iorb-iorb_block+1
                  CALL calculate_wavefunction(mo_coeff,iorb,rho_i(iloc),rho_g, &
-                          qs_kind_set,cell,dft_control,particle_set, &
+                          atomic_kind_set,qs_kind_set, cell,dft_control,particle_set, &
                           pw_env,error=error)
 
              ENDDO
@@ -515,7 +518,7 @@ CONTAINS
 
                    jloc=jorb-jorb_block+1
                    CALL calculate_wavefunction(mo_coeff,jorb,rho_j(jloc),rho_g, &
-                            qs_kind_set,cell,dft_control,particle_set, &
+                            atomic_kind_set,qs_kind_set, cell,dft_control,particle_set, &
                             pw_env,error=error)
 
                 ENDDO

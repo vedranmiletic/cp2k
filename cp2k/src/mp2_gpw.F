@@ -459,7 +459,7 @@ MODULE mp2_gpw
         ! open shell case (RI) here the (ia|K) integrals are computed for both the alpha and beta components
         CALL mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                   qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
+                                   atomic_kind_set, qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
                                    mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                    mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                                    mp2_env%mp2_memory,mp2_env%calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub,&
@@ -469,7 +469,7 @@ MODULE mp2_gpw
         ! closed shell case (RI)
         CALL mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,cell,particle_set,&
-                                   qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
+                                   atomic_kind_set, qs_kind_set,mo_coeff,nmo,homo,rho_r,rho_g,pot_g,&
                                    mat_munu,sab_orb_sub,pw_env_sub,poisson_env,auxbas_pw_pool,task_list_sub,&
                                    mo_coeff_o,mo_coeff_v,mp2_env%mp2_gpw%eps_filter,unit_nr,&
                                    mp2_env%mp2_memory,mp2_env%calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub)
@@ -1209,7 +1209,7 @@ MODULE mp2_gpw
       CALL pw_pool_create_pw(auxbas_pw_pool,psi_i(i)%pw,&
                             use_data=REALDATA3D,&
                             in_space=REALSPACE,error=error_sub)
-      CALL calculate_wavefunction(mo_coeff,i,psi_i(i),rho_g, &
+      CALL calculate_wavefunction(mo_coeff,i,psi_i(i),rho_g, atomic_kind_set,&
                         qs_kind_set,cell,dft_control,particle_set, &
                         pw_env_sub,external_vector=my_Cocc(:,i-my_I_occupied_start+1),error=error_sub)
     END DO
@@ -1229,7 +1229,7 @@ MODULE mp2_gpw
       IF(calc_ex) BIb_C=0.0_dp
 
       ! psi_a
-      CALL calculate_wavefunction(mo_coeff,a,psi_a,rho_g, &
+      CALL calculate_wavefunction(mo_coeff,a,psi_a,rho_g, atomic_kind_set,&
                       qs_kind_set,cell,dft_control,particle_set, &
                       pw_env_sub,external_vector=my_Cvirt(:,a-(homo+my_A_virtual_start)+1),error=error_sub)
       i_counter=0

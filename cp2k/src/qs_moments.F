@@ -836,7 +836,7 @@ CONTAINS
     INTEGER                                  :: handle, i, ia, idim, ispin, &
                                                 istat, ix, iy, iz, j, k, l, &
                                                 nao, nm, nmo, nmom, nmotot, &
-                                                tmp_dim
+                                                tmp_dim, ikind
     LOGICAL                                  :: failure, ghost, uniform
     REAL(dp)                                 :: charge, ci(3), cij(3,3), dd, &
                                                 occ, trace
@@ -844,6 +844,8 @@ CONTAINS
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: rmom
     REAL(dp), DIMENSION(3)                   :: kvec, rcc, ria
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
+    TYPE(qs_kind_type), DIMENSION(:),&
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_cfm_p_type), DIMENSION(:), &
       POINTER                                :: eigrmat
@@ -901,7 +903,7 @@ CONTAINS
        para_env => qs_env%para_env
        NULLIFY ( dft_control, rho, cell, particle_set )
        CALL get_qs_env ( qs_env, dft_control=dft_control, rho=rho, cell=cell,&
-                         particle_set=particle_set, error=error)
+                         particle_set=particle_set, qs_kind_set=qs_kind_set, error=error)
        NULLIFY ( local_particles )
        CALL get_qs_env ( qs_env, local_particles=local_particles, error=error)
        NULLIFY ( matrix_s, mos )
@@ -965,7 +967,8 @@ CONTAINS
        ! nuclear contribution
        DO ia = 1,SIZE(particle_set)
          atomic_kind => particle_set(ia)%atomic_kind
-         CALL get_atomic_kind(atomic_kind,core_charge=charge,ghost=ghost)
+         CALL get_atomic_kind(atomic_kind,core_charge=charge,kind_number=ikind)
+         CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
          IF (.NOT. ghost) THEN
             rmom(1,2) = rmom(1,2) - charge
          ENDIF
@@ -985,7 +988,8 @@ CONTAINS
              zi(:) = CMPLX ( 1._dp, 0._dp, dp )
              DO ia = 1,SIZE(particle_set)
                atomic_kind => particle_set(ia)%atomic_kind
-               CALL get_atomic_kind(atomic_kind,core_charge=charge,ghost=ghost)
+               CALL get_atomic_kind(atomic_kind,core_charge=charge,kind_number=ikind)
+               CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
                IF (.NOT. ghost) THEN
                   ria = particle_set(ia)%r
                   ria = pbc(ria,cell)

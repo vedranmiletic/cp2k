@@ -157,7 +157,7 @@ MODULE mp2_ri_gpw
 ! *****************************************************************************
   SUBROUTINE mp2_ri_gpw_compute_in(BIb_C,ends_array,ends_B_virtual,sizes_array,sizes_B_virtual,starts_array,starts_B_virtual,&
                                    dimen_RI,qs_env,para_env,para_env_sub,color_sub,dft_control,&
-                                   cell,particle_set,qs_kind_set,mo_coeff,nmo,homo,&
+                                   cell,particle_set,atomic_kind_set,qs_kind_set,mo_coeff,nmo,homo,&
                                    rho_r,rho_g,pot_g,mat_munu,sab_orb_sub,pw_env_sub,&
                                    poisson_env,auxbas_pw_pool,task_list_sub,mo_coeff_o,mo_coeff_v,eps_filter,unit_nr,&
                                    mp2_memory,calc_PQ_cond_num,calc_forces,error,blacs_env_sub,error_sub,&
@@ -175,6 +175,8 @@ MODULE mp2_ri_gpw
     TYPE(cell_type), POINTER                 :: cell
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(cp_fm_type), POINTER                :: mo_coeff
@@ -502,7 +504,7 @@ MODULE mp2_ri_gpw
       i_counter=i_counter+1
 
       ! pseudo psi_L
-      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
+      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, atomic_kind_set, &
                                   qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=my_Lrows(:,LLL-my_group_L_start+1),&
@@ -763,7 +765,7 @@ MODULE mp2_ri_gpw
       wf_vector=0.0_dp
       wf_vector(LLL)=1.0_dp
       ! pseudo psi_L
-      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, &
+      CALL calculate_wavefunction(mo_coeff,1,psi_L,rho_g, atomic_kind_set,&
                                   qs_kind_set,cell,dft_control,particle_set, &
                                   pw_env_sub,basis_set_id=use_ri_aux_basis_set,&
                                   external_vector=wf_vector,&

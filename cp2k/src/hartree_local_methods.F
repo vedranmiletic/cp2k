@@ -320,7 +320,7 @@ CONTAINS
        ENDIF
     END IF
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,maxg_iso_not0=max_iso)
+    CALL get_qs_kind_set(qs_kind_set, maxg_iso_not0=max_iso)
     CALL get_rho0_mpole(rho0_mpole=rho0_mpole,lmax_0=lmax_0)
 
     atenergy=.FALSE.

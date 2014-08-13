@@ -8,6 +8,9 @@
 !> \author JGH July 2009
 ! *****************************************************************************
 MODULE hfx_ri_methods
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
+                                             get_atomic_kind,&
+                                             get_atomic_kind_set
   USE qs_kind_types,               ONLY: qs_kind_type,&
                                              get_qs_kind,&
                                              get_qs_kind_set
@@ -73,9 +76,10 @@ CONTAINS
                                                 maxlgem(2), nat, ngem, nkind, &
                                                 output_unit
     INTEGER, ALLOCATABLE, DIMENSION(:)       :: natoms, nbasis
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
-    TYPE(qs_kind_type), POINTER          :: qs_kind
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
     TYPE(ri_environment_type), POINTER       :: ri_env
@@ -90,16 +94,16 @@ CONTAINS
 
     CALL ri_env_create(ri_env,error)
 
-    CALL get_qs_env(qs_env=qs_env,qs_kind_set=qs_kind_set,error=error)
+    CALL get_qs_env(qs_env=qs_env,atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,error=error)
     nkind = SIZE(qs_kind_set)
     ALLOCATE(nbasis(nkind),natoms(nkind),stat=istat)
     CPPostconditionNoFail(istat==0,cp_warning_level,routineP,error)
     nbasis=0
     natoms=0
     DO ikind=1,nkind
-       qs_kind => qs_kind_set(ikind)
        NULLIFY(geminal_basis_set)
-       CALL get_qs_kind(qs_kind=qs_kind,natom=nat,geminal_basis_set=geminal_basis_set)
+       CALL get_atomic_kind(atomic_kind_set(ikind), natom=nat)
+       CALL get_qs_kind(qs_kind_set(ikind), geminal_basis_set=geminal_basis_set)
        IF (.NOT.ASSOCIATED(geminal_basis_set)) CYCLE
        CALL get_geminal_basis_set(geminal_basis_set=geminal_basis_set,ngeminals=ngem)
        natoms(ikind) = nat
@@ -137,9 +141,8 @@ CONTAINS
          extension=".RILog",error=error)
     IF ( output_unit > 0 ) THEN
        DO ikind=1,nkind
-          qs_kind => qs_kind_set(ikind)
           NULLIFY(geminal_basis_set)
-          CALL get_qs_kind(qs_kind=qs_kind,geminal_basis_set=geminal_basis_set)
+          CALL get_qs_kind(qs_kind_set(ikind), geminal_basis_set=geminal_basis_set)
           IF (.NOT.ASSOCIATED(geminal_basis_set)) CYCLE
           CALL write_geminal_basis_set(geminal_basis_set,output_unit,error)
        END DO
