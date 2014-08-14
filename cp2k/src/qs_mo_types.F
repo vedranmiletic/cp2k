@@ -17,11 +17,6 @@
 ! *****************************************************************************
 MODULE qs_mo_types
 
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             get_atomic_kind_set
-  USE basis_set_types,                 ONLY: get_gto_basis_set,&
-                                             gto_basis_set_type
   USE cp_dbcsr_interface,              ONLY: cp_dbcsr_copy,&
                                              cp_dbcsr_init_p,&
                                              cp_dbcsr_release_p,&
@@ -40,23 +35,7 @@ MODULE qs_mo_types
                                              smear_fermi_dirac,&
                                              smear_list
   USE kahan_sum,                       ONLY: accurate_sum
-  USE kinds,                           ONLY: default_path_length,&
-                                             default_string_length,&
-                                             dp
-  USE message_passing,                 ONLY: mp_bcast
-  USE orbital_pointers,                ONLY: indco,&
-                                             nco,&
-                                             nso
-  USE orbital_symbols,                 ONLY: cgf_symbol,&
-                                             sgf_symbol
-  USE orbital_transformation_matrices, ONLY: orbtramat
-  USE particle_types,                  ONLY: particle_type
-  USE physcon,                         ONLY: evolt
-  USE qs_dftb_types,                   ONLY: qs_dftb_atom_type
-  USE qs_dftb_utils,                   ONLY: get_dftb_atom_param
-  USE qs_kind_types,                   ONLY: get_qs_kind,&
-                                             get_qs_kind_set,&
-                                             qs_kind_type
+  USE kinds,                           ONLY: dp
   USE scf_control_types,               ONLY: smear_type
   USE timings,                         ONLY: timeset,&
                                              timestop

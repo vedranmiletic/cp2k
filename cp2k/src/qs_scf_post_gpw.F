@@ -213,6 +213,8 @@ CONTAINS
     REAL(KIND=dp)                            :: gap, homo_lumo(2,2)
     REAL(KIND=dp), DIMENSION(:), POINTER     :: mo_eigenvalues
     TYPE(admm_type), POINTER                 :: admm_env
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(cp_1d_r_p_type), DIMENSION(:), &
       POINTER                                :: occupied_evals, &
                                                 unoccupied_evals, &
@@ -239,8 +241,6 @@ CONTAINS
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(qs_loc_env_new_type), POINTER       :: qs_loc_env_homo, &

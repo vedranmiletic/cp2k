@@ -253,6 +253,8 @@ CONTAINS
       inner_loop_converged, just_energy, outer_loop_converged, scp_nddo
     REAL(KIND=dp)                            :: t1, t2
     REAL(KIND=dp), DIMENSION(3)              :: res_val_3
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -266,8 +268,6 @@ CONTAINS
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(qs_charges_type), POINTER           :: qs_charges
     TYPE(qs_energy_type), POINTER            :: energy
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(qs_ks_env_type), POINTER            :: ks_env

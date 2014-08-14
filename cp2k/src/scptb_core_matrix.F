@@ -381,8 +381,6 @@ CONTAINS
       DIMENSION(:, :)                        :: hmt, kk, umt
     REAL(KIND=dp), DIMENSION(3)              :: rij
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: h_block, s_block
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: gamma_s
     TYPE(cp_dbcsr_p_type), DIMENSION(:, :), &
@@ -396,6 +394,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(scptb_parameter_p_type), &
       DIMENSION(:), POINTER                  :: scptb_kind_param
     TYPE(scptb_parameter_type), POINTER      :: scptb_kind_a

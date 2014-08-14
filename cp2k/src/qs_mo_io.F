@@ -21,9 +21,6 @@ MODULE qs_mo_io
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind,&
                                              get_atomic_kind_set
-  USE qs_kind_types,                   ONLY: qs_kind_type,&
-                                             get_qs_kind,&
-                                             get_qs_kind_set
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm
@@ -62,6 +59,9 @@ MODULE qs_mo_io
   USE physcon,                         ONLY: evolt
   USE qs_dftb_types,                   ONLY: qs_dftb_atom_type
   USE qs_dftb_utils,                   ONLY: get_dftb_atom_param
+  USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                             get_qs_kind_set,&
+                                             qs_kind_type
   USE qs_mo_types,                     ONLY: deallocate_mo_set,&
                                              duplicate_mo_set,&
                                              mo_set_p_type,&
@@ -349,8 +349,8 @@ CONTAINS
     CHARACTER(LEN=*), PARAMETER :: routineN = 'write_mo_set_low', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: handle, iatom, imat, iset, ishell, ispin, istat, lmax, lshell, &
-      max_block, nao, natom, nmo, nset, nset_max, nshell_max, nspin, ikind
+    INTEGER :: handle, iatom, ikind, imat, iset, ishell, ispin, istat, lmax, &
+      lshell, max_block, nao, natom, nmo, nset, nset_max, nshell_max, nspin
     INTEGER, DIMENSION(:), POINTER           :: nset_info, nshell
     INTEGER, DIMENSION(:, :), POINTER        :: l, nshell_info
     INTEGER, DIMENSION(:, :, :), POINTER     :: nso_info
@@ -884,11 +884,11 @@ CPSourceFileRef,&
     CHARACTER(LEN=*), PARAMETER :: routineN = 'read_mos_restart_low', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: group, homo, homo_read, i, iatom, imat, irow, iset, iset_read, &
-      ishell, ishell_read, iso, ispin, istat, lfomo_read, lmax, lshell, &
-      my_mult, nao, nao_read, natom_read, nelectron, nelectron_read, nmo, &
-      nmo_read, nnshell, nset, nset_max, nshell_max, nspin, nspin_read, &
-      offset_read, source, ikind
+    INTEGER :: group, homo, homo_read, i, iatom, ikind, imat, irow, iset, &
+      iset_read, ishell, ishell_read, iso, ispin, istat, lfomo_read, lmax, &
+      lshell, my_mult, nao, nao_read, natom_read, nelectron, nelectron_read, &
+      nmo, nmo_read, nnshell, nset, nset_max, nshell_max, nspin, nspin_read, &
+      offset_read, source
     INTEGER, DIMENSION(:), POINTER           :: nset_info, nshell
     INTEGER, DIMENSION(:, :), POINTER        :: l, nshell_info
     INTEGER, DIMENSION(:, :, :), POINTER     :: nso_info, offset_info
@@ -1294,10 +1294,10 @@ CPSourceFileRef,&
     CHARACTER(LEN=27)                        :: fmtstr4
     CHARACTER(LEN=38)                        :: fmtstr3
     CHARACTER(LEN=6), DIMENSION(:), POINTER  :: bsgf_symbol
-    INTEGER :: after, first_mo, from, iatom, icgf, ico, icol, imo, irow, &
-      iset, isgf, ishell, iso, istat, iw, jcol, last_mo, left, lmax, lshell, &
-      natom, ncgf, ncol, ncol_global, nrow_global, nset, nsgf, right, &
-      scf_step, to, width, ikind
+    INTEGER :: after, first_mo, from, iatom, icgf, ico, icol, ikind, imo, &
+      irow, iset, isgf, ishell, iso, istat, iw, jcol, last_mo, left, lmax, &
+      lshell, natom, ncgf, ncol, ncol_global, nrow_global, nset, nsgf, right, &
+      scf_step, to, width
     INTEGER, DIMENSION(:), POINTER           :: mo_index_range, nshell
     INTEGER, DIMENSION(:, :), POINTER        :: l
     LOGICAL                                  :: failure, ionode, my_last, &
