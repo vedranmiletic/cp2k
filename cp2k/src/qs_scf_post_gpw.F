@@ -239,6 +239,8 @@ CONTAINS
     TYPE(pw_pool_p_type), DIMENSION(:), &
       POINTER                                :: pw_pools
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(qs_loc_env_new_type), POINTER       :: qs_loc_env_homo, &
@@ -282,7 +284,8 @@ CONTAINS
        CALL get_qs_env(qs_env,dft_control=dft_control,molecule_set=molecule_set, &
             mos=mos,rho=rho,matrix_ks=ks_rmpv,scf_control=scf_control,matrix_s=matrix_s, &
             input=input, subsys=subsys, tddfpt_control=tddfpt_control, pw_env=pw_env,&
-            particle_set=particle_set, qs_kind_set=qs_kind_set, error=error)
+            particle_set=particle_set, atomic_kind_set=atomic_kind_set, &
+            qs_kind_set=qs_kind_set, error=error)
        CALL cp_subsys_get(subsys,particles=particles,error=error)
 
        !    **** the kinetic energy
@@ -590,7 +593,7 @@ CONTAINS
 
 
        ! generate a mix of wfns, and write to a restart
-       CALL wfn_mix(mos, particle_set, dft_section, qs_kind_set, &
+       CALL wfn_mix(mos, particle_set, dft_section, atomic_kind_set, qs_kind_set, &
                     lumo_ptr, scf_env, matrix_s, output_unit, marked_states,error)
        IF(p_loc_lumo)CALL cp_fm_vect_dealloc(lumo_localized,error)
        IF(ASSOCIATED(marked_states))THEN

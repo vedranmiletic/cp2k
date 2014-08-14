@@ -253,8 +253,6 @@ CONTAINS
       inner_loop_converged, just_energy, outer_loop_converged, scp_nddo
     REAL(KIND=dp)                            :: t1, t2
     REAL(KIND=dp), DIMENSION(3)              :: res_val_3
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
@@ -268,6 +266,8 @@ CONTAINS
     TYPE(pw_pool_type), POINTER              :: auxbas_pw_pool
     TYPE(qs_charges_type), POINTER           :: qs_charges
     TYPE(qs_energy_type), POINTER            :: energy
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(qs_ks_env_type), POINTER            :: ks_env
@@ -443,7 +443,7 @@ CONTAINS
 
           ! Write WaveFunction restart file
           CALL write_mo_set(mos,particle_set,dft_section=dft_section,&
-                            qs_kind_set=qs_kind_set,&
+                            atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,&
                             kpoints=qs_env%kpoints,error=error)
 
           ! Exit if we have finished with the SCF inner loop

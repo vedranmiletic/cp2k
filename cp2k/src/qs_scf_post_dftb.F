@@ -12,6 +12,8 @@
 MODULE qs_scf_post_dftb
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_control_types,                ONLY: dft_control_type
@@ -367,14 +369,16 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: wfn_mix_section
 
     logger => cp_error_get_logger(error)
     CALL get_qs_env(qs_env=qs_env,matrix_s=matrix_s,matrix_ks=matrix_ks,&
-                    particle_set=particle_set,qs_kind_set=qs_kind_set,&
-                    mos=mos,error=error)   
+                    particle_set=particle_set,atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set, mos=mos,error=error)
 
     wfn_mix_section => section_vals_get_subs_vals(dft_section,"PRINT%WFN_MIX",error=error) 
 
@@ -408,8 +412,8 @@ CONTAINS
     END DO
 
     output_unit= cp_logger_get_default_io_unit(logger)
-    CALL wfn_mix(mos, particle_set, dft_section, qs_kind_set, &
-                 lumos, scf_env, matrix_s, output_unit, error=error)    
+    CALL wfn_mix(mos, particle_set, dft_section, atomic_kind_set, qs_kind_set, &
+                 lumos, scf_env, matrix_s, output_unit, error=error)
 
     DO ispin=1,SIZE(mos)
        CALL cp_fm_release(lumos(ispin)%matrix,error)
