@@ -141,7 +141,7 @@ USE basis_set_types,                 ONLY: &
   TYPE qs_kind_type
      CHARACTER(LEN=default_string_length)   :: name = ""
      CHARACTER(LEN=2)                       :: element_symbol = ""
-     INTEGER                                :: natom
+     INTEGER                                :: natom = -1
      TYPE(all_potential_type), POINTER      :: all_potential     => Null()
      TYPE(local_potential_type), POINTER    :: tnadd_potential   => Null()
      TYPE(gth_potential_type), POINTER      :: gth_potential     => Null()
@@ -1704,7 +1704,7 @@ CONTAINS
     INTEGER                                  :: ikind, nkind
     LOGICAL                                  :: gpw, paw_atom
     REAL(dp)                                 :: max_rad_local_type, rc
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), POINTER              :: qs_kind
     TYPE(gto_basis_set_type), POINTER        :: orb_basis
     TYPE(paw_proj_set_type), POINTER         :: paw_proj
 
@@ -1926,7 +1926,10 @@ CONTAINS
        CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
             keyword_name="MASS",n_rep_val=i,error=error)
        IF (i>0) THEN
-          STOP "TODO: read_qs_kind mass"
+          WRITE (*,*) "!!!!!!!!!!!111111111111"
+          WRITE (*,*) "TODO: read_qs_kind mass"
+          WRITE (*,*) "!!!!!!!!!!!111111111111"
+          !STOP "TODO: read_qs_kind mass"
           !CALL section_vals_val_get(kind_section,i_rep_section=k_rep,&
           !     keyword_name="MASS",r_val=qs_kind%mass,error=error)
        END IF

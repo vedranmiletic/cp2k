@@ -235,7 +235,10 @@ CONTAINS
     molecule_set => subsys%molecules_new%els
 
 !   *** Print the atomic kind set ***
-    STOP "TODO: eip_init_subsys"
+    WRITE (*,*) "!!!!!!!!!!!!!!!!11111"
+    WRITE (*,*) "TODO: eip_init_subsys"
+    WRITE (*,*) "!!!!!!!!!!!!!!!!11111"
+    !STOP "TODO: eip_init_subsys"
     !CALL write_qs_kind_set(qs_kind_set, subsys_section, error=error)
 
 !   *** Print the molecule kind set ***
