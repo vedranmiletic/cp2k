@@ -644,7 +644,7 @@ MODULE qs_rho_atom_methods
        ENDDO
 
        DO kkind = 1 ,nkind
-         CALL get_qs_kind(qs_kind_set(ikind),&
+         CALL get_qs_kind(qs_kind_set(kkind),&
                           orb_basis_set=orb_basis_set,&
                           paw_proj_set=paw_proj,paw_atom=paw_atom)
 
