@@ -278,7 +278,7 @@ CONTAINS
                 CALL get_atomic_kind(atomic_kind, kind_number=akind)
                 CALL get_qs_kind(qs_kind_set(akind), ghost=ghost)
                 IF (.NOT.ghost) THEN
-                   CALL get_atomic_kind(atomic_kind=atomic_kind,core_charge=zeff)
+                   CALL get_qs_kind(qs_kind_set(akind), core_charge=zeff)
                    charge_set(imol_now)=charge_set(imol_now)+zeff
                 END IF
              END DO
@@ -299,7 +299,7 @@ CONTAINS
                 CALL get_atomic_kind(atomic_kind, kind_number=akind)
                 CALL get_qs_kind(qs_kind_set(akind), ghost=ghost)
                 IF (.NOT.ghost) THEN
-                   CALL get_atomic_kind(atomic_kind=atomic_kind,core_charge=zeff)
+                   CALL get_qs_kind(qs_kind_set(akind), core_charge=zeff)
                    ria = pbc(particle_set(i)%r,cell)
                    DO j = 1, 3
                       gvec  = twopi*cell%h_inv(j,:)
@@ -333,7 +333,7 @@ CONTAINS
                 CALL get_atomic_kind(atomic_kind, kind_number=akind)
                 CALL get_qs_kind(qs_kind_set(akind), ghost=ghost)
                 IF (.NOT.ghost) THEN
-                   CALL get_atomic_kind(atomic_kind=atomic_kind,core_charge=zeff)
+                   CALL get_qs_kind(qs_kind_set(akind), core_charge=zeff)
                    ria = pbc(particle_set(i)%r,cell) - rcc
                    dipole=dipole + zeff*(ria-rcc)
                    charge_set(imol_now)=charge_set(imol_now)+zeff

@@ -411,7 +411,7 @@ END SUBROUTINE rf_deriv_check
 !>      06.2004 adapted to remove explicit matrix multiply [Joost VandeVondele]
 ! *****************************************************************************
   SUBROUTINE mulliken_charges_a(p_matrix,s_matrix,para_env,particle_set, &
-                                scr,title,error)
+                                qs_kind_set, scr,title,error)
 
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: p_matrix
@@ -419,6 +419,8 @@ END SUBROUTINE rf_deriv_check
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     INTEGER                                  :: scr
     CHARACTER(LEN=*)                         :: title
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -438,7 +440,7 @@ END SUBROUTINE rf_deriv_check
     ALLOCATE(charges(nblock,nspin))
     CALL compute_charges(p_matrix,s_matrix,charges,para_env)
 
-    CALL print_atomic_charges(particle_set,scr,title,electronic_charges=charges)
+    CALL print_atomic_charges(particle_set,qs_kind_set,scr,title,electronic_charges=charges)
 
     DEALLOCATE(charges)
 
@@ -661,7 +663,8 @@ END SUBROUTINE rf_deriv_check
     CALL compute_multipoles(atomic_kind_set,qs_kind_set,particle_set,&
                             p_matrix,pscp,s_matrix,charge,dipole,quadrupole,para_env)
 
-    CALL print_multipoles(particle_set,scr,title,charge=charge,dipole=dipole,quadrupole=quadrupole)
+    CALL print_multipoles(particle_set,qs_kind_set,scr,title,charge=charge,&
+                          dipole=dipole,quadrupole=quadrupole)
 
     DEALLOCATE(charge)
     DEALLOCATE(dipole)

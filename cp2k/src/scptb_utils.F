@@ -140,7 +140,7 @@ CONTAINS
       !initialization
 
       IF (scptb_parameter%defined) THEN
-         CALL set_potential(potential=atomic_kind_set(ikind)%all_potential,zeff=scptb_parameter%zeff,&
+         CALL set_potential(potential=qs_kind_set(ikind)%all_potential,zeff=scptb_parameter%zeff,&
               zeff_correction=0.0_dp)
          ! basis set
          NULLIFY(sto_basis)

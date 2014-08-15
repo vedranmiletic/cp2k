@@ -115,8 +115,10 @@ CONTAINS
         CPPostcondition(ierr==0,cp_failure_level,routineP,error,failure)
 
         DO i=1,natom
+          STOP "TODO: cp_symmetry"
+          !CALL get_atomic_kind(particle_set(i)%atomic_kind, zeff=zeff(i))
           CALL get_atomic_kind(atomic_kind=particle_set(i)%atomic_kind,&
-                  kind_number=atype(i),element_symbol=element(i),mass=weight(i),zeff=zeff(i))
+                  kind_number=atype(i),element_symbol=element(i),mass=weight(i))
           coord(1:3,i) = particle_set(i)%r(1:3)
         END DO
         weight = weight/massunit
@@ -164,8 +166,10 @@ CONTAINS
         CPPostcondition(ierr==0,cp_failure_level,routineP,error,failure)
 
         DO i=1,natom
+          STOP "TODO: cp_symmetry"
+          !CALL get_atomic_kind(particle_set(i)%atomic_kind, zeff=zeff(i))
           CALL get_atomic_kind(atomic_kind=particle_set(i)%atomic_kind,&
-                  kind_number=atype(i),element_symbol=element(i),mass=weight(i),zeff=zeff(i))
+                  kind_number=atype(i),element_symbol=element(i),mass=weight(i))
           coord(1:3,i) = particle_set(i)%r(1:3)
         END DO
         weight = weight/massunit

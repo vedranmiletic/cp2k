@@ -476,10 +476,10 @@ CONTAINS
     lrigpw = (qs_env%dft_control%qs_control%method_id == do_method_lrigpw)
     lri_optbas = qs_env%dft_control%qs_control%lri_optbas
 
-    CALL get_atomic_kind_set(atomic_kind_set,maxatom=maxatom,&
-                             gth_potential_present=gth_potential_present,&
-                             all_potential_present=all_potential_present)
-    CALL get_qs_kind_set(qs_kind_set, paw_atom_present=paw_atom_present)
+    CALL get_atomic_kind_set(atomic_kind_set, maxatom=maxatom)
+    CALL get_qs_kind_set(qs_kind_set, paw_atom_present=paw_atom_present,&
+                         gth_potential_present=gth_potential_present,&
+                         all_potential_present=all_potential_present)
 
     CALL section_vals_val_get(qs_env%input,"DFT%SUBCELLS",r_val=subcells,error=error)
 
@@ -535,17 +535,16 @@ CONTAINS
 
     DO ikind=1,nkind
 
-       CALL get_atomic_kind(atomic_kind_set(ikind),&
-                            atom_list=atom2d(ikind)%list,&
-                            all_potential=all_potential,&
-                            gth_potential=gth_potential)
+       CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom2d(ikind)%list)
 
        CALL get_qs_kind(qs_kind_set(ikind),&
                         orb_basis_set=orb_basis_set,&
                         aux_basis_set=aux_basis_set,&
                         aux_fit_basis_set=aux_fit_basis_set,&
                         paw_proj_set=paw_proj,&
-                        paw_atom=paw_atom)
+                        paw_atom=paw_atom,&
+                        all_potential=all_potential,&
+                        gth_potential=gth_potential)
 
        ! SCP
        IF (ASSOCIATED(aux_basis_set)) THEN
@@ -562,10 +561,10 @@ CONTAINS
        END IF
 
        ! core overlap
-       CALL get_atomic_kind(atomic_kind_set(ikind),&
-                            alpha_core_charge=calpha(ikind),&
-                            core_charge_radius=core_radius(ikind),&
-                            zeff=zeff(ikind))
+       CALL get_qs_kind(qs_kind_set(ikind),&
+                        alpha_core_charge=calpha(ikind),&
+                        core_charge_radius=core_radius(ikind),&
+                        zeff=zeff(ikind))
        IF(zeff(ikind) /= 0._dp .AND. calpha(ikind) /= 0._dp) THEN
          core_present(ikind) = .TRUE.
        ELSE

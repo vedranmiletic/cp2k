@@ -143,10 +143,6 @@ CONTAINS
 
     DO ikind=1,nkind
 
-      CALL get_atomic_kind(atomic_kind_set(ikind),&
-                           all_potential=all_potential,&
-                           gth_potential=gth_potential)
-
       CALL get_qs_kind(qs_kind_set(ikind),&
                        aux_basis_set=aux_basis_set,&
                        aux_fit_basis_set=aux_fit_basis_set,&
@@ -155,7 +151,9 @@ CONTAINS
                        soft_basis_set=soft_basis,&
                        paw_proj_set=paw_proj_set,&
                        geminal_basis_set=geminal_basis_set,&
-                       paw_atom=paw_atom)
+                       paw_atom=paw_atom,&
+                       all_potential=all_potential,&
+                       gth_potential=gth_potential)
 
       ! Calculate the orbital basis function radii ***
       ! For ALL electron this has to come before the calculation of the
@@ -587,9 +585,11 @@ CONTAINS
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_core_charge_radii(atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_core_charge_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -612,10 +612,10 @@ CONTAINS
             "RADII: CORE CHARGE DISTRIBUTIONS in "//&
             TRIM(unit_str),"Kind","Label","Radius"
        DO ikind=1,nkind
-          CALL get_atomic_kind(atomic_kind_set(ikind),&
-               name=name,&
-               all_potential=all_potential,&
-               gth_potential=gth_potential)
+          CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+          CALL get_qs_kind(qs_kind_set(ikind),&
+                 all_potential=all_potential, gth_potential=gth_potential)
+
           IF (ASSOCIATED(all_potential)) THEN
              CALL get_potential(potential=all_potential,&
                   core_charge_radius=core_charge_radius)
@@ -959,10 +959,12 @@ CONTAINS
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_ppl_radii(atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_ppl_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -984,9 +986,8 @@ CONTAINS
         "RADII: LOCAL PART OF GTH/ELP PP in "//&
         TRIM(unit_str),"Kind","Label","Radius"
       DO ikind=1,nkind
-        CALL get_atomic_kind(atomic_kind_set(ikind),&
-                             name=name,&
-                             gth_potential=gth_potential)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), gth_potential=gth_potential)
         IF (ASSOCIATED(gth_potential)) THEN
           CALL get_potential(potential=gth_potential,&
                              ppl_radius=ppl_radius)
@@ -1010,10 +1011,12 @@ CONTAINS
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE write_ppnl_radii(atomic_kind_set,subsys_section,error)
+  SUBROUTINE write_ppnl_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: subsys_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
@@ -1035,9 +1038,8 @@ CONTAINS
         "RADII: NON-LOCAL PART OF GTH PP in "//&
         TRIM(unit_str),"Kind","Label","Radius"
       DO ikind=1,nkind
-        CALL get_atomic_kind(atomic_kind_set(ikind),&
-                             name=name,&
-                             gth_potential=gth_potential)
+        CALL get_atomic_kind(atomic_kind_set(ikind), name=name)
+        CALL get_qs_kind(qs_kind_set(ikind), gth_potential=gth_potential)
         IF (ASSOCIATED(gth_potential)) THEN
           CALL get_potential(potential=gth_potential,&
                              ppnl_radius=ppnl_radius)

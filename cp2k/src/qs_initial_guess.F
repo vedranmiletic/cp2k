@@ -686,8 +686,9 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
                 CALL get_atomic_kind(atomic_kind=atomic_kind,&
                                      natom=natom,&
                                      atom_list=atom_list,&
-                                     z=z, zeff=zeff)
-                CALL get_qs_kind(qs_kind, nsgf=nsgf,elec_conf=elec_conf, orb_basis_set=orb_basis_set)
+                                     z=z)
+                CALL get_qs_kind(qs_kind, nsgf=nsgf,elec_conf=elec_conf,&
+                                 orb_basis_set=orb_basis_set, zeff=zeff)
                 nelec_kind(ikind) = SUM(elec_conf)
              ENDDO
              CALL sort(nelec_kind,size_atomic_kind_set,sort_kind)
@@ -1195,12 +1196,10 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     IF (nelectron_spin /= 0) THEN
        DO ikind=1,SIZE(atomic_kind_set)
 
-          CALL get_atomic_kind(atomic_kind_set(ikind),&
-                               natom=natom,&
-                               atom_list=atom_list,&
+          CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list)
+          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set,&
                                all_potential=all_potential,&
                                gth_potential=gth_potential)
-          CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
 
           IF ( dft_control%qs_control%dftb ) THEN
              CALL get_dftb_atom_param(qs_kind_set(ikind)%dftb_parameter,&
@@ -1208,14 +1207,14 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
              maxll = MIN(maxll,maxl)
              econf(0:maxl)=edftb(0:maxl)
           ELSEIF (ASSOCIATED(all_potential)) THEN
-             CALL get_atomic_kind(atomic_kind_set(ikind), z=z, zeff=zeff)
-             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf)
+             CALL get_atomic_kind(atomic_kind_set(ikind), z=z)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf, zeff=zeff)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)
           ELSE IF (ASSOCIATED(gth_potential)) THEN
-             CALL get_atomic_kind(atomic_kind_set(ikind), z=z, zeff=zeff)
-             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf)
+             CALL get_atomic_kind(atomic_kind_set(ikind), z=z)
+             CALL get_qs_kind(qs_kind_set(ikind), nsgf=nsgf, elec_conf=elec_conf, zeff=zeff)
              maxll = MIN(SIZE(elec_conf) - 1,maxl)
              econf(:) = 0.0_dp
              econf(0:maxll) = 0.5_dp*maxocc*REAL(elec_conf(0:maxll),dp)

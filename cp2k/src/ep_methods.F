@@ -16,6 +16,8 @@
 MODULE ep_methods
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE cp_array_r_utils,                ONLY: cp_2d_r_p_type
   USE cp_blacs_env,                    ONLY: cp_blacs_env_type
   USE cp_control_types,                ONLY: dft_control_type
@@ -1426,8 +1428,8 @@ CONTAINS
     LOGICAL                                  :: failure, &
                                                 gth_potential_present, &
                                                 uniform_occupation
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s
     TYPE(cp_fm_pool_p_type), DIMENSION(:), &
@@ -1445,7 +1447,7 @@ CONTAINS
 
     NULLIFY(matrix_ks, ao_mo_fm_pools, matrix_s, dft_control, mos, &
          ks_env)
-    NULLIFY(atomic_kind_set, mo_coeff)
+    NULLIFY(qs_kind_set, mo_coeff)
     logger => cp_error_get_logger(error)
     failure=.FALSE.
 
@@ -1457,10 +1459,9 @@ CONTAINS
          mos=mos,&
          matrix_ks=matrix_ks,&
          ks_env=ks_env,&
-         atomic_kind_set=atomic_kind_set,&
+         qs_kind_set=qs_kind_set,&
          matrix_s=matrix_s,error=error)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-         gth_potential_present=gth_potential_present)
+    CALL get_qs_kind_set(qs_kind_set, gth_potential_present=gth_potential_present)
     CALL mpools_get(qs_env%mpools, ao_mo_fm_pools=ao_mo_fm_pools,&
          error=error)
 

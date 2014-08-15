@@ -176,8 +176,8 @@ CONTAINS
 
     maxder = ncoset(nder)
 
-    CALL get_atomic_kind_set(atomic_kind_set, maxpol=maxpol)
-    CALL get_qs_kind_set(qs_kind_set, maxco=maxco,maxlgto=maxlgto,maxsgf=maxsgf,maxnset=maxnset)
+    CALL get_qs_kind_set(qs_kind_set,maxpol=maxpol,maxco=maxco,maxlgto=maxlgto,&
+                          maxsgf=maxsgf,maxnset=maxnset)
 
     maxl = MAX(maxlgto,maxpol)
     CALL init_orbital_pointers(maxl+nder+1)
@@ -379,7 +379,7 @@ CONTAINS
        ! loop over all kinds for nonadditive kinetic energy potential atoms
        DO kkind=1,nkind
 
-          CALL get_atomic_kind(atomic_kind_set(kkind),tnadd_potential=tnadd_potential)
+          CALL get_qs_kind(qs_kind_set(kkind),tnadd_potential=tnadd_potential)
           IF (.NOT.ASSOCIATED(tnadd_potential)) CYCLE
           CALL get_potential(potential=tnadd_potential,&
                alpha=alpha,cval=cval,ngau=ngau,npol=npol,radius=radius)

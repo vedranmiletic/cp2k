@@ -20,6 +20,8 @@ MODULE qs_ks_utils
 
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind_set
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: becke_restraint_type,&
                                              dft_control_type
@@ -840,22 +842,21 @@ CONTAINS
                                                 output_unit
     REAL(dp)                                 :: tot1_h, tot1_s, tot_rho_r, &
                                                 trace, trace_tmp
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(qs_charges_type), POINTER           :: qs_charges
     TYPE(section_vals_type), POINTER         :: input, scf_section
 
-    NULLIFY(qs_charges, atomic_kind_set, cell, input, logger, scf_section)
+    NULLIFY(qs_charges, qs_kind_set, cell, input, logger, scf_section)
     logger => cp_error_get_logger(error)
 
     CALL get_qs_env(qs_env=qs_env, &
-         atomic_kind_set=atomic_kind_set, &
+         qs_kind_set=qs_kind_set, &
          cell=cell,qs_charges=qs_charges,&
          input=input,error=error)
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set, &
-         nelectron=n_electrons)
+    CALL get_qs_kind_set(qs_kind_set, nelectron=n_electrons)
 
     scf_section => section_vals_get_subs_vals(input,"DFT%SCF",error=error)
     output_unit = cp_print_key_unit_nr(logger,scf_section,"PRINT%TOTAL_DENSITIES",&

@@ -338,17 +338,14 @@ CONTAINS
 
           rho_rad_z  => rhoz_set(ikind)%r_coef
 
-          CALL get_atomic_kind(atomic_kind_set(ikind),&
-                               atom_list=atom_list,&
-                               natom=natom,&
-                               zeff=charge,&
-                               alpha_core_charge=alpha_core)
-
-           CALL get_qs_kind(qs_kind_set(ikind),&
-                               grid_atom=grid_atom,&
-                               harmonics=harmonics,&
-                               hard_radius=hard_radius,&
-                               paw_atom=paw_atom)
+          CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=natom)
+          CALL get_qs_kind(qs_kind_set(ikind),&
+                           grid_atom=grid_atom,&
+                           harmonics=harmonics,&
+                           hard_radius=hard_radius,&
+                           paw_atom=paw_atom,&
+                           zeff=charge,&
+                           alpha_core_charge=alpha_core)
 
           IF (paw_atom) THEN
 
@@ -504,16 +501,13 @@ CONTAINS
        NULLIFY(grid_atom)
        NULLIFY(harmonics)
 
-       CALL get_atomic_kind(atomic_kind_set(ikind),&
-                            all_potential=all_potential,&
-                            atom_list=atom_list,&
-                            gth_potential=gth_potential,&
-                            natom=natom)
-
+       CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=natom)
        CALL get_qs_kind(qs_kind_set(ikind),&
                         grid_atom=grid_atom,&
                         harmonics=harmonics,&
                         hard_radius=hard_radius,&
+                        gth_potential=gth_potential,&
+                        all_potential=all_potential,&
                         paw_atom=paw_atom)
 
        IF (ASSOCIATED(gth_potential)) THEN

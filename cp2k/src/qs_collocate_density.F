@@ -327,6 +327,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: cval_nlcc, pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -343,11 +345,12 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(cell,dft_control,pab,particle_set,atomic_kind_set,&
+    NULLIFY(cell,dft_control,pab,particle_set,atomic_kind_set,qs_kind_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     particle_set=particle_set,&
@@ -362,8 +365,8 @@ CONTAINS
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
     DO ikind=1,SIZE(atomic_kind_set)
-      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list,&
-                           gth_potential=gth_potential)
+      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list)
+      CALL get_qs_kind(qs_kind_set(ikind), gth_potential=gth_potential)
 
       IF (.NOT.ASSOCIATED(gth_potential)) CYCLE
       CALL get_potential(potential=gth_potential,nlcc_present=nlcc,nexp_nlcc=nexp_nlcc,&
@@ -515,6 +518,8 @@ CONTAINS
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: pab
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cube_info_type)                     :: cube_info
@@ -531,11 +536,12 @@ CONTAINS
 
     failure = .FALSE.
 
-    NULLIFY(cell,dft_control,pab,atomic_kind_set,particle_set,&
+    NULLIFY(cell,dft_control,pab,atomic_kind_set,qs_kind_set,particle_set,&
          atom_list,pw_env,rs_rho,auxbas_rs_desc,auxbas_pw_pool,cores)
 
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
+                    qs_kind_set=qs_kind_set,&
                     cell=cell,&
                     dft_control=dft_control,&
                     particle_set=particle_set,&
@@ -550,8 +556,8 @@ CONTAINS
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
     DO ikind=1, SIZE(atomic_kind_set)
-      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list,&
-                           gth_potential=gth_potential)
+      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list)
+      CALL get_qs_kind(qs_kind_set(ikind), gth_potential=gth_potential)
 
       IF (.NOT.ASSOCIATED(gth_potential)) CYCLE
       CALL get_potential(potential=gth_potential,alpha_ppl=alpha,nexp_ppl=lppl,cexp_ppl=cexp_ppl)
@@ -1168,9 +1174,9 @@ CONTAINS
     eps_rho_rspace = dft_control%qs_control%eps_rho_rspace
 
     DO ikind=1, SIZE(atomic_kind_set)
-      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list,&
-                           alpha_core_charge=alpha, ccore_charge=pab(1,1))
-      CALL get_qs_kind(qs_kind_set(ikind), paw_atom=paw_atom)
+      CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list)
+      CALL get_qs_kind(qs_kind_set(ikind), paw_atom=paw_atom,&
+                       alpha_core_charge=alpha, ccore_charge=pab(1,1))
 
       IF(my_only_nopaw .AND. paw_atom ) CYCLE
       IF (alpha == 0.0_dp .OR. pab(1,1)== 0.0_dp) CYCLE

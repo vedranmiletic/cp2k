@@ -170,14 +170,12 @@ CONTAINS
 
       maxder = ncoset(nder)
 
-      CALL get_atomic_kind_set(atomic_kind_set,&
-                               maxlppnl=maxlppnl,&
-                               maxppnl=maxppnl)
-
       CALL get_qs_kind_set(qs_kind_set,&
                                maxco=maxco,&
                                maxlgto=maxlgto,&
-                               maxsgf=maxsgf)
+                               maxsgf=maxsgf,&
+                               maxlppnl=maxlppnl,&
+                               maxppnl=maxppnl)
 
       maxl = MAX(maxlgto,maxlppnl)
       CALL init_orbital_pointers(maxl+nder+1)
@@ -203,7 +201,7 @@ CONTAINS
          ELSE
            NULLIFY(basis_set(ikind)%gto_basis_set)
          END IF
-         CALL get_atomic_kind(atomic_kind_set(ikind),gth_potential=gth_potential)
+         CALL get_qs_kind(qs_kind_set(ikind),gth_potential=gth_potential)
          IF (ASSOCIATED(gth_potential)) THEN
            potential(ikind)%gth_potential => gth_potential
          ELSE

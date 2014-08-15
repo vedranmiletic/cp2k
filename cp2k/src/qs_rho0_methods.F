@@ -453,18 +453,16 @@ MODULE qs_rho0_methods
     rc_min = 100.0_dp
     maxnset = 0
     DO ikind=1, nkind
-      CALL get_atomic_kind(atomic_kind_set(ikind),&
-                          atom_list=atom_list,natom=nat, &
-                          zeff=zeff,&
-                          alpha_core_charge=alpha_core)
-
+      CALL get_atomic_kind(atomic_kind_set(ikind), atom_list=atom_list, natom=nat)
       CALL get_qs_kind(qs_kind_set(ikind),&
                        orb_basis_set=orb_basis,&
                        ngrid_rad=nr,&
                        grid_atom=grid_atom,&
                        harmonics=harmonics,&
                        paw_atom=paw_atom,&
-                       hard0_radius=rc_orb)
+                       hard0_radius=rc_orb,&
+                       zeff=zeff,&
+                       alpha_core_charge=alpha_core)
 
       CALL get_gto_basis_set(gto_basis_set=orb_basis,&
                              maxl=maxl,&

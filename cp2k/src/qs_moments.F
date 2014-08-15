@@ -966,8 +966,8 @@ CONTAINS
        ! nuclear contribution
        DO ia = 1,SIZE(particle_set)
          atomic_kind => particle_set(ia)%atomic_kind
-         CALL get_atomic_kind(atomic_kind,core_charge=charge,kind_number=ikind)
-         CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
+         CALL get_atomic_kind(atomic_kind, kind_number=ikind)
+         CALL get_qs_kind(qs_kind_set(ikind), core_charge=charge, ghost=ghost)
          IF (.NOT. ghost) THEN
             rmom(1,2) = rmom(1,2) - charge
          ENDIF
@@ -987,8 +987,8 @@ CONTAINS
              zi(:) = CMPLX ( 1._dp, 0._dp, dp )
              DO ia = 1,SIZE(particle_set)
                atomic_kind => particle_set(ia)%atomic_kind
-               CALL get_atomic_kind(atomic_kind,core_charge=charge,kind_number=ikind)
-               CALL get_qs_kind(qs_kind_set(ikind), ghost=ghost)
+               CALL get_atomic_kind(atomic_kind, kind_number=ikind)
+               CALL get_qs_kind(qs_kind_set(ikind), core_charge=charge, ghost=ghost)
                IF (.NOT. ghost) THEN
                   ria = particle_set(ia)%r
                   ria = pbc(ria,cell)
@@ -1011,7 +1011,8 @@ CONTAINS
              zij(:,:) = CMPLX ( 1._dp, 0._dp, dp )
              DO ia = 1,SIZE(particle_set)
                atomic_kind => particle_set(ia)%atomic_kind
-               CALL get_atomic_kind(atomic_kind,core_charge=charge)
+               CALL get_atomic_kind(atomic_kind, kind_number=ikind)
+               CALL get_qs_kind(qs_kind_set(ikind), core_charge=charge)
                ria = particle_set(ia)%r
                ria = pbc(ria,cell)
                DO i = 1, 3
@@ -1411,7 +1412,7 @@ CONTAINS
     CHARACTER(LEN=default_string_length)     :: description
     INTEGER                                  :: handle, i, ia, iatom, ikind, &
                                                 ispin, istat, ix, iy, iz, l, &
-                                                nm, nmom
+                                                nm, nmom, akind
     LOGICAL                                  :: failure
     REAL(dp)                                 :: charge, dd, strace, trace
     REAL(dp), ALLOCATABLE, DIMENSION(:)      :: mmom
@@ -1426,6 +1427,8 @@ CONTAINS
     TYPE(distribution_1d_type), POINTER      :: local_particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(qs_rho_type), POINTER               :: rho
 
     failure = .FALSE.
@@ -1443,9 +1446,9 @@ CONTAINS
        ! electronic contribution
        NULLIFY ( moments )
        CALL build_local_moment_matrix(qs_env,moments,nmom,ref_point=rcc,error=error)
-       NULLIFY ( dft_control, rho, cell, particle_set )
+       NULLIFY ( dft_control, rho, cell, particle_set, qs_kind_set )
        CALL get_qs_env ( qs_env, dft_control=dft_control, rho=rho, cell=cell,&
-                         particle_set=particle_set, error=error)
+                         particle_set=particle_set, qs_kind_set=qs_kind_set, error=error)
        para_env => qs_env%para_env
        NULLIFY ( matrix_s )
        CALL get_qs_env(qs_env=qs_env, matrix_s=matrix_s,error=error)
@@ -1502,7 +1505,8 @@ CONTAINS
             ria = pbc(particle_set(iatom)%r-rcc,cell)+rcc
             ria = ria - rcc
             atomic_kind => particle_set(iatom)%atomic_kind
-            CALL get_atomic_kind(atomic_kind,core_charge=charge)
+            CALL get_atomic_kind(atomic_kind, kind_number=akind)
+            CALL get_qs_kind(qs_kind_set(akind), core_charge=charge)
             rmom(1,2) = rmom(1,2) - charge
             DO l = 1, nm
               ix = indco(1,l+1)

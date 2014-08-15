@@ -17,7 +17,10 @@
 MODULE particle_types
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
-  USE basis_set_types,                 ONLY: gto_basis_set_p_type
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind
+  USE basis_set_types,                 ONLY: get_gto_basis_set,&
+                                             gto_basis_set_p_type
   USE cell_methods,                    ONLY: cell_clone,&
                                              cell_create,&
                                              cell_release,&
@@ -191,11 +194,13 @@ CONTAINS
 !> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE get_particle_set(particle_set,first_sgf,last_sgf,nsgf,&
+  SUBROUTINE get_particle_set(particle_set,qs_kind_set,first_sgf,last_sgf,nsgf,&
                               basis_set_id,basis,error)
 
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     INTEGER, DIMENSION(:), INTENT(INOUT), &
       OPTIONAL                               :: first_sgf, last_sgf, nsgf
     INTEGER, INTENT(IN), OPTIONAL            :: basis_set_id
@@ -206,42 +211,44 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'get_particle_set', &
       routineP = moduleN//':'//routineN
 
-    STOP "TODO:   get_particle_set"
-   ! failure = .FALSE.
-   ! CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
-   !
-   ! nparticle = SIZE(particle_set)
-   ! IF (PRESENT(first_sgf)) THEN
-   !   CPPrecondition(SIZE(first_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
-   ! END IF
-   ! IF (PRESENT(last_sgf)) THEN
-   !   CPPrecondition(SIZE(last_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
-   ! END IF
-   ! IF (PRESENT(nsgf)) THEN
-   !   CPPrecondition(SIZE(nsgf) >= nparticle,cp_failure_level,routineP,error,failure)
-   ! END IF
-   !
-   ! IF (PRESENT(first_sgf).OR.PRESENT(last_sgf).OR.PRESENT(nsgf)) THEN
-   !   isgf = 0
-   !   DO iparticle=1,nparticle
-   !     IF (PRESENT(basis)) THEN
-   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,kind_number=ikind)
-   !       CALL get_gto_basis_set(gto_basis_set=basis(ikind)%gto_basis_set,nsgf=ns)
-   !     ELSEIF (PRESENT(basis_set_id)) THEN
-   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns,&
-   !                          basis_set_id=basis_set_id)
-   !     ELSE
-   !       CALL get_atomic_kind(atomic_kind=particle_set(iparticle)%atomic_kind,nsgf=ns)
-   !     END IF
-   !     IF (PRESENT(nsgf)) nsgf(iparticle) = ns
-   !     IF (PRESENT(first_sgf)) first_sgf(iparticle) = isgf + 1
-   !     isgf = isgf + ns
-   !     IF (PRESENT(last_sgf)) last_sgf(iparticle) = isgf
-   !   END DO
-   ! END IF
-   ! IF (PRESENT(first_sgf)) THEN
-   !   IF (SIZE(first_sgf) > nparticle) first_sgf(nparticle+1) = isgf + 1
-   ! END IF
+    INTEGER                                  :: ikind, iparticle, isgf, &
+                                                nparticle, ns
+    LOGICAL                                  :: failure
+
+    failure = .FALSE.
+    CPPrecondition(ASSOCIATED(particle_set),cp_failure_level,routineP,error,failure)
+
+    nparticle = SIZE(particle_set)
+    IF (PRESENT(first_sgf)) THEN
+      CPPrecondition(SIZE(first_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
+    END IF
+    IF (PRESENT(last_sgf)) THEN
+      CPPrecondition(SIZE(last_sgf) >= nparticle,cp_failure_level,routineP,error,failure)
+    END IF
+    IF (PRESENT(nsgf)) THEN
+      CPPrecondition(SIZE(nsgf) >= nparticle,cp_failure_level,routineP,error,failure)
+    END IF
+
+    IF (PRESENT(first_sgf).OR.PRESENT(last_sgf).OR.PRESENT(nsgf)) THEN
+      isgf = 0
+      DO iparticle=1,nparticle
+        CALL get_atomic_kind(particle_set(iparticle)%atomic_kind, kind_number=ikind)
+        IF (PRESENT(basis)) THEN
+          CALL get_gto_basis_set(gto_basis_set=basis(ikind)%gto_basis_set,nsgf=ns)
+        ELSEIF (PRESENT(basis_set_id)) THEN
+          CALL get_qs_kind(qs_kind_set(ikind), nsgf=ns, basis_set_id=basis_set_id)
+        ELSE
+          CALL get_qs_kind(qs_kind_set(ikind), nsgf=ns)
+        END IF
+        IF (PRESENT(nsgf)) nsgf(iparticle) = ns
+        IF (PRESENT(first_sgf)) first_sgf(iparticle) = isgf + 1
+        isgf = isgf + ns
+        IF (PRESENT(last_sgf)) last_sgf(iparticle) = isgf
+      END DO
+    END IF
+    IF (PRESENT(first_sgf)) THEN
+      IF (SIZE(first_sgf) > nparticle) first_sgf(nparticle+1) = isgf + 1
+    END IF
 
   END SUBROUTINE get_particle_set
 
@@ -663,53 +670,54 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN)             :: label
     TYPE(cp_error_type), INTENT(INOUT)       :: error
 
-    CHARACTER(len=*), PARAMETER :: &
-      routineN = 'write_qs_particle_coordinates', &
-      routineP = moduleN//':'//routineN
-
-    CHARACTER(LEN=2)                         :: element_symbol
-    CHARACTER(LEN=default_string_length)     :: unit_str
-    INTEGER                                  :: handle, iatom, ikind, iw, &
-                                                natom, z
-    REAL(KIND=dp)                            :: conv, mass, zeff
-    TYPE(cp_logger_type), POINTER            :: logger
-
-    CALL timeset(routineN,handle)
-
-    NULLIFY(logger)
-    logger => cp_error_get_logger(error)
-    iw = cp_print_key_unit_nr(logger,subsys_section,&
-         "PRINT%ATOMIC_COORDINATES",extension=".coordLog",error=error)
-
-    CALL section_vals_val_get(subsys_section,"PRINT%ATOMIC_COORDINATES%UNIT",c_val=unit_str,error=error)
-    conv = cp_unit_from_cp2k(1.0_dp,TRIM(unit_str),error=error)
-    IF (iw>0) THEN
-      WRITE (UNIT=iw,FMT="(/,/,T2,A)")&
-        "MODULE "//TRIM(label)//":  ATOMIC COORDINATES IN "//TRIM(unit_str)
-      WRITE (UNIT=iw,&
-           FMT="(/,T3,A,7X,2(A1,11X),A1,8X,A8,5X,A6,/)")&
-        "Atom  Kind  Element","X","Y","Z","  Z(eff)","  Mass"
-
-      natom = SIZE(particle_set)
-      DO iatom=1,natom
-        CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
-                             kind_number=ikind,&
-                             element_symbol=element_symbol,&
-                             mass=mass,&
-                             z=z,&
-                             zeff=zeff)
-        WRITE (UNIT=iw,&
-               FMT="(T2,I7,1X,I5,1X,A2,1X,I3,3F12.6,4X,F6.2,2X,F11.4)")&
-          iatom,ikind,element_symbol,z,&
-          particle_set(iatom)%r(1:3)*conv,zeff,mass/massunit
-      END DO
-      WRITE (iw,'(/)')
-    END IF
-
-    CALL cp_print_key_finished_output(iw,logger,subsys_section,&
-         "PRINT%ATOMIC_COORDINATES", error=error)
-
-    CALL timestop(handle)
+    STOP "TODO: write_qs_particle_coordinates"
+    !CHARACTER(len=*), PARAMETER :: &
+    !  routineN = 'write_qs_particle_coordinates', &
+    !  routineP = moduleN//':'//routineN
+    !
+    !CHARACTER(LEN=2)                         :: element_symbol
+    !CHARACTER(LEN=default_string_length)     :: unit_str
+    !INTEGER                                  :: handle, iatom, ikind, iw, &
+    !                                            natom, z
+    !REAL(KIND=dp)                            :: conv, mass, zeff
+    !TYPE(cp_logger_type), POINTER            :: logger
+    !
+    !CALL timeset(routineN,handle)
+    !
+    !NULLIFY(logger)
+    !logger => cp_error_get_logger(error)
+    !iw = cp_print_key_unit_nr(logger,subsys_section,&
+    !     "PRINT%ATOMIC_COORDINATES",extension=".coordLog",error=error)
+    !
+    !CALL section_vals_val_get(subsys_section,"PRINT%ATOMIC_COORDINATES%UNIT",c_val=unit_str,error=error)
+    !conv = cp_unit_from_cp2k(1.0_dp,TRIM(unit_str),error=error)
+    !IF (iw>0) THEN
+    !  WRITE (UNIT=iw,FMT="(/,/,T2,A)")&
+    !    "MODULE "//TRIM(label)//":  ATOMIC COORDINATES IN "//TRIM(unit_str)
+    !  WRITE (UNIT=iw,&
+    !       FMT="(/,T3,A,7X,2(A1,11X),A1,8X,A8,5X,A6,/)")&
+    !    "Atom  Kind  Element","X","Y","Z","  Z(eff)","  Mass"
+    !
+    !  natom = SIZE(particle_set)
+    !  DO iatom=1,natom
+    !    CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
+    !                         kind_number=ikind,&
+    !                         element_symbol=element_symbol,&
+    !                         mass=mass,&
+    !                         z=z,&
+    !                         zeff=zeff)
+    !    WRITE (UNIT=iw,&
+    !           FMT="(T2,I7,1X,I5,1X,A2,1X,I3,3F12.6,4X,F6.2,2X,F11.4)")&
+    !      iatom,ikind,element_symbol,z,&
+    !      particle_set(iatom)%r(1:3)*conv,zeff,mass/massunit
+    !  END DO
+    !  WRITE (iw,'(/)')
+    !END IF
+    !
+    !CALL cp_print_key_finished_output(iw,logger,subsys_section,&
+    !     "PRINT%ATOMIC_COORDINATES", error=error)
+    !
+    !CALL timestop(handle)
 
   END SUBROUTINE write_qs_particle_coordinates
 
@@ -1266,3 +1274,4 @@ CONTAINS
   END SUBROUTINE update_particle_pos_or_vel
 
 END MODULE particle_types
+

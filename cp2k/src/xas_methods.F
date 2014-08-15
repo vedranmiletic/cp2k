@@ -979,8 +979,8 @@ CONTAINS
         iatom = xas_env%exc_atoms(iat)
         NULLIFY(atomic_kind)
         atomic_kind =>  particle_set(iatom)%atomic_kind
-        CALL get_atomic_kind(atomic_kind=atomic_kind,&
-             kind_number=ikind,zeff=zatom)
+        CALL get_atomic_kind(atomic_kind=atomic_kind, kind_number=ikind)
+        CALL get_qs_kind(qs_kind_set(ikind), zeff=zatom)
         ihavethis = .FALSE.
         DO ik = 1,nk
           IF(ikind==kind_type_tmp(ik)) THEN

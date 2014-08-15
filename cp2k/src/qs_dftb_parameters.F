@@ -666,7 +666,7 @@ CPSourceFileRef,&
     DO ikind = 1, nkind
       CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_atom_a)
       CALL get_dftb_atom_param(dftb_parameter=dftb_atom_a,zeff=zeff,error=error)
-      CALL set_potential(potential=atomic_kind_set(ikind)%all_potential,&
+      CALL set_potential(potential=qs_kind_set(ikind)%all_potential,&
                   zeff=zeff,zeff_correction=0.0_dp)
     END DO
 

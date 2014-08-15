@@ -522,9 +522,8 @@ CONTAINS
       NULLIFY (orb_basis_set)
       CALL get_atomic_kind(atomic_kind=particle_set(iatom)%atomic_kind,&
                            element_symbol=element_symbol,&
-                           kind_number=ikind,&
-                           zeff=zeff)
-      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set)
+                           kind_number=ikind)
+      CALL get_qs_kind(qs_kind_set(ikind), orb_basis_set=orb_basis_set, zeff=zeff)
       IF (ASSOCIATED(orb_basis_set)) THEN
         CALL get_gto_basis_set(gto_basis_set=orb_basis_set,&
                                nset=nset,&

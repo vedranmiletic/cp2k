@@ -11,6 +11,7 @@
 !> \author Teodoro Laino
 ! *****************************************************************************
 MODULE cp_ddapc_util
+  USE qs_kind_types,                   ONLY: qs_kind_type, get_qs_kind
   USE atomic_charges,                  ONLY: print_atomic_charges
   USE cell_types,                      ONLY: cell_type
   USE cp_control_types,                ONLY: ddapc_restraint_type,&
@@ -251,6 +252,8 @@ CONTAINS
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_p_type), POINTER                 :: rho0_s_gs, rho_core
     TYPE(pw_pool_type), POINTER              :: auxbas_pool
@@ -270,7 +273,7 @@ CONTAINS
     IF (PRESENT(calc_force))  need_f      = calc_force
     logger => cp_error_get_logger(error)
     NULLIFY(dft_control, rho, rho_tot_g, rho_core, rho0_s_gs, pw_env,&
-            radii, inp_radii, particle_set, qs_charges, cp_ddapc_env)
+            radii, inp_radii, particle_set, qs_kind_set, qs_charges, cp_ddapc_env)
     IF (.NOT.failure) THEN
        CALL get_qs_env(qs_env=qs_env,&
                        dft_control=dft_control,&
@@ -280,6 +283,7 @@ CONTAINS
                        pw_env=pw_env,&
                        qs_charges=qs_charges,&
                        particle_set=particle_set,&
+                       qs_kind_set=qs_kind_set,&
                        cell=cell,&
                        super_cell=super_cell,&
                        error=error)
@@ -405,7 +409,7 @@ CONTAINS
           END IF
           qout2 = qtot
        END IF
-       CALL print_atomic_charges(particle_set,iw,title=" DDAP "//&
+       CALL print_atomic_charges(particle_set,qs_kind_set, iw,title=" DDAP "//&
             TRIM(type_of_density)//" charges:",atomic_charges=qtot)
        CALL timestop(handle2)
        !

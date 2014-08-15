@@ -14,8 +14,6 @@
 ! *****************************************************************************
 MODULE pw_env_methods
   USE ao_util,                         ONLY: exp_radius
-  USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind
   USE basis_set_types,                 ONLY: get_gto_basis_set,&
                                              gto_basis_set_type
   USE cell_types,                      ONLY: cell_type
@@ -709,8 +707,6 @@ SUBROUTINE compute_max_radius(radius, pw_env, qs_env, error)
                                                 max_rpgf0_s, maxradius, zet0, &
                                                 zetp
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: zeta, zetb
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(gto_basis_set_type), POINTER        :: orb_basis_set
     TYPE(qs_kind_type), DIMENSION(:), &
@@ -770,7 +766,7 @@ SUBROUTINE compute_max_radius(radius, pw_env, qs_env, error)
              ! right now, the core is mapped on the auxiliary basis,
              ! this should, at a give point be changed
              ! so that also for the core a multigrid is used
-             CALL get_atomic_kind(atomic_kind_set(ikind),&
+             CALL get_qs_kind(qs_kind_set(ikind),&
                         alpha_core_charge=alpha,ccore_charge=core_charge)
 
              IF (alpha > 0.0_dp .AND. core_charge.NE.0.0_dp) THEN

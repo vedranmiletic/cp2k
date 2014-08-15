@@ -46,7 +46,7 @@ MODULE rt_propagation_output
   USE particle_types,                  ONLY: particle_type
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
-  USE qs_kind_types,                   ONLY: qs_kind_type
+  USE qs_kind_types,                   ONLY: qs_kind_type, get_qs_kind_set
   USE qs_mo_io,                        ONLY: write_rt_mos_to_restart
   USE qs_rho_types,                    ONLY: qs_rho_type
   USE qs_scf_post_dftb,                ONLY: scf_post_calculation_dftb
@@ -112,8 +112,7 @@ CONTAINS
          atomic_kind_set=atomic_kind_set,qs_kind_set=qs_kind_set,error=error)
     rtp_section => section_vals_get_subs_vals(input,"DFT%REAL_TIME_PROPAGATION",error=error)
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set, &
-         nelectron=n_electrons)
+    CALL get_qs_kind_set(qs_kind_set, nelectron=n_electrons)
     n_electrons = n_electrons - qs_env%dft_control%charge
 
     tot_rho_r = accurate_sum(rho%tot_rho_r)

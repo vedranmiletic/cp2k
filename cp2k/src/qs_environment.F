@@ -731,8 +731,7 @@ CONTAINS
          subsys_section=subsys_section,error=error)
 
     !   *** Check that no all-electron potential is present if GPW or GAPW_XC
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-         all_potential_present=all_potential_present)
+    CALL get_qs_kind_set(qs_kind_set, all_potential_present=all_potential_present)
     IF ( (dft_control%qs_control%method == "GPW") .OR. &
          (dft_control%qs_control%method == "GAPW_XC") .OR. &
          (dft_control%qs_control%method == "OFGPW") ) THEN
@@ -745,8 +744,7 @@ CONTAINS
 
     !   *** Initialize the spherical harmonics and ***
     !   *** the orbital transformation matrices    ***
-    CALL get_atomic_kind_set(atomic_kind_set, maxlppl=maxlppl,maxlppnl=maxlppnl)
-    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxlgto)
+    CALL get_qs_kind_set(qs_kind_set, maxlgto=maxlgto, maxlppl=maxlppl, maxlppnl=maxlppnl)
 
     lmax_sphere = dft_control%qs_control%gapw_control%lmax_sphere
     IF(lmax_sphere .LT.0) THEN
@@ -792,9 +790,9 @@ CONTAINS
     CALL write_geminal_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
     CALL write_pgf_orb_radii("aux",atomic_kind_set,qs_kind_set,subsys_section,error)
     CALL write_pgf_orb_radii("lri",atomic_kind_set,qs_kind_set,subsys_section,error)
-    CALL write_core_charge_radii(atomic_kind_set,subsys_section,error)
-    CALL write_ppl_radii(atomic_kind_set,subsys_section,error)
-    CALL write_ppnl_radii(atomic_kind_set,subsys_section,error)
+    CALL write_core_charge_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
+    CALL write_ppl_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
+    CALL write_ppnl_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
     CALL write_paw_radii(atomic_kind_set,qs_kind_set,subsys_section,error)
 
 
@@ -1088,8 +1086,7 @@ CONTAINS
     END IF
 
     !   *** Allocate the MO data types ***
-    CALL get_atomic_kind_set(atomic_kind_set, nelectron=nelectron)
-    CALL get_qs_kind_set(qs_kind_set, nsgf=n_ao)
+    CALL get_qs_kind_set(qs_kind_set, nsgf=n_ao, nelectron=nelectron)
 
     ! the total number of electrons
     nelectron = nelectron - dft_control%charge
@@ -1301,9 +1298,7 @@ CONTAINS
 
     ! If we use auxiliary density matrix methods , set mo_set_aux_fit
     IF( dft_control%do_admm ) THEN
-      CALL get_atomic_kind_set(atomic_kind_set, nelectron=nelectron)
-      CALL get_qs_kind_set(qs_kind_set,&
-                           nsgf=n_ao_aux_fit,&
+      CALL get_qs_kind_set(qs_kind_set, nelectron=nelectron, nsgf=n_ao_aux_fit, &
                            basis_set_id=use_aux_fit_basis_set)
       ALLOCATE (mos_aux_fit(dft_control%nspins),STAT=istat)
       CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
@@ -1360,7 +1355,7 @@ CONTAINS
     CALL write_total_numbers(atomic_kind_set, qs_kind_set,particle_set,qs_env%input,error)
 
     ! Print the atomic coordinates
-    CALL write_qs_particle_coordinates(particle_set,subsys_section,label="QUICKSTEP",error=error)
+    CALL write_qs_particle_coordinates(particle_set, subsys_section,label="QUICKSTEP",error=error)
 
     ! Print the interatomic distances
     CALL write_particle_distances(particle_set,cell,subsys_section,error)
@@ -1429,16 +1424,15 @@ CONTAINS
        natom = SIZE(particle_set)
        nkind = SIZE(qs_kind_set)
 
-       CALL get_atomic_kind_set(atomic_kind_set,&
+       CALL get_qs_kind_set(qs_kind_set,&
+                            maxlgto=maxlgto,&
+                            ncgf=ncgf,&
+                            npgf=npgf,&
+                            nset=nset,&
+                            nsgf=nsgf,&
+                            nshell=nshell,&
                             maxlppl=maxlppl,&
                             maxlppnl=maxlppnl)
-       CALL get_qs_kind_set(qs_kind_set,&
-                                maxlgto=maxlgto,&
-                                ncgf=ncgf,&
-                                npgf=npgf,&
-                                nset=nset,&
-                                nsgf=nsgf,&
-                                nshell=nshell)
 
        WRITE (UNIT=output_unit,FMT="(/,/,T2,A)")&
             "TOTAL NUMBERS AND MAXIMUM NUMBERS"

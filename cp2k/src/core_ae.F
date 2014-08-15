@@ -280,7 +280,7 @@ CONTAINS
        ! loop over all kinds for pseudopotential  atoms
        hab = 0._dp
        DO kkind=1,nkind
-          CALL get_atomic_kind(atomic_kind_set(kkind),all_potential=all_potential)
+          CALL get_qs_kind(qs_kind_set(kkind),all_potential=all_potential)
           IF (.NOT.ASSOCIATED(all_potential)) CYCLE
           CALL get_potential(potential=all_potential,&
                              alpha_core_charge=alpha_c,zeff=zeta_c,&

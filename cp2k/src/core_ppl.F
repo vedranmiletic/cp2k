@@ -162,8 +162,8 @@ CONTAINS
 
     maxder = ncoset(nder)
 
-    CALL get_atomic_kind_set(atomic_kind_set,maxlppl=maxlppl)
-    CALL get_qs_kind_set(qs_kind_set, maxco=maxco,maxlgto=maxlgto, maxsgf=maxsgf,maxnset=maxnset)
+    CALL get_qs_kind_set(qs_kind_set, maxco=maxco,maxlgto=maxlgto,&
+                         maxsgf=maxsgf,maxnset=maxnset, maxlppl=maxlppl)
 
     maxl = MAX(maxlgto,maxlppl)
     CALL init_orbital_pointers(2*maxl+2*nder+1)
@@ -332,7 +332,7 @@ CONTAINS
        ! loop over all kinds for pseudopotential  atoms
        DO kkind=1,nkind
 
-          CALL get_atomic_kind(atomic_kind_set(kkind),gth_potential=gth_potential)
+          CALL get_qs_kind(qs_kind_set(kkind),gth_potential=gth_potential)
           IF (.NOT.ASSOCIATED(gth_potential)) CYCLE
           CALL get_potential(potential=gth_potential,&
                alpha_ppl=alpha,cexp_ppl=cexp_ppl,&

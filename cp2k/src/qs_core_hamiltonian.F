@@ -74,6 +74,8 @@
 MODULE qs_core_hamiltonian
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind_set
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                           get_qs_kind_set
   USE core_ae,                         ONLY: build_core_ae
   USE core_ppl,                        ONLY: build_core_ppl
   USE core_ppnl,                       ONLY: build_core_ppnl
@@ -402,9 +404,9 @@ CONTAINS
        qs_env%dft_control%qs_control%do_ppl_method=do_ppl_analytic
     ENDIF
 
-    CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
-                             gth_potential_present=gth_potential_present,&
-                             all_potential_present=all_potential_present)
+    CALL get_qs_kind_set(qs_kind_set,&
+                         gth_potential_present=gth_potential_present,&
+                         all_potential_present=all_potential_present)
     ppl_present = ASSOCIATED(sac_ppl)
 
     IF (calculate_forces) THEN

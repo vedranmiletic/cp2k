@@ -15,6 +15,8 @@ MODULE qs_resp
   USE atomic_charges,                  ONLY: print_atomic_charges
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,                   ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE cell_methods,                    ONLY: cell_type,&
                                              pbc
   USE cp_output_handling,              ONLY: cp_p_file,&
@@ -1600,14 +1602,17 @@ CPSourceFileRef,&
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(section_vals_type), POINTER         :: input, print_key, resp_section
 
     CALL timeset(routineN,handle)
 
     failure=.FALSE.
-    NULLIFY(particle_set,input,logger,resp_section,print_key)
+    NULLIFY(particle_set,qs_kind_set,input,logger,resp_section,print_key)
  
-    CALL get_qs_env(qs_env,input=input,particle_set=particle_set,error=error)
+    CALL get_qs_env(qs_env,input=input,particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set, error=error)
 
     resp_section => section_vals_get_subs_vals(input,"PROPERTIES%RESP",&
                                                 error=error)
@@ -1630,7 +1635,7 @@ CPSourceFileRef,&
       filename = cp_print_key_generate_filename(logger,&
                  print_key, extension=".resp", &
                  my_local=.FALSE.,error=error)
-     CALL print_atomic_charges(particle_set,output_file,title="RESP charges:",&
+     CALL print_atomic_charges(particle_set,qs_kind_set,output_file,title="RESP charges:",&
                                              atomic_charges=resp_env%rhs(1:natom))
      IF(output_runinfo>0) WRITE(output_runinfo,'(2X,A,/)')  "PRINTED RESP CHARGES TO FILE"
      ENDIF
@@ -1638,7 +1643,7 @@ CPSourceFileRef,&
      CALL cp_print_key_finished_output(output_file,logger,resp_section,&
                        "PRINT%RESP_CHARGES_TO_FILE", error=error)
     ELSE
-     CALL print_atomic_charges(particle_set,output_runinfo,title="RESP charges:",&
+     CALL print_atomic_charges(particle_set,qs_kind_set,output_runinfo,title="RESP charges:",&
                                              atomic_charges=resp_env%rhs(1:natom))
     ENDIF
 
