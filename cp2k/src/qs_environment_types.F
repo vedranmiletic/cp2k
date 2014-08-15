@@ -14,6 +14,7 @@ MODULE qs_environment_types
                                              admm_type
   USE atomic_kind_list_types,          ONLY: atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type
+  USE qs_kind_types,               ONLY: qs_kind_type
   USE atprop_types,                    ONLY: atprop_type
   USE cell_methods,                    ONLY: cell_release,&
                                              cell_retain,&
@@ -443,6 +444,7 @@ MODULE qs_environment_types
     TYPE(wannier_centres_type), POINTER,DIMENSION(:)      :: WannierCentres=>NULL()
     ! atomic properties
     TYPE(atprop_type),POINTER                             :: atprop
+    TYPE(qs_kind_type), DIMENSION(:), POINTER             :: qs_kind_set => Null()
   END TYPE qs_environment_type
 
 ! *****************************************************************************
@@ -929,7 +931,7 @@ CONTAINS
                       molecules_new=molecules_new,&
                       error=error)
 
-    IF (PRESENT(qs_kind_set)) STOP "TODO: get_qs_env"
+    IF (PRESENT(qs_kind_set)) qs_kind_set => qs_env%qs_kind_set
     IF (PRESENT(natom)) natom=SIZE(particles%els)
     IF (PRESENT(nkind)) nkind=SIZE(atomic_kinds%els)
     IF (PRESENT(atomic_kind_set)) atomic_kind_set => atomic_kinds%els

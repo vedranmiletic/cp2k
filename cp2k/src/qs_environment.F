@@ -170,6 +170,7 @@ MODULE qs_environment
                                              init_qs_kind_set,&
                                              check_qs_kind_set,&
                                              qs_kind_type,&
+                                             create_qs_kind_set,&
                                              write_qs_kind_set,&
                                              write_gto_basis_sets
   USE qs_mo_types,                     ONLY: allocate_mo_set,&
@@ -281,17 +282,13 @@ CONTAINS
     TYPE(particle_list_type), POINTER        :: particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
-    TYPE(qs_kind_type), DIMENSION(:), &
-      POINTER                                :: qs_kind_set
     TYPE(rel_control_type), POINTER          :: rel_control
     TYPE(section_vals_type), POINTER :: cell_section, colvar_section, &
       dft_section, et_coupling_section, harris_section, hfx_ri_section, &
       hfx_section, kind_section, kpoint_section, mp2_section
 
-    STOP "qs_environment: read qs_kind_set"
-
     failure = .FALSE.
-    NULLIFY(my_subsys,molecule_kind_set,molecule_set,atomic_kind_set,qs_kind_set,&
+    NULLIFY(my_subsys,molecule_kind_set,molecule_set,atomic_kind_set,&
          particle_set,atomic_kinds,particles,mols,mol_kinds,my_cell,my_cell_ref,&
          cell_section,harris_section,kind_section,kpoint_section,dft_section,ga_env)
     para_env=>qs_env%para_env
@@ -352,9 +349,12 @@ CONTAINS
     kind_section => section_vals_get_subs_vals(subsys_section,"KIND",error=error)
     IF (PRESENT(subsys)) THEN
        my_subsys => subsys
-       CALL read_atomic_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
-       STOP "TODO:qs_environment"
-       !CALL read_qs_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
+       CALL create_qs_kind_set(qs_env%qs_kind_set, &
+                               my_subsys%atomic_kinds%els,&
+                               kind_section, para_env, force_env_section, error)
+       !CALL read_atomic_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
+       !STOP "TODO:qs_environment"
+       !!CALL read_qs_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
     ELSE
        CALL cp_subsys_create(my_subsys,para_env=para_env,error=error)
 
@@ -368,11 +368,13 @@ CONTAINS
             force_env_section=force_env_section, subsys_section=subsys_section,&
             use_motion_section=use_motion_section, error=error)
 
-       STOP "TODO:qs_environment"
-       CALL read_qs_kind_set(atomic_kind_set,kind_section,error)
-       CALL read_atomic_kind_set(atomic_kind_set,kind_section,error)
+       !STOP "TODO:qs_environment"
+       !CALL read_qs_kind_set(atomic_kind_set,kind_section,error)
+       !CALL read_atomic_kind_set(atomic_kind_set,kind_section,error)
 
-       CALL num_ao_el_per_molecule(molecule_kind_set, qs_kind_set)
+       CALL create_qs_kind_set(qs_env%qs_kind_set, atomic_kind_set, &
+                               kind_section, para_env, force_env_section, error)
+       CALL num_ao_el_per_molecule(molecule_kind_set, qs_env%qs_kind_set)
 
        CALL particle_list_create(particles,els_ptr=particle_set,error=error)
        CALL atomic_kind_list_create(atomic_kinds,els_ptr=atomic_kind_set,error=error)
@@ -418,7 +420,7 @@ CONTAINS
       atomic_kind_set => my_subsys%atomic_kinds%els
       natom=SIZE(particle_set)
       CALL hfx_create(qs_env%x_data, para_env, hfx_section, natom, atomic_kind_set,&
-                      qs_kind_set, qs_env%dft_control, qs_env%cell, error=error)
+                      qs_env%qs_kind_set, qs_env%dft_control, qs_env%cell, error=error)
       hfx_ri_section => section_vals_get_subs_vals(hfx_section,"HFX_RI",error=error)
       CALL section_vals_get(hfx_ri_section,explicit=do_hfx_ri,error=error)
       IF (do_hfx_ri) THEN
@@ -441,7 +443,7 @@ CONTAINS
          atomic_kind_set => my_subsys%atomic_kinds%els
          natom=SIZE(particle_set)
          CALL hfx_create(qs_env%mp2_env%ri_rpa%x_data, para_env, hfx_section, natom, atomic_kind_set,&
-                         qs_kind_set, qs_env%dft_control, qs_env%cell, error=error)
+                         qs_env%qs_kind_set, qs_env%dft_control, qs_env%cell, error=error)
        END IF
     END IF
 
@@ -466,9 +468,9 @@ CONTAINS
        CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
        DO ikind=1,nkind
           NULLIFY(orb_basis_set,lri_basis_set)
-          CALL get_qs_kind(qs_kind_set(ikind),&
-                               orb_basis_set=orb_basis_set,&
-                               lri_basis_set=lri_basis_set)
+          CALL get_qs_kind(qs_env%qs_kind_set(ikind),&
+                           orb_basis_set=orb_basis_set,&
+                           lri_basis_set=lri_basis_set)
           NULLIFY(lri_env%orb_basis(ikind)%gto_basis_set)
           NULLIFY(lri_env%ri_basis(ikind)%gto_basis_set)
           IF (ASSOCIATED(orb_basis_set)) THEN
@@ -502,8 +504,8 @@ CONTAINS
           nkind = SIZE(atomic_kind_set)
           DO ikind=1,nkind
              NULLIFY(rtmat)
-             CALL calculate_atomic_relkin(atomic_kind_set(ikind),qs_kind_set(ikind),rel_control,rtmat,error)
-             IF(ASSOCIATED(rtmat)) CALL get_qs_kind(qs_kind_set(ikind), reltmat=rtmat)
+             CALL calculate_atomic_relkin(atomic_kind_set(ikind),qs_env%qs_kind_set(ikind),rel_control,rtmat,error)
+             IF(ASSOCIATED(rtmat)) CALL get_qs_kind(qs_env%qs_kind_set(ikind), reltmat=rtmat)
           END DO
        END IF
     END IF

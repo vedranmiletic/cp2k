@@ -141,6 +141,7 @@ USE basis_set_types,                 ONLY: &
   TYPE qs_kind_type
      CHARACTER(LEN=default_string_length)   :: name = ""
      CHARACTER(LEN=2)                       :: element_symbol = ""
+     INTEGER                                :: natom
      TYPE(all_potential_type), POINTER      :: all_potential     => Null()
      TYPE(local_potential_type), POINTER    :: tnadd_potential   => Null()
      TYPE(gth_potential_type), POINTER      :: gth_potential     => Null()
@@ -201,7 +202,7 @@ USE basis_set_types,                 ONLY: &
             get_qs_kind_set,&
             init_qs_kind_set,&
             init_gapw_basis_set,&
-            read_qs_kind_set,&
+            create_qs_kind_set,&
             set_qs_kind,&
             write_qs_kind_set,&
             write_gto_basis_sets
@@ -438,7 +439,6 @@ CONTAINS
     INTEGER, DIMENSION(:), POINTER           :: lmax, lmin, npgf_set
     LOGICAL                                  :: softb_local
 
-    STOP "qs_kind_types"
     IF( PRESENT(basis_set_id) ) THEN
       my_basis_set_id = basis_set_id
     ELSE
@@ -624,15 +624,15 @@ CONTAINS
 !          CALL get_ptable_info(qs_kind%element_symbol, number=z)
 !       END IF
 !    END IF
-!    IF (PRESENT(zeff)) THEN
-!       IF (ASSOCIATED(qs_kind%all_potential)) THEN
-!          CALL get_potential(potential=qs_kind%all_potential,zeff=zeff)
-!       ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-!          CALL get_potential(potential=qs_kind%gth_potential,zeff=zeff)
-!       ELSE
-!          zeff = 0.0_dp
-!       END IF
-!    END IF
+    IF (PRESENT(zeff)) THEN
+       IF (ASSOCIATED(qs_kind%all_potential)) THEN
+          CALL get_potential(potential=qs_kind%all_potential,zeff=zeff)
+       ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+          CALL get_potential(potential=qs_kind%gth_potential,zeff=zeff)
+       ELSE
+          zeff = 0.0_dp
+       END IF
+    END IF
 !    IF (PRESENT(rcov)) THEN
 !       CALL get_ptable_info(qs_kind%element_symbol, covalent_radius=rcov)
 !    END IF
@@ -844,8 +844,6 @@ CONTAINS
     TYPE(qs_dftb_atom_type), POINTER         :: dftb_parameter
     TYPE(shell_kind_type), POINTER           :: shell
 
-    STOP "qs_kind_types"
-
     IF( PRESENT(basis_set_id) ) THEN
       my_basis_set_id = basis_set_id
     ELSE
@@ -862,13 +860,13 @@ CONTAINS
        IF (PRESENT(maxgtop))  maxgtop = 0
        IF (PRESENT(maxgtops)) maxgtops = 0
        IF (PRESENT(maxlgto)) maxlgto = -1
-       !IF (PRESENT(maxlppl)) maxlppl = -1
-       !IF (PRESENT(maxlppnl)) maxlppnl = -1
-       !IF (PRESENT(maxpol)) maxpol = -1
+       IF (PRESENT(maxlppl)) maxlppl = -1
+       IF (PRESENT(maxlppnl)) maxlppnl = -1
+       IF (PRESENT(maxpol)) maxpol = -1
        IF (PRESENT(maxlprj)) maxlprj = -1
        IF (PRESENT(maxnset)) maxnset = 0
        IF (PRESENT(maxpgf)) maxpgf = 0
-       !IF (PRESENT(maxppnl)) maxppnl = 0
+       IF (PRESENT(maxppnl)) maxppnl = 0
        IF (PRESENT(maxsgf)) maxsgf = 0
        IF (PRESENT(maxsgf_set)) maxsgf_set = 0
        IF (PRESENT(maxshell)) maxshell = 0
@@ -876,7 +874,7 @@ CONTAINS
        IF (PRESENT(ncgf)) ncgf = 0
        IF (PRESENT(ncgf_aux)) ncgf_aux = 0
        IF (PRESENT(ncgf_ri_aux)) ncgf_ri_aux = 0
-       !IF (PRESENT(nelectron)) nelectron = 0
+       IF (PRESENT(nelectron)) nelectron = 0
        IF (PRESENT(npgf)) npgf = 0
        IF (PRESENT(nset)) nset = 0
        IF (PRESENT(nsgf)) nsgf = 0
@@ -1323,170 +1321,162 @@ CONTAINS
           !   natom = natom + qs_kind_set(ikind)%natom
           !END IF
           IF (PRESENT(ncgf)) THEN
-             STOP "TODO: ncgf"
-             !SELECT CASE (my_basis_set_id)
-             !CASE (use_orb_basis_set)
-             !  IF (ASSOCIATED(orb_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=orb_basis_set,ncgf=n)
-             !    ncgf = ncgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_scp_basis_set)
-             !  IF (ASSOCIATED(scp_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=scp_basis_set,ncgf=n)
-             !    ncgf = ncgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_lri_basis_set)
-             !  IF (ASSOCIATED(lri_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=lri_basis_set,ncgf=n)
-             !    ncgf = ncgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_aux_fit_basis_set)
-             !  IF (ASSOCIATED(aux_fit_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,ncgf=n)
-             !    ncgf = ncgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !END SELECT
-             !IF (ASSOCIATED(dftb_parameter)) THEN
-             !   CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,lmax=imax)
-             !   n=((imax+1)*(imax+2)*(imax+3))/6
-             !   ncgf = ncgf + n*qs_kind_set(ikind)%natom
-             !END IF
+             SELECT CASE (my_basis_set_id)
+             CASE (use_orb_basis_set)
+               IF (ASSOCIATED(orb_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=orb_basis_set,ncgf=n)
+                 ncgf = ncgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_scp_basis_set)
+               IF (ASSOCIATED(scp_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=scp_basis_set,ncgf=n)
+                 ncgf = ncgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_lri_basis_set)
+               IF (ASSOCIATED(lri_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=lri_basis_set,ncgf=n)
+                 ncgf = ncgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_aux_fit_basis_set)
+               IF (ASSOCIATED(aux_fit_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,ncgf=n)
+                 ncgf = ncgf + n*qs_kind_set(ikind)%natom
+               END IF
+             END SELECT
+             IF (ASSOCIATED(dftb_parameter)) THEN
+                CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,lmax=imax)
+                n=((imax+1)*(imax+2)*(imax+3))/6
+                ncgf = ncgf + n*qs_kind_set(ikind)%natom
+             END IF
           END IF
           IF (PRESENT(ncgf_aux)) THEN
-             STOP "TODO: ncgf_aux"
-             !IF (ASSOCIATED(aux_basis_set)) THEN
-             !   CALL get_gto_basis_set(gto_basis_set=aux_basis_set,ncgf=n)
-             !   ncgf_aux = ncgf_aux + n*qs_kind_set(ikind)%natom
-             !END IF
+             IF (ASSOCIATED(aux_basis_set)) THEN
+                CALL get_gto_basis_set(gto_basis_set=aux_basis_set,ncgf=n)
+                ncgf_aux = ncgf_aux + n*qs_kind_set(ikind)%natom
+             END IF
           END IF
           IF (PRESENT(ncgf_ri_aux)) THEN
-             STOP "TODO: ncgf_ri_aux"
-             !IF (ASSOCIATED(ri_aux_basis_set)) THEN
-             !   CALL get_gto_basis_set(gto_basis_set=ri_aux_basis_set,ncgf=n)
-             !   ncgf_ri_aux = ncgf_ri_aux + n*qs_kind_set(ikind)%natom
-             !END IF
+             IF (ASSOCIATED(ri_aux_basis_set)) THEN
+                CALL get_gto_basis_set(gto_basis_set=ri_aux_basis_set,ncgf=n)
+                ncgf_ri_aux = ncgf_ri_aux + n*qs_kind_set(ikind)%natom
+             END IF
           END IF
           IF (PRESENT(nelectron)) THEN
-             STOP "TODO: nelectron"
-             !IF (ASSOCIATED(qs_kind%all_potential)) THEN
-             !   CALL get_potential(potential=qs_kind%all_potential,&
-             !        zeff=zeff,zeff_correction=zeff_correction)
-             !ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
-             !   CALL get_potential(potential=qs_kind%gth_potential,&
-             !        zeff=zeff,zeff_correction=zeff_correction)
-             !ELSE
-             !   zeff = 0.0_dp
-             !   zeff_correction = 0.0_dp
-             !END IF
-             !nelectron = nelectron + qs_kind_set(ikind)%natom*NINT(zeff-zeff_correction)
+             IF (ASSOCIATED(qs_kind%all_potential)) THEN
+                CALL get_potential(potential=qs_kind%all_potential,&
+                     zeff=zeff,zeff_correction=zeff_correction)
+             ELSE IF (ASSOCIATED(qs_kind%gth_potential)) THEN
+                CALL get_potential(potential=qs_kind%gth_potential,&
+                     zeff=zeff,zeff_correction=zeff_correction)
+             ELSE
+                zeff = 0.0_dp
+                zeff_correction = 0.0_dp
+             END IF
+             nelectron = nelectron + qs_kind_set(ikind)%natom*NINT(zeff-zeff_correction)
           END IF
           IF (PRESENT(npgf)) THEN
-             STOP "TODO: npgf"
-             !SELECT CASE (my_basis_set_id)
-             !CASE (use_orb_basis_set)
-             !  IF (ASSOCIATED(orb_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=orb_basis_set,npgf_sum=n)
-             !    npgf = npgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_scp_basis_set)
-             !  IF (ASSOCIATED(scp_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=scp_basis_set,npgf_sum=n)
-             !    npgf = npgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_lri_basis_set)
-             !  IF (ASSOCIATED(lri_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=lri_basis_set,npgf_sum=n)
-             !    npgf = npgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_aux_fit_basis_set)
-             !  IF (ASSOCIATED(aux_fit_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,npgf_sum=n)
-             !    npgf = npgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !END SELECT
+             SELECT CASE (my_basis_set_id)
+             CASE (use_orb_basis_set)
+               IF (ASSOCIATED(orb_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=orb_basis_set,npgf_sum=n)
+                 npgf = npgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_scp_basis_set)
+               IF (ASSOCIATED(scp_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=scp_basis_set,npgf_sum=n)
+                 npgf = npgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_lri_basis_set)
+               IF (ASSOCIATED(lri_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=lri_basis_set,npgf_sum=n)
+                 npgf = npgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_aux_fit_basis_set)
+               IF (ASSOCIATED(aux_fit_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,npgf_sum=n)
+                 npgf = npgf + n*qs_kind_set(ikind)%natom
+               END IF
+             END SELECT
           END IF
           IF (PRESENT(nset)) THEN
-             STOP "TODO:nset"
-             !SELECT CASE (my_basis_set_id)
-             !CASE (use_orb_basis_set)
-             !  IF (ASSOCIATED(orb_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nset=n)
-             !    nset = nset + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_scp_basis_set)
-             !  IF (ASSOCIATED(scp_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nset=n)
-             !    nset = nset + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_lri_basis_set)
-             !  IF (ASSOCIATED(lri_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nset=n)
-             !    nset = nset + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_aux_fit_basis_set)
-             !  IF (ASSOCIATED(aux_fit_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nset=n)
-             !    nset = nset + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !END SELECT
+             SELECT CASE (my_basis_set_id)
+             CASE (use_orb_basis_set)
+               IF (ASSOCIATED(orb_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nset=n)
+                 nset = nset + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_scp_basis_set)
+               IF (ASSOCIATED(scp_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nset=n)
+                 nset = nset + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_lri_basis_set)
+               IF (ASSOCIATED(lri_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nset=n)
+                 nset = nset + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_aux_fit_basis_set)
+               IF (ASSOCIATED(aux_fit_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nset=n)
+                 nset = nset + n*qs_kind_set(ikind)%natom
+               END IF
+             END SELECT
           END IF
           IF (PRESENT(nsgf)) THEN
-             STOP "TODO: nsgf"
-             !SELECT CASE (my_basis_set_id)
-             !CASE (use_orb_basis_set)
-             !  IF (ASSOCIATED(orb_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nsgf=n)
-             !    nsgf = nsgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_scp_basis_set)
-             !  IF (ASSOCIATED(scp_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nsgf=n)
-             !    nsgf = nsgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_lri_basis_set)
-             !  IF (ASSOCIATED(lri_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nsgf=n)
-             !    nsgf = nsgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_aux_fit_basis_set)
-             !  IF (ASSOCIATED(aux_fit_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nsgf=n)
-             !    nsgf = nsgf + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !END SELECT
-             !IF (ASSOCIATED(dftb_parameter)) THEN
-             !   CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,natorb=n)
-             !   nsgf = nsgf + n*qs_kind_set(ikind)%natom
-             !END IF
+             SELECT CASE (my_basis_set_id)
+             CASE (use_orb_basis_set)
+               IF (ASSOCIATED(orb_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nsgf=n)
+                 nsgf = nsgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_scp_basis_set)
+               IF (ASSOCIATED(scp_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nsgf=n)
+                 nsgf = nsgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_lri_basis_set)
+               IF (ASSOCIATED(lri_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nsgf=n)
+                 nsgf = nsgf + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_aux_fit_basis_set)
+               IF (ASSOCIATED(aux_fit_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nsgf=n)
+                 nsgf = nsgf + n*qs_kind_set(ikind)%natom
+               END IF
+             END SELECT
+             IF (ASSOCIATED(dftb_parameter)) THEN
+                CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,natorb=n)
+                nsgf = nsgf + n*qs_kind_set(ikind)%natom
+             END IF
           END IF
           IF (PRESENT(nshell)) THEN
-             STOP "TODO: nshell"
-             !SELECT CASE (my_basis_set_id)
-             !CASE (use_orb_basis_set)
-             !  IF (ASSOCIATED(orb_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nshell_sum=n)
-             !    nshell = nshell + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_scp_basis_set)
-             !  IF (ASSOCIATED(scp_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nshell_sum=n)
-             !    nshell = nshell + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_lri_basis_set)
-             !  IF (ASSOCIATED(lri_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nshell_sum=n)
-             !    nshell = nshell + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !CASE (use_aux_fit_basis_set)
-             !  IF (ASSOCIATED(aux_fit_basis_set)) THEN
-             !    CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nshell_sum=n)
-             !    nshell = nshell + n*qs_kind_set(ikind)%natom
-             !  END IF
-             !END SELECT
-             !IF (ASSOCIATED(dftb_parameter)) THEN
-             !   CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,lmax=n)
-             !   nshell = nshell + (n+1)*qs_kind_set(ikind)%natom
-             !END IF
+             SELECT CASE (my_basis_set_id)
+             CASE (use_orb_basis_set)
+               IF (ASSOCIATED(orb_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=orb_basis_set,nshell_sum=n)
+                 nshell = nshell + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_scp_basis_set)
+               IF (ASSOCIATED(scp_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=scp_basis_set,nshell_sum=n)
+                 nshell = nshell + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_lri_basis_set)
+               IF (ASSOCIATED(lri_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=lri_basis_set,nshell_sum=n)
+                 nshell = nshell + n*qs_kind_set(ikind)%natom
+               END IF
+             CASE (use_aux_fit_basis_set)
+               IF (ASSOCIATED(aux_fit_basis_set)) THEN
+                 CALL get_gto_basis_set(gto_basis_set=aux_fit_basis_set,nshell_sum=n)
+                 nshell = nshell + n*qs_kind_set(ikind)%natom
+               END IF
+             END SELECT
+             IF (ASSOCIATED(dftb_parameter)) THEN
+                CALL get_dftb_atom_param(dftb_parameter=dftb_parameter,lmax=n)
+                nshell = nshell + (n+1)*qs_kind_set(ikind)%natom
+             END IF
           END IF
           IF (PRESENT(all_potential_present)) THEN
              IF (ASSOCIATED(all_potential)) THEN
@@ -1787,7 +1777,7 @@ CONTAINS
   SUBROUTINE read_qs_kind(qs_kind,kind_section,para_env,force_env_section,&
        no_fail, method_id, error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
+    TYPE(qs_kind_type), INTENT(INOUT)        :: qs_kind
     TYPE(section_vals_type), POINTER         :: kind_section
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: force_env_section
@@ -2431,19 +2421,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Read an atomic kind set data set from the input file.
-!> \param qs_kind_set ...
-!> \param kind_section ...
-!> \param para_env ...
-!> \param force_env_section ...
-!> \param error ...
-!> \par History
-!>      - Creation (09.02.2002,MK)
-!>      - 20.09.2002,gt: adapted for POL/KG use (elp_potential)
 ! *****************************************************************************
-  SUBROUTINE read_qs_kind_set(qs_kind_set,kind_section,para_env,force_env_section,error)
+  SUBROUTINE create_qs_kind_set(qs_kind_set, atomic_kind_set,kind_section,para_env,force_env_section,error)
 
     TYPE(qs_kind_type), DIMENSION(:), &
       POINTER                                :: qs_kind_set
+    TYPE(atomic_kind_type), DIMENSION(:), &
+      POINTER                                :: atomic_kind_set
     TYPE(section_vals_type), POINTER         :: kind_section
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(section_vals_type), POINTER         :: force_env_section
@@ -2459,10 +2443,12 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
+    IF(ASSOCIATED(qs_kind_set)) STOP "create_qs_kind_set: qs_kind_set already associated"
+    IF(.NOT.ASSOCIATED(atomic_kind_set)) STOP "create_qs_kind_set: atomic_kind_set not associated"
+
     no_fail = .FALSE.
 
     ! Between all methods only SE and DFTB may not need a KIND section.
-
     CALL section_vals_val_get(force_env_section,"METHOD",i_val=method,error=error)
     IF (method==do_qs) THEN
        CALL section_vals_val_get(force_env_section,"DFT%QS%METHOD",i_val=qs_method,error=error)
@@ -2476,21 +2462,20 @@ CONTAINS
     ELSE
        qs_method = method
     END IF
-    IF (ASSOCIATED(qs_kind_set)) THEN
-       nkind = SIZE(qs_kind_set)
-       DO ikind=1,nkind
-          qs_kind => qs_kind_set(ikind)
-          CALL read_qs_kind(qs_kind,kind_section,para_env,force_env_section,&
-               no_fail, qs_method, error)
-       END DO
-    ELSE
-       CALL stop_program(routineN,moduleN,__LINE__,&
-            "The pointer qs_kind_set is not associated",para_env)
-    END IF
+
+    nkind = SIZE(atomic_kind_set)
+    ALLOCATE(qs_kind_set(nkind))
+
+    DO ikind=1,nkind
+       qs_kind_set(ikind)%name = atomic_kind_set(ikind)%name
+       qs_kind_set(ikind)%element_symbol = atomic_kind_set(ikind)%element_symbol
+       qs_kind_set(ikind)%natom = atomic_kind_set(ikind)%natom
+       CALL read_qs_kind(qs_kind_set(ikind), kind_section, para_env, force_env_section, no_fail, qs_method, error)
+    END DO
 
     CALL timestop(handle)
 
-  END SUBROUTINE read_qs_kind_set
+  END SUBROUTINE create_qs_kind_set
 
 ! *****************************************************************************
 !> \brief This routines should perform only checks. no settings are allowed at
@@ -2685,10 +2670,10 @@ CONTAINS
 !> \par History
 !>      Creation (09.02.2002,MK)
 ! *****************************************************************************
-  SUBROUTINE write_qs_kind(qs_kind,output_unit,error)
+  SUBROUTINE write_qs_kind(qs_kind,kind_number,output_unit,error)
 
-    TYPE(qs_kind_type), POINTER          :: qs_kind
-    INTEGER, INTENT(in)                      :: output_unit
+    TYPE(qs_kind_type), POINTER              :: qs_kind
+    INTEGER, INTENT(in)                      :: kind_number, output_unit
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'write_qs_kind', &
@@ -2702,10 +2687,9 @@ CONTAINS
     IF (output_unit > 0) THEN
 
        IF (ASSOCIATED(qs_kind)) THEN
-          STOP "TODO: write_qs_kind"
-          !WRITE (UNIT=output_unit,FMT="(/,T2,I2,A,T57,A,T75,I6)")&
-          !     qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name),&
-          !     "Number of atoms: ",qs_kind%natom
+          WRITE (UNIT=output_unit,FMT="(/,T2,I2,A,T57,A,T75,I6)")&
+               kind_number,". Atomic kind: "//TRIM(qs_kind%name),&
+               "Number of atoms: ",qs_kind%natom
 
           CALL write_orb_basis_set(qs_kind%orb_basis_set,output_unit,&
                "Orbital Basis Set",error=error)
@@ -2817,7 +2801,7 @@ CONTAINS
           nkind = SIZE(qs_kind_set)
           DO ikind=1,nkind
              qs_kind => qs_kind_set(ikind)
-             CALL write_qs_kind(qs_kind,output_unit,error)
+             CALL write_qs_kind(qs_kind,ikind,output_unit,error)
           END DO
        ELSE
           CPPrecondition(.FALSE.,cp_failure_level,routineP,error,failure)
@@ -2872,9 +2856,8 @@ CONTAINS
           nkind = SIZE(qs_kind_set)
           DO ikind=1,nkind
              qs_kind => qs_kind_set(ikind)
-             STOP "TODO: write_gto_basis_set"
-             !WRITE (UNIT=output_unit,FMT="(/,T2,I2,A)")&
-             !     qs_kind%kind_number,". Atomic kind: "//TRIM(qs_kind%name)
+             WRITE (UNIT=output_unit,FMT="(/,T2,I2,A)")&
+                  ikind,". Atomic kind: "//TRIM(qs_kind%name)
              CALL write_gto_basis_set(qs_kind_set(ikind)%orb_basis_set,&
                   output_unit,"Orbital Basis Set",error)
              CALL write_gto_basis_set(qs_kind%soft_basis_set,&

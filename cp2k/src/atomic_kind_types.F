@@ -263,7 +263,34 @@ CONTAINS
     IF (PRESENT(rvdw)) THEN
        CALL get_ptable_info(atomic_kind%element_symbol, vdw_radius=rvdw)
     END IF
-
+    IF (PRESENT(qeff)) THEN
+       IF (ASSOCIATED(atomic_kind%fist_potential)) THEN
+          CALL get_potential(potential=atomic_kind%fist_potential,qeff=qeff)
+       ELSE
+          qeff = -HUGE(0.0_dp)
+       END IF
+    END IF
+    IF (PRESENT(apol)) THEN
+       IF (ASSOCIATED(atomic_kind%fist_potential)) THEN
+          CALL get_potential(potential=atomic_kind%fist_potential,apol=apol)
+       ELSE
+          apol = -HUGE(0.0_dp)
+       END IF
+    END IF
+    IF (PRESENT(cpol)) THEN
+       IF (ASSOCIATED(atomic_kind%fist_potential)) THEN
+          CALL get_potential(potential=atomic_kind%fist_potential,cpol=cpol)
+       ELSE
+          cpol = -HUGE(0.0_dp)
+       END IF
+    END IF
+    IF (PRESENT(mm_radius)) THEN
+       IF (ASSOCIATED(atomic_kind%fist_potential)) THEN
+          CALL get_potential(potential=atomic_kind%fist_potential,mm_radius=mm_radius)
+       ELSE
+          mm_radius = -HUGE(0.0_dp)
+       END IF
+    END IF
     !IF (PRESENT(ghost)) ghost = atomic_kind%ghost
     IF (PRESENT(shell)) shell => atomic_kind%shell
     IF (PRESENT(shell_active)) shell_active = atomic_kind%shell_active

@@ -670,7 +670,10 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN)             :: label
     TYPE(cp_error_type), INTENT(INOUT)       :: error
 
-    STOP "TODO: write_qs_particle_coordinates"
+    WRITE(*,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+    WRITE(*,*) "TODO: write_qs_particle_coordinates"
+    WRITE(*,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+    !STOP "TODO: write_qs_particle_coordinates"
     !CHARACTER(len=*), PARAMETER :: &
     !  routineN = 'write_qs_particle_coordinates', &
     !  routineP = moduleN//':'//routineN
