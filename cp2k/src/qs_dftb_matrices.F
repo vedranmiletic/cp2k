@@ -860,7 +860,7 @@ CONTAINS
 
        IF (.NOT.defined .OR. natorb_a < 1) CYCLE
 
-       CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_kind_b)
+       CALL get_qs_kind(qs_kind_set(jkind), dftb_parameter=dftb_kind_b)
        CALL get_dftb_atom_param(dftb_kind_b,&
               defined=defined,lmax=lmaxj,natorb=natorb_b)
 
