@@ -167,12 +167,12 @@ CONTAINS
     ALLOCATE (last_sgf_b(natom),STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
                           first_sgf=first_sgf_a,&
                           last_sgf=last_sgf_a,&
                           basis_set_id=use_scp_basis_set,&
                           error=error)
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
                           first_sgf=first_sgf_b,&
                           last_sgf=last_sgf_b,&
                           basis_set_id=use_scp_basis_set,&

@@ -613,7 +613,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
        i = cp_dbcsr_get_num_blocks (s_sparse(1)%matrix); CALL mp_sum(i,group)
        IF(output_unit>0)WRITE(output_unit,*) 'S nblks',i,' checksum',checksum
 
-       CALL get_particle_set(particle_set=particle_set,first_sgf=first_sgf,&
+       CALL get_particle_set(particle_set,qs_kind_set,first_sgf=first_sgf,&
                              last_sgf=last_sgf,error=error)
        CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,kind_of=kind_of)
 
@@ -1167,7 +1167,7 @@ CALL copy_fm_to_dbcsr(mo_array(ispin)%mo_set%mo_coeff,mo_array(ispin)%mo_set%mo_
     ALLOCATE (first_sgf(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_particle_set(particle_set=particle_set,first_sgf=first_sgf,error=error)
+    CALL get_particle_set(particle_set,qs_kind_set,first_sgf=first_sgf,error=error)
     CALL get_qs_kind_set(qs_kind_set, maxlgto=maxl)
 
     ALLOCATE (econf(0:maxl),STAT=istat)

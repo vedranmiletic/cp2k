@@ -406,7 +406,7 @@ CONTAINS
        ALLOCATE (last_sgf(natom),STAT=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
 
-       CALL get_particle_set(particle_set=particle_set,first_sgf=first_sgf,last_sgf=last_sgf,&
+       CALL get_particle_set(particle_set, qs_kind_set, first_sgf=first_sgf,last_sgf=last_sgf,&
             error=error)
        CALL cp_fm_get_info(dcos_full,ncol_local=ncol_local,nrow_local=nrow_local,&
             row_indices=row_indices, col_indices=col_indices, error=error)

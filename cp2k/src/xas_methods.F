@@ -17,6 +17,8 @@ MODULE xas_methods
   USE ai_overlap,                      ONLY: overlap_ab
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
+  USE qs_kind_types,               ONLY: qs_kind_type,&
+                                             get_qs_kind
   USE basis_set_types,                 ONLY: &
        allocate_sto_basis_set, create_gto_from_sto_basis, &
        deallocate_sto_basis_set, get_gto_basis_set, gto_basis_set_type, &
@@ -882,7 +884,7 @@ CONTAINS
          CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
          ALLOCATE (last_sgf(natom),STAT=istat)
          CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-         CALL get_particle_set(particle_set=particle_set,&
+         CALL get_particle_set(particle_set, qs_kind_set,&
               first_sgf=first_sgf,&
               last_sgf=last_sgf,error=error)
          ALLOCATE (rbs(natom), STAT=istat)
@@ -1688,18 +1690,21 @@ CONTAINS
       POINTER                                :: mos
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     NULLIFY(cell,mos,particle_set)
     NULLIFY(atom_of_state,centers_wfn,mykind_of_kind,state_of_atom)
-    NULLIFY(stogto_overlap,type_of_state,max_overlap)
+    NULLIFY(stogto_overlap,type_of_state,max_overlap, qs_kind_set)
     NULLIFY(state_of_mytype,type_of_state,sto_state_overlap)
 
     NULLIFY(logger)
     logger => cp_error_get_logger(error)
     output_unit= cp_logger_get_default_io_unit(logger)
 
-    CALL get_qs_env(qs_env=qs_env, cell=cell, mos=mos, particle_set=particle_set,error=error)
+    CALL get_qs_env(qs_env=qs_env, cell=cell, mos=mos, particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set, error=error)
 
     ! The Berry operator can be used only for periodic systems
     ! If an isolated system is used the periodicity is overimposed
@@ -1721,7 +1726,7 @@ CONTAINS
 
     ALLOCATE (first_sgf(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-    CALL get_particle_set(particle_set=particle_set, first_sgf=first_sgf,error=error)
+    CALL get_particle_set(particle_set, qs_kind_set, first_sgf=first_sgf,error=error)
     ALLOCATE (sto_state_overlap(nexc_search),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE (max_overlap(natom),STAT=istat)

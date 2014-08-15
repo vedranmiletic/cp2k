@@ -356,7 +356,7 @@ MODULE mp2_gpw
     natom = SIZE(particle_set)
     ALLOCATE (rbs(natom), STAT=stat)
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
-    CALL get_particle_set(particle_set=particle_set,nsgf=rbs,error=error)
+    CALL get_particle_set(particle_set, qs_kind_set, nsgf=rbs,error=error)
     CALL array_nullify (row_blk_sizes)
     CALL array_new (row_blk_sizes, rbs, gift=.TRUE.)
     ALLOCATE(mat_munu%matrix, STAT=stat)

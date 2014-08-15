@@ -223,6 +223,8 @@ CONTAINS
     TYPE(particle_list_type), POINTER        :: particles
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
     TYPE(pw_env_type), POINTER               :: pw_env
     TYPE(pw_p_type)                          :: wf_r
     TYPE(pw_p_type), POINTER                 :: jrho_gspace, jrho_rspace
@@ -238,7 +240,7 @@ CONTAINS
             density_matrix_ii,density_matrix_iii,cell,dft_control,mos,&
             particle_set,pw_env,auxbas_rs_desc,auxbas_pw_pool,&
             para_env,center_list,mo_coeff,psi_a_iB,&
-            psi1,p_psi1,psi1_p,psi1_D,psi1_rxp,psi0_order,sab_all)
+            psi1,p_psi1,psi1_p,psi1_D,psi1_rxp,psi0_order,sab_all, qs_kind_set)
 
     logger => cp_error_get_logger(error)
     output_unit= cp_logger_get_default_io_unit(logger)
@@ -265,6 +267,7 @@ CONTAINS
                     subsys=subsys,&
                     sab_all=sab_all,&
                     particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set,&
                     dbcsr_dist=dbcsr_dist,&
                     error=error)
 
@@ -295,7 +298,7 @@ CONTAINS
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE (last_sgf(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
                           first_sgf=first_sgf,&
                           last_sgf=last_sgf,error=error)
     ALLOCATE (rbs(natom), STAT=istat)
@@ -2278,6 +2281,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all, sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     !
@@ -2286,7 +2291,7 @@ CONTAINS
     NULLIFY(dft_control,mos,para_env,mo_coeff,op_mom_ao,&
             op_mom_der_ao,center_list,centers_set,psi0,psi_rxp,psi_D,psi_p1,psi_p2,&
             op_p_ao,psi1_p,psi1_rxp,psi1_D,p_rxp,r_p1,r_p2,rr_rxp,rr_p1,rr_p2,&
-            cell,psi0_order,particle_set)
+            cell,psi0_order,particle_set,qs_kind_set)
 
     logger => cp_error_get_logger(error)
     output_unit= cp_logger_get_default_io_unit(logger)
@@ -2298,6 +2303,7 @@ CONTAINS
                     cell=cell,&
                     dbcsr_dist=dbcsr_dist,&
                     particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set,&
                     sab_all=sab_all,&
                     sab_orb=sab_orb,&
                     error=error)
@@ -2338,7 +2344,7 @@ CONTAINS
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE (last_sgf(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
                           first_sgf=first_sgf,&
                           last_sgf=last_sgf,error=error)
     ALLOCATE (rbs(natom), STAT=istat)
@@ -2740,6 +2746,8 @@ CONTAINS
       DIMENSION(:), POINTER                  :: sab_all, sab_orb
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
     !
@@ -2758,6 +2766,7 @@ CONTAINS
                     para_env=para_env,&
                     cell=cell,&
                     particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set,&
                     sab_all=sab_all,&
                     sab_orb=sab_orb,&
                     dbcsr_dist=dbcsr_dist,&
@@ -2792,7 +2801,7 @@ CONTAINS
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE (last_sgf(natom),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
                           first_sgf=first_sgf,&
                           last_sgf=last_sgf,error=error)
     ALLOCATE (rbs(natom), STAT=istat)

@@ -200,9 +200,9 @@ CONTAINS
     ALLOCATE (rbs(natom),cbs(natom), STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_particle_set(particle_set=particle_set,nsgf=rbs,&
+    CALL get_particle_set(particle_set, qs_kind_set, nsgf=rbs,&
                           basis_set_id=use_orb_basis_set,error=error)
-    CALL get_particle_set(particle_set=particle_set,nsgf=cbs,&
+    CALL get_particle_set(particle_set, qs_kind_set, nsgf=cbs,&
                           basis_set_id=use_orb_basis_set,error=error)
 
     CALL cp_dbcsr_allocate_matrix_set(matrix_kg,1,error=error)

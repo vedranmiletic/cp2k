@@ -317,6 +317,8 @@ CONTAINS
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     CALL timeset(routineN,handle)
     failure = .FALSE.
@@ -331,7 +333,8 @@ CONTAINS
     CALL cp_fm_create(opvec,vectors%matrix_struct,error=error)
     CALL cp_fm_set_all(opvec, 0.0_dp, error=error)
 
-    CALL get_qs_env(qs_env=qs_env, matrix_s=matrix_s, particle_set=particle_set,error=error)
+    CALL get_qs_env(qs_env=qs_env, matrix_s=matrix_s, &
+                  particle_set=particle_set,qs_kind_set=qs_kind_set,error=error)
 
     natom = SIZE(particle_set,1)
     ALLOCATE (first_sgf(natom), STAT=istat)
@@ -342,7 +345,7 @@ CONTAINS
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
     !   construction of
-    CALL get_particle_set(particle_set=particle_set,&
+    CALL get_particle_set(particle_set, qs_kind_set,&
          first_sgf=first_sgf,last_sgf=last_sgf,nsgf=nsgf,error=error)
 
     !   Copy the overlap sparse matrix in a full matrix

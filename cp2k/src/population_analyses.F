@@ -325,9 +325,7 @@ CONTAINS
     CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
     first_sgf_atom(:) = 0
 
-    CALL get_particle_set(particle_set=particle_set,&
-                          first_sgf=first_sgf_atom,&
-                          error=error)
+    CALL get_particle_set(particle_set, qs_kind_set, first_sgf=first_sgf_atom, error=error)
 
     ! Provide an array to store the orbital populations for each spin
     ALLOCATE (orbpop(nsgf,nspin),STAT=stat)

@@ -697,10 +697,13 @@ CONTAINS
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
      failure = .FALSE.
 
-     CALL get_qs_env(qs_env=qs_env,particle_set=particle_set,dbcsr_dist=dbcsr_dist,error=error)
+     CALL get_qs_env(qs_env=qs_env,particle_set=particle_set,&
+                     qs_kind_set=qs_kind_set, dbcsr_dist=dbcsr_dist,error=error)
 
      natom = SIZE(particle_set)
 
@@ -715,9 +718,9 @@ CONTAINS
      ALLOCATE (rbs(natom),cbs(natom), STAT=istat)
      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-     CALL get_particle_set(particle_set=particle_set,nsgf=rbs,&
+     CALL get_particle_set(particle_set, qs_kind_set, nsgf=rbs,&
                            basis_set_id=basis_set_id_a,error=error)
-     CALL get_particle_set(particle_set=particle_set,nsgf=cbs,&
+     CALL get_particle_set(particle_set, qs_kind_set, nsgf=cbs,&
                            basis_set_id=basis_set_id_b,error=error)
 
      ! prepare for allocation
@@ -807,10 +810,13 @@ CONTAINS
     TYPE(dbcsr_distribution_obj), POINTER    :: dbcsr_dist
     TYPE(particle_type), DIMENSION(:), &
       POINTER                                :: particle_set
+    TYPE(qs_kind_type), DIMENSION(:), &
+      POINTER                                :: qs_kind_set
 
     failure = .FALSE.
 
-    CALL get_qs_env(qs_env=qs_env,particle_set=particle_set,dbcsr_dist=dbcsr_dist,error=error)
+    CALL get_qs_env(qs_env=qs_env,particle_set=particle_set,&
+                    qs_kind_set=qs_kind_set, dbcsr_dist=dbcsr_dist,error=error)
 
     natom = SIZE(particle_set)
 
@@ -826,9 +832,9 @@ CONTAINS
     ALLOCATE (rbs(natom),cbs(natom), STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
-    CALL get_particle_set(particle_set=particle_set,nsgf=rbs,&
+    CALL get_particle_set(particle_set, qs_kind_set, nsgf=rbs,&
                           basis_set_id=basis_set_id_a,error=error)
-    CALL get_particle_set(particle_set=particle_set,nsgf=cbs,&
+    CALL get_particle_set(particle_set, qs_kind_set, nsgf=cbs,&
                           basis_set_id=basis_set_id_b,error=error)
 
     ! prepare for allocation
