@@ -2568,8 +2568,9 @@ CONTAINS
 ! *****************************************************************************
   SUBROUTINE set_qs_kind(qs_kind,paw_atom,ghost,hard_radius,hard0_radius,&
        soft_basis_set,hard_basis_set,lmax_rho0,zeff,&
-       no_optimize,dispersion,u_minus_j,reltmat,dftb_parameter,&
-       scptb_parameter,elec_conf,error)
+       no_optimize,dispersion,u_minus_j,reltmat,&
+       dftb_parameter, scptb_parameter,&
+       elec_conf,error)
 
     TYPE(qs_kind_type), INTENT(INOUT)        :: qs_kind
     INTEGER, DIMENSION(:), INTENT(IN), &
@@ -2620,6 +2621,9 @@ CONTAINS
     !           "An invalid atom_list was supplied")
     !   END IF
     !END IF
+
+    IF (PRESENT(dftb_parameter))  qs_kind%dftb_parameter  => dftb_parameter
+    IF (PRESENT(scptb_parameter)) qs_kind%scptb_parameter => scptb_parameter
     IF (PRESENT(elec_conf)) THEN
        IF (ASSOCIATED(qs_kind%elec_conf)) THEN
           DEALLOCATE(qs_kind%elec_conf)
