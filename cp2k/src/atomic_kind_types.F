@@ -247,7 +247,9 @@ CONTAINS
 
     IF (PRESENT(z)) THEN
        CALL get_ptable_info(atomic_kind%element_symbol, number=z)
-       WRITE (*,*) "get_atomic_kind z=", z
+       WRITE (*,*) "!!!!!!!!!!!!!!!!!!!!!!!!!11"
+       WRITE (*,*) "TODO get_atomic_kind z=", z
+       WRITE (*,*) "!!!!!!!!!!!!!!!!!!!!!!!!!11"
        !STOP "TODO: atomic_kind_types"
        !IF (ASSOCIATED(atomic_kind%all_potential)) THEN
        !   CALL get_potential(potential=atomic_kind%all_potential,z=z)

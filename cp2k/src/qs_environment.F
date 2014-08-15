@@ -164,7 +164,7 @@ MODULE qs_environment
                                              write_pgf_orb_radii,&
                                              write_ppl_radii,&
                                              write_ppnl_radii
-  USE qs_kind_types,                   ONLY: get_qs_kind,&
+  USE qs_kind_types,                   ONLY: get_qs_kind,set_qs_kind,&
                                              get_qs_kind_set,&
                                              init_gapw_basis_set,&
                                              init_qs_kind_set,&
@@ -505,7 +505,7 @@ CONTAINS
           DO ikind=1,nkind
              NULLIFY(rtmat)
              CALL calculate_atomic_relkin(atomic_kind_set(ikind),qs_env%qs_kind_set(ikind),rel_control,rtmat,error)
-             IF(ASSOCIATED(rtmat)) CALL get_qs_kind(qs_env%qs_kind_set(ikind), reltmat=rtmat)
+             IF(ASSOCIATED(rtmat)) CALL set_qs_kind(qs_env%qs_kind_set(ikind), reltmat=rtmat)
           END DO
        END IF
     END IF
