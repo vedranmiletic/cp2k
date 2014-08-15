@@ -16,8 +16,7 @@
 !> \author MI (04.2005)
 ! *****************************************************************************
 MODULE qs_loc_methods
-  USE atomic_kind_types,               ONLY: allocate_atomic_kind_set,&
-                                             atomic_kind_type,&
+  USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              deallocate_atomic_kind_set,&
                                              set_atomic_kind
   USE cell_methods,                    ONLY: cell_type,&
@@ -1146,7 +1145,7 @@ CONTAINS
     natom = SIZE(qs_loc_env%particle_set)
     ntot =  natom + SIZE(center,2)
     CALL allocate_particle_set(particle_set, ntot,error)
-    CALL allocate_atomic_kind_set(atomic_kind_set,1,error)
+    ALLOCATE(atomic_kind_set(1))
     atomic_kind => atomic_kind_set(1)
     CALL set_atomic_kind(atomic_kind=atomic_kind,kind_number=0,&
          name="X",element_symbol="X",mass=0.0_dp)

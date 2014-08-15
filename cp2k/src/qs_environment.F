@@ -20,11 +20,7 @@ MODULE qs_environment
                                              atomic_kind_list_release,&
                                              atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             check_atomic_kind_set,&
-                                             get_atomic_kind_set,&
-                                             init_atomic_kind_set,&
-                                             read_atomic_kind_set,&
-                                             write_atomic_kind_set
+                                             get_atomic_kind_set
   USE basis_set_types,                 ONLY: copy_gto_basis_set,&
                                              gto_basis_set_type
   USE bibliography,                    ONLY: Iannuzzi2006,&
@@ -171,7 +167,10 @@ MODULE qs_environment
   USE qs_kind_types,                   ONLY: get_qs_kind,&
                                              get_qs_kind_set,&
                                              init_gapw_basis_set,&
+                                             init_qs_kind_set,&
+                                             check_qs_kind_set,&
                                              qs_kind_type,&
+                                             write_qs_kind_set,&
                                              write_gto_basis_sets
   USE qs_mo_types,                     ONLY: allocate_mo_set,&
                                              mo_set_p_type
@@ -353,8 +352,9 @@ CONTAINS
     kind_section => section_vals_get_subs_vals(subsys_section,"KIND",error=error)
     IF (PRESENT(subsys)) THEN
        my_subsys => subsys
-       CALL read_atomic_kind_set(my_subsys%atomic_kinds%els,kind_section,para_env,&
-            force_env_section,error)
+       CALL read_atomic_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
+       STOP "TODO:qs_environment"
+       !CALL read_qs_kind_set(my_subsys%atomic_kinds%els,kind_section,error)
     ELSE
        CALL cp_subsys_create(my_subsys,para_env=para_env,error=error)
 
@@ -368,8 +368,9 @@ CONTAINS
             force_env_section=force_env_section, subsys_section=subsys_section,&
             use_motion_section=use_motion_section, error=error)
 
-       CALL read_atomic_kind_set(atomic_kind_set,kind_section,para_env,&
-            force_env_section,error)
+       STOP "TODO:qs_environment"
+       CALL read_qs_kind_set(atomic_kind_set,kind_section,error)
+       CALL read_atomic_kind_set(atomic_kind_set,kind_section,error)
 
        CALL num_ao_el_per_molecule(molecule_kind_set, qs_kind_set)
 
@@ -727,7 +728,7 @@ CONTAINS
     CALL get_qs_kind_set(qs_kind_set, dft_plus_u_atom_present=dft_control%dft_plus_u)
 
     !   *** Check basis and fill in missing parts ***
-    CALL check_atomic_kind_set(atomic_kind_set,dft_control,para_env,&
+    CALL check_qs_kind_set(qs_kind_set,dft_control,para_env,&
          subsys_section=subsys_section,error=error)
 
     !   *** Check that no all-electron potential is present if GPW or GAPW_XC
@@ -766,8 +767,8 @@ CONTAINS
     CALL cp_print_key_finished_output(output_unit,logger,root_section,&
             "GLOBAL%PRINT/SPHERICAL_HARMONICS",error=error)
 
-    !   *** Initialise the atomic kind set ***
-    CALL init_atomic_kind_set(atomic_kind_set,para_env,qs_env%input,error=error)
+    !   *** Initialise the qs_kind_set ***
+    CALL init_qs_kind_set(qs_kind_set,error)
 
     !   *** Initialise GAPW soft basis and projectors
     IF(dft_control%qs_control%method == "GAPW" .OR. &
@@ -1346,7 +1347,7 @@ CONTAINS
     CALL write_gto_basis_sets(qs_kind_set,subsys_section,error=error)
 
     ! Print the atomic kind set
-    CALL write_atomic_kind_set(atomic_kind_set,subsys_section,error)
+    CALL write_qs_kind_set(qs_kind_set,subsys_section,error)
 
     ! Print the molecule kind set
     CALL write_molecule_kind_set(molecule_kind_set,subsys_section,error)

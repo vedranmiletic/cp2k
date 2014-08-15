@@ -123,16 +123,16 @@ MODULE atomic_kind_types
 !> Provides all information about an atomic kind
 ! *****************************************************************************
   TYPE atomic_kind_type
-     TYPE(fist_potential_type), POINTER     :: fist_potential
-     CHARACTER(LEN=default_string_length)   :: name
-     CHARACTER(LEN=2)                       :: element_symbol
-     REAL(KIND = dp)                        :: mass
-     INTEGER                                :: kind_number,&
-                                               natom
-     INTEGER, DIMENSION(:), POINTER         :: atom_list
-     LOGICAL                                :: shell_active
-     TYPE(shell_kind_type), POINTER         :: shell
-     TYPE(damping_p_type), POINTER          :: damping
+     TYPE(fist_potential_type), POINTER     :: fist_potential => Null()
+     CHARACTER(LEN=default_string_length)   :: name = ""
+     CHARACTER(LEN=2)                       :: element_symbol = ""
+     REAL(KIND = dp)                        :: mass = 0.0_dp
+     INTEGER                                :: kind_number = -1
+     INTEGER                                :: natom = -1
+     INTEGER, DIMENSION(:), POINTER         :: atom_list => Null()
+     LOGICAL                                :: shell_active = .FALSE.
+     TYPE(shell_kind_type), POINTER         :: shell => Null()
+     TYPE(damping_p_type), POINTER          :: damping => Null()
   END TYPE atomic_kind_type
 
 !> Provides a vector of pointers of type atomic_kind_type
@@ -144,15 +144,11 @@ MODULE atomic_kind_types
 
   ! Public subroutines
 
-  PUBLIC :: allocate_atomic_kind_set,&
-            check_atomic_kind_set,&
-            deallocate_atomic_kind_set,&
+  PUBLIC :: deallocate_atomic_kind_set,&
             get_atomic_kind,&
             get_atomic_kind_set,&
-            init_atomic_kind_set,&
-            read_atomic_kind_set,&
+            !read_atomic_kind_set,&
             set_atomic_kind,&
-            write_atomic_kind_set,&
             is_hydrogen,&
             locate_kind_section_rep
 
@@ -160,25 +156,6 @@ MODULE atomic_kind_types
   PUBLIC :: atomic_kind_type
 
 CONTAINS
-
-! *****************************************************************************
-!> \brief   Constructor routine for a set of atomic kinds
-!> \param atomic_kind_set ...
-!> \param nkind ...
-!> \param error ...
-!> \date    02.01.2002
-!> \author  Matthias Krack (MK)
-!> \version 2.0
-! *****************************************************************************
-  SUBROUTINE allocate_atomic_kind_set(atomic_kind_set,nkind,error)
-
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    INTEGER, INTENT(IN)                      :: nkind
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-     STOP "atomic_kind_types"
-  END SUBROUTINE allocate_atomic_kind_set
 
 ! *****************************************************************************
 !> \brief   Destructor routine for a set of atomic kinds
@@ -194,7 +171,37 @@ CONTAINS
       POINTER                                :: atomic_kind_set
     TYPE(cp_error_type), INTENT(inout)       :: error
 
-    STOP "atomic_kind_types"
+    CHARACTER(len=*), PARAMETER :: routineN = 'deallocate_atomic_kind_set', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: ikind, nkind, stat
+    LOGICAL                                  :: failure
+
+    failure = .FALSE.
+    IF (ASSOCIATED(atomic_kind_set)) THEN
+
+       nkind = SIZE(atomic_kind_set)
+
+       DO ikind=1,nkind
+          IF (ASSOCIATED(atomic_kind_set(ikind)%fist_potential)) THEN
+             CALL deallocate_potential(atomic_kind_set(ikind)%fist_potential,error)
+          END IF
+          IF (ASSOCIATED(atomic_kind_set(ikind)%atom_list)) THEN
+             DEALLOCATE (atomic_kind_set(ikind)%atom_list,STAT=stat)
+             CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
+          END IF
+          CALL shell_release(atomic_kind_set(ikind)%shell,error)
+
+          CALL damping_p_release(atomic_kind_set(ikind)%damping,error)
+       END DO
+       DEALLOCATE (atomic_kind_set,STAT=stat)
+       CPPostcondition(stat==0, cp_failure_level, routineP, error, failure)
+    ELSE
+       CALL stop_program(routineN,moduleN,__LINE__,&
+            "The pointer atomic_kind_set is not associated and "//&
+            "cannot be deallocated")
+    END IF
+
   END SUBROUTINE deallocate_atomic_kind_set
 
 ! *****************************************************************************
@@ -222,7 +229,46 @@ CONTAINS
     LOGICAL, INTENT(OUT), OPTIONAL           :: shell_active
     TYPE(damping_p_type), OPTIONAL, POINTER  :: damping
 
-    STOP "atomic_kind_types"
+    CHARACTER(len=*), PARAMETER :: routineN = 'get_atomic_kind', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: i, j, l, my_basis_set_id, &
+                                                n_set
+    INTEGER, DIMENSION(:), POINTER           :: lmax, lmin, npgf_set
+    LOGICAL                                  :: softb_local
+
+    IF (PRESENT(fist_potential)) fist_potential => atomic_kind%fist_potential
+    IF (PRESENT(element_symbol)) element_symbol = atomic_kind%element_symbol
+    IF (PRESENT(name)) name = atomic_kind%name
+    IF (PRESENT(mass)) mass = atomic_kind%mass
+    IF (PRESENT(kind_number)) kind_number = atomic_kind%kind_number
+    IF (PRESENT(natom)) natom = atomic_kind%natom
+    IF (PRESENT(atom_list)) atom_list => atomic_kind%atom_list
+
+    IF (PRESENT(z)) THEN
+       CALL get_ptable_info(atomic_kind%element_symbol, number=z)
+       WRITE (*,*) "get_atomic_kind z=", z
+       !STOP "TODO: atomic_kind_types"
+       !IF (ASSOCIATED(atomic_kind%all_potential)) THEN
+       !   CALL get_potential(potential=atomic_kind%all_potential,z=z)
+       !ELSE IF (ASSOCIATED(atomic_kind%gth_potential)) THEN
+       !   CALL get_potential(potential=atomic_kind%gth_potential,z=z)
+       !ELSE
+       !   CALL get_ptable_info(atomic_kind%element_symbol, number=z)
+       !END IF
+    END IF
+    IF (PRESENT(rcov)) THEN
+       CALL get_ptable_info(atomic_kind%element_symbol, covalent_radius=rcov)
+    END IF
+    IF (PRESENT(rvdw)) THEN
+       CALL get_ptable_info(atomic_kind%element_symbol, vdw_radius=rvdw)
+    END IF
+
+    !IF (PRESENT(ghost)) ghost = atomic_kind%ghost
+    IF (PRESENT(shell)) shell => atomic_kind%shell
+    IF (PRESENT(shell_active)) shell_active = atomic_kind%shell_active
+    IF (PRESENT(damping)) damping => atomic_kind%damping
+
   END SUBROUTINE get_atomic_kind
 
 ! *****************************************************************************
@@ -247,46 +293,99 @@ CONTAINS
     LOGICAL, INTENT(OUT), OPTIONAL ::  fist_potential_present, &
       shell_present, shell_adiabatic, shell_check_distance, damping_present
 
-    STOP "atomic_kind_types"
-  END SUBROUTINE get_atomic_kind_set
+  CHARACTER(len=*), PARAMETER :: routineN = 'get_atomic_kind_set', &
+      routineP = moduleN//':'//routineN
 
-! *****************************************************************************
-!> \brief Initialise an atomic kind data set.
-!> \param atomic_kind ...
-!> \param para_env ...
-!> \param force_env_section ...
-!> \param error ...
-!> \author Creation (11.01.2002,MK)
-!>                20.09.2002 adapted for pol/kg use, gtb
-! *****************************************************************************
-  SUBROUTINE init_atomic_kind(atomic_kind,para_env,force_env_section,error)
+    INTEGER :: atom_a, iatom, ikind, imax, ipgf, iset, lmax_rho0_kind, lmg, &
+      ls, max_iso_not0, max_s_harm, my_basis_set_id, n, ngrid_rad, nkind
+    INTEGER, DIMENSION(:), POINTER           :: lmgem, lsgem, npgf_kind
+    LOGICAL                                  :: dft_plus_u_atom, paw_atom, &
+                                                qm_atom
+    REAL(KIND=dp)                            :: zeff, zeff_correction
+    REAL(kind=dp), DIMENSION(:, :), POINTER  :: zet_kind
+    TYPE(all_potential_type), POINTER        :: all_potential
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: force_env_section
-    TYPE(cp_error_type), INTENT(inout)       :: error
+    TYPE(damping_p_type), POINTER            :: damping
+    TYPE(fist_potential_type), POINTER       :: fist_potential
+    TYPE(geminal_basis_set_type), POINTER    :: geminal_basis_set
+    TYPE(gth_potential_type), POINTER        :: gth_potential
+    TYPE(gto_basis_set_type), POINTER :: aux_basis_set, aux_fit_basis_set, &
+      lri_basis_set, orb_basis_set, ri_aux_basis_set, scp_basis_set, &
+      soft_basis_set
+    TYPE(local_potential_type), POINTER      :: tnadd_potential
+    TYPE(paw_proj_set_type), POINTER         :: paw_proj_set
+    TYPE(qs_dftb_atom_type), POINTER         :: dftb_parameter
+    TYPE(shell_kind_type), POINTER           :: shell
 
-     STOP "atomic_kind_types"
-  END SUBROUTINE init_atomic_kind
+    IF (ASSOCIATED(atomic_kind_set)) THEN
 
-! *****************************************************************************
-!> \brief Initialise an atomic kind set data set.
-!> \param atomic_kind_set ...
-!> \param para_env ...
-!> \param force_env_section ...
-!> \param error ...
-!> \author - Creation (17.01.2002,MK)
-!>      - 20.09.2002 para_env passed (gt)
-! *****************************************************************************
-  SUBROUTINE init_atomic_kind_set(atomic_kind_set,para_env,force_env_section,error)
+       IF (PRESENT(maxatom)) maxatom = 0
+       IF (PRESENT(natom)) natom = 0
+       IF (PRESENT(nshell)) nshell = 0
+       IF (PRESENT(shell_present)) shell_present = .FALSE.
+       IF (PRESENT(shell_adiabatic)) shell_adiabatic = .FALSE.
+       IF (PRESENT(shell_check_distance)) shell_check_distance = .FALSE.
+       IF (PRESENT(damping_present)) damping_present = .FALSE.
+       IF (PRESENT(atom_of_kind)) atom_of_kind(:) = 0
+       IF (PRESENT(kind_of)) kind_of(:) = 0
+       IF (PRESENT(natom_of_kind)) natom_of_kind(:) = 0
 
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: force_env_section
-    TYPE(cp_error_type), INTENT(inout)       :: error
+       nkind = SIZE(atomic_kind_set)
+       DO ikind=1,nkind
+          atomic_kind => atomic_kind_set(ikind)
+          CALL get_atomic_kind(atomic_kind=atomic_kind,&
+               fist_potential=fist_potential,&
+               shell=shell,&
+               damping=damping)
+          IF (PRESENT(maxatom)) THEN
+             maxatom = MAX(maxatom,atomic_kind%natom)
+          END IF
+          IF (PRESENT(natom)) THEN
+             natom = natom + atomic_kind_set(ikind)%natom
+          END IF
+          IF (PRESENT(fist_potential_present)) THEN
+             IF (ASSOCIATED(fist_potential)) THEN
+                fist_potential_present = .TRUE.
+             END IF
+          END IF
+          IF (PRESENT(shell_present)) THEN
+             IF (ASSOCIATED(shell)) THEN
+                shell_present = .TRUE.
+             END IF
+          END IF
+          IF (PRESENT(shell_adiabatic) .AND. ASSOCIATED(shell) )THEN
+             IF(.NOT. shell_adiabatic) shell_adiabatic = (shell%massfrac /= 0.0_dp)
+          END IF
+          IF (PRESENT(shell_check_distance) .AND. ASSOCIATED(shell) )THEN
+             IF(.NOT. shell_check_distance) shell_check_distance = (shell%max_dist > 0.0_dp)
+          END IF
+          IF (PRESENT(damping_present))THEN
+             IF (ASSOCIATED(damping)) THEN
+                damping_present=.TRUE.
+             END IF
+          END IF
+          IF (PRESENT(atom_of_kind)) THEN
+             DO iatom=1,atomic_kind%natom
+                atom_a = atomic_kind%atom_list(iatom)
+                atom_of_kind(atom_a) = iatom
+             END DO
+          END IF
+          IF (PRESENT(kind_of)) THEN
+             DO iatom=1,atomic_kind%natom
+                atom_a = atomic_kind%atom_list(iatom)
+                kind_of(atom_a) = ikind
+             END DO
+          END IF
+          IF (PRESENT(natom_of_kind)) THEN
+             natom_of_kind(ikind) = atomic_kind_set(ikind)%natom
+          END IF
+       END DO
+    ELSE
+       CALL stop_program(routineN,moduleN,__LINE__,&
+            "The pointer atomic_kind_set is not associated")
+    END IF
 
-    STOP "atomic_kind_types"
-  END SUBROUTINE init_atomic_kind_set
+  END SUBROUTINE get_atomic_kind_set
 
 
 ! *****************************************************************************
@@ -303,13 +402,10 @@ CONTAINS
 !>      - 20.09.2002,gt: adapted for POL/KG use (elp_potential)
 !>      - 05.03.2010: split elp_potential into fist_potential and kg_potential
 ! *****************************************************************************
-  SUBROUTINE read_atomic_kind(atomic_kind,kind_section,para_env,force_env_section,&
-       no_fail, method_id, error)
+  SUBROUTINE read_atomic_kind(atomic_kind,kind_section, no_fail, method_id, error)
 
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(section_vals_type), POINTER         :: kind_section
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: force_env_section
     LOGICAL, INTENT(IN)                      :: no_fail
     INTEGER, INTENT(IN)                      :: method_id
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -329,13 +425,11 @@ CONTAINS
 !>      - Creation (09.02.2002,MK)
 !>      - 20.09.2002,gt: adapted for POL/KG use (elp_potential)
 ! *****************************************************************************
-  SUBROUTINE read_atomic_kind_set(atomic_kind_set,kind_section,para_env,force_env_section,error)
+  SUBROUTINE read_atomic_kind_set(atomic_kind_set,kind_section,error)
 
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
     TYPE(section_vals_type), POINTER         :: kind_section
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: force_env_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'read_atomic_kind_set', &
@@ -344,43 +438,6 @@ CONTAINS
     STOP "atomic_kind_types"
   END SUBROUTINE read_atomic_kind_set
 
-! *****************************************************************************
-!> \brief This routines should perform only checks. no settings are allowed at
-!>     this level anymore..
-!> \param atomic_kind ...
-!> \param dft_control ...
-!> \param subsys_section ...
-!> \param error ...
-! *****************************************************************************
-  SUBROUTINE check_atomic_kind(atomic_kind,dft_control,subsys_section,error)
-
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    TYPE(dft_control_type), INTENT(IN)       :: dft_control
-    TYPE(section_vals_type), POINTER         :: subsys_section
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-    STOP "atomic_kind_types"
-  END SUBROUTINE check_atomic_kind
-
-! *****************************************************************************
-!> \brief ...
-!> \param atomic_kind_set ...
-!> \param dft_control ...
-!> \param para_env ...
-!> \param subsys_section ...
-!> \param error ...
-! *****************************************************************************
-  SUBROUTINE check_atomic_kind_set(atomic_kind_set,dft_control,para_env,subsys_section,error)
-
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(dft_control_type), INTENT(IN)       :: dft_control
-    TYPE(cp_para_env_type), POINTER          :: para_env
-    TYPE(section_vals_type), POINTER         :: subsys_section
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-     STOP "atomic_kind_types"
-  END SUBROUTINE check_atomic_kind_set
 
 ! *****************************************************************************
 !> \brief Set the components of an atomic kind data set.
@@ -404,42 +461,86 @@ CONTAINS
     TYPE(cp_error_type), INTENT(inout), &
       OPTIONAL                               :: error
 
-    STOP "atomic_kind_types"
+    CHARACTER(len=*), PARAMETER :: routineN = 'set_atomic_kind', &
+      routineP = moduleN//':'//routineN
+    INTEGER                                  :: n, stat
+    LOGICAL                                  :: failure
+
+    failure = .FALSE.
+
+    IF (ASSOCIATED(atomic_kind)) THEN
+
+       IF (PRESENT(element_symbol)) atomic_kind%element_symbol = element_symbol
+       IF (PRESENT(name)) atomic_kind%name = name
+       IF (PRESENT(mass)) atomic_kind%mass = mass
+       IF (PRESENT(kind_number)) atomic_kind%kind_number = kind_number
+       IF (PRESENT(natom)) atomic_kind%natom = natom
+       IF (PRESENT(atom_list)) THEN
+          n = SIZE(atom_list)
+          IF (n > 0) THEN
+             IF (ASSOCIATED(atomic_kind%atom_list)) THEN
+                DEALLOCATE (atomic_kind%atom_list,STAT=stat)
+                CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+             END IF
+             ALLOCATE (atomic_kind%atom_list(n),STAT=stat)
+             CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+             atomic_kind%atom_list(:) = atom_list(:)
+             atomic_kind%natom = n
+          ELSE
+             CALL stop_program(routineN,moduleN,__LINE__,&
+                  "An invalid atom_list was supplied")
+          END IF
+       END IF
+       !IF (PRESENT(elec_conf)) THEN
+       !   IF (ASSOCIATED(atomic_kind%elec_conf)) THEN
+       !      DEALLOCATE(atomic_kind%elec_conf)
+       !   ENDIF
+       !   ALLOCATE(atomic_kind%elec_conf(0:SIZE(elec_conf)-1))
+       !   atomic_kind%elec_conf(:)=elec_conf(:)
+       !ENDIF
+       !IF (PRESENT(paw_atom)) atomic_kind%paw_atom = paw_atom
+       !IF (PRESENT(qm_atom)) atomic_kind%qm_atom = qm_atom
+       !IF (PRESENT(hard_radius)) atomic_kind%hard_radius = hard_radius
+       !IF (PRESENT(hard0_radius)) atomic_kind%hard0_radius = hard0_radius
+       IF (PRESENT(fist_potential)) atomic_kind%fist_potential => fist_potential
+       !IF (PRESENT(soft_basis_set)) atomic_kind%soft_basis_set => soft_basis_set
+       !IF (PRESENT(hard_basis_set)) atomic_kind%hard_basis_set => hard_basis_set
+       !IF (PRESENT(lmax_rho0)) atomic_kind%lmax_rho0 = lmax_rho0
+       !IF (PRESENT(zeff)) THEN
+       !   IF (ASSOCIATED(atomic_kind%all_potential)) THEN
+       !      CALL set_potential(potential=atomic_kind%all_potential,zeff=zeff)
+       !   ELSE IF (ASSOCIATED(atomic_kind%gth_potential)) THEN
+       !      CALL set_potential(potential=atomic_kind%gth_potential,zeff=zeff)
+       !   END IF
+       !END IF
+       !IF (PRESENT(ghost)) atomic_kind%ghost = ghost
+       IF (PRESENT(shell)) THEN
+          atomic_kind%shell => shell
+          CALL shell_retain(shell,error)
+       END IF
+       IF (PRESENT(shell_active)) atomic_kind%shell_active=shell_active
+
+       !IF (PRESENT(no_optimize)) atomic_kind%no_optimize=no_optimize
+
+       !IF (PRESENT(dispersion)) atomic_kind%dispersion => dispersion
+
+       IF (PRESENT(damping)) atomic_kind%damping => damping
+
+       !IF (PRESENT(u_minus_j)) THEN
+       !   IF (ASSOCIATED(atomic_kind%dft_plus_u)) THEN
+       !      atomic_kind%dft_plus_u%u_minus_j = u_minus_j
+       !   END IF
+       !END IF
+       !
+       !IF (PRESENT(reltmat)) atomic_kind%reltmat => reltmat
+
+    ELSE
+       CALL stop_program(routineN,moduleN,__LINE__,&
+            "The pointer atomic_kind is not associated")
+    END IF
+
+
   END SUBROUTINE set_atomic_kind
-
-! *****************************************************************************
-!> \brief Write an atomic kind data set to the output unit.
-!> \param atomic_kind ...
-!> \param output_unit ...
-!> \param error ...
-!> \par History
-!>      Creation (09.02.2002,MK)
-! *****************************************************************************
-  SUBROUTINE write_atomic_kind(atomic_kind,output_unit,error)
-
-    TYPE(atomic_kind_type), POINTER          :: atomic_kind
-    INTEGER, INTENT(in)                      :: output_unit
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-    STOP "atomic_kind_types"
-  END SUBROUTINE write_atomic_kind
-
-! *****************************************************************************
-!> \brief Write an atomic kind set data set to the output unit.
-!> \param atomic_kind_set ...
-!> \param subsys_section ...
-!> \param error ...
-!> \par History
-!>      Creation (09.02.2002,MK)
-! *****************************************************************************
-  SUBROUTINE write_atomic_kind_set(atomic_kind_set,subsys_section,error)
-    TYPE(atomic_kind_type), DIMENSION(:), &
-      POINTER                                :: atomic_kind_set
-    TYPE(section_vals_type), POINTER         :: subsys_section
-    TYPE(cp_error_type), INTENT(inout)       :: error
-
-    STOP "atomic_kind_types"
-  END SUBROUTINE write_atomic_kind_set
 
 ! *****************************************************************************
 !> \brief Determines if the atomic_kind is HYDROGEN

@@ -14,8 +14,7 @@ MODULE eip_environment
                                              atomic_kind_list_release,&
                                              atomic_kind_list_type
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
-                                             get_atomic_kind,&
-                                             write_atomic_kind_set
+                                             get_atomic_kind
   USE cell_methods,                    ONLY: cell_release,&
                                              cell_type,&
                                              get_cell,&
@@ -236,8 +235,8 @@ CONTAINS
     molecule_set => subsys%molecules_new%els
 
 !   *** Print the atomic kind set ***
-    CALL write_atomic_kind_set(atomic_kind_set, subsys_section, &
-                               error=error)
+    STOP "TODO: eip_init_subsys"
+    !CALL write_qs_kind_set(qs_kind_set, subsys_section, error=error)
 
 !   *** Print the molecule kind set ***
     CALL write_molecule_kind_set(molecule_kind_set, subsys_section, &
