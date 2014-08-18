@@ -296,7 +296,7 @@ CONTAINS
        ! Loop over atoms
        DO kkind = 1,nkind
           NULLIFY(paw_proj)
-          CALL get_qs_kind(qs_kind_set(ikind),&
+          CALL get_qs_kind(qs_kind_set(kkind),&
                                orb_basis_set=orb_basis_set,&
                                hard_radius=hard_radius_c,&
                                paw_proj_set=paw_proj,&
