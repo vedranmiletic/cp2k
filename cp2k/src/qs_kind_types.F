@@ -795,7 +795,8 @@ CONTAINS
        ncgf,ncgf_aux, ncgf_ri_aux,&
        npgf,nset,nsgf,nshell,nelectron,&
        paw_atom_present,&
-       qm_atom_present, dft_plus_u_atom_present,&
+       !qm_atom_present, &
+       dft_plus_u_atom_present,&
        maxder,&
        maxlgem,max_ngrid_rad,&
        max_sph_harm,maxg_iso_not0,lmax_rho0,&
@@ -809,7 +810,7 @@ CONTAINS
       maxsgf_set, maxshell, ncgf, ncgf_aux, ncgf_ri_aux, npgf, nset, nsgf, &
       nshell
     LOGICAL, INTENT(OUT), OPTIONAL           :: paw_atom_present, &
-                                                qm_atom_present, &
+       !                                         qm_atom_present, &
                                                 dft_plus_u_atom_present,&
                                                 all_potential_present,&
                      tnadd_potential_present, gth_potential_present
@@ -826,8 +827,8 @@ CONTAINS
     INTEGER :: atom_a, iatom, ikind, imax, ipgf, iset, lmax_rho0_kind, lmg, &
       ls, max_iso_not0, max_s_harm, my_basis_set_id, n, ngrid_rad, nkind
     INTEGER, DIMENSION(:), POINTER           :: lmgem, lsgem, npgf_kind
-    LOGICAL                                  :: dft_plus_u_atom, paw_atom, &
-                                                qm_atom
+    LOGICAL                                  :: dft_plus_u_atom, paw_atom !, &
+                  !                              qm_atom
     REAL(KIND=dp)                            :: zeff, zeff_correction
     REAL(kind=dp), DIMENSION(:, :), POINTER  :: zet_kind
     TYPE(all_potential_type), POINTER        :: all_potential
@@ -884,7 +885,7 @@ CONTAINS
        !IF (PRESENT(fist_potential_present)) fist_potential_present = .FALSE.
        IF (PRESENT(gth_potential_present)) gth_potential_present = .FALSE.
        IF (PRESENT(paw_atom_present)) paw_atom_present = .FALSE.
-       IF (PRESENT(qm_atom_present)) qm_atom_present = .FALSE.
+       !IF (PRESENT(qm_atom_present)) qm_atom_present = .FALSE.
        !IF (PRESENT(shell_present)) shell_present = .FALSE.
        !IF (PRESENT(shell_adiabatic)) shell_adiabatic = .FALSE.
        !IF (PRESENT(shell_check_distance)) shell_check_distance = .FALSE.
@@ -1503,11 +1504,11 @@ CONTAINS
                 paw_atom_present = .TRUE.
              END IF
           END IF
-          IF (PRESENT(qm_atom_present)) THEN
-             IF (qm_atom) THEN
-                qm_atom_present = .TRUE.
-             END IF
-          END IF
+          !IF (PRESENT(qm_atom_present)) THEN
+          !   IF (qm_atom) THEN
+          !      qm_atom_present = .TRUE.
+          !   END IF
+          !END IF
           IF (PRESENT(dft_plus_u_atom_present)) THEN
              IF (dft_plus_u_atom) THEN
                 dft_plus_u_atom_present = .TRUE.
