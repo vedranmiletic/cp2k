@@ -86,6 +86,10 @@ CONTAINS
     TYPE(molsym_type), POINTER               :: mol_sym
     TYPE(section_vals_type), POINTER         :: section
 
+   WRITE (*,*) "!!!!!!!!!!!!!!!11"
+   WRITE (*,*) "TODO: cp_symmetry"
+   WRITE (*,*) "!!!!!!!!!!!!!!!11"
+
     failure = .FALSE.
     CALL timeset(routineN,handle)
 
@@ -115,8 +119,9 @@ CONTAINS
         CPPostcondition(ierr==0,cp_failure_level,routineP,error,failure)
 
         DO i=1,natom
-          STOP "TODO: cp_symmetry"
+          !STOP "TODO: cp_symmetry"
           !CALL get_atomic_kind(particle_set(i)%atomic_kind, zeff=zeff(i))
+          zeff(i) = 0.0
           CALL get_atomic_kind(atomic_kind=particle_set(i)%atomic_kind,&
                   kind_number=atype(i),element_symbol=element(i),mass=weight(i))
           coord(1:3,i) = particle_set(i)%r(1:3)
@@ -166,8 +171,9 @@ CONTAINS
         CPPostcondition(ierr==0,cp_failure_level,routineP,error,failure)
 
         DO i=1,natom
-          STOP "TODO: cp_symmetry"
+          !STOP "TODO: cp_symmetry"
           !CALL get_atomic_kind(particle_set(i)%atomic_kind, zeff=zeff(i))
+         zeff(i) = 0.0
           CALL get_atomic_kind(atomic_kind=particle_set(i)%atomic_kind,&
                   kind_number=atype(i),element_symbol=element(i),mass=weight(i))
           coord(1:3,i) = particle_set(i)%r(1:3)
