@@ -29,10 +29,14 @@ LIBS     = -L${FFTW3_PATH}/lib \
 # PROG's ###############################################################
 PERL     = perl
 CPP      =
-CC       = gcc -g
-FC       = gfortran -g -fbacktrace
-LD       = gfortran -g
-NVCC     = nvcc -pg -G
+# CC       = gcc -g
+# FC       = gfortran -g -fbacktrace
+# LD       = gfortran -g
+# NVCC     = nvcc -pg -G
+CC       = gcc
+FC       = gfortran
+LD       = gfortran
+NVCC     = nvcc
 AR       = ar -r
 
 # FLAG's ###############################################################
@@ -45,9 +49,13 @@ DFLAGS   = -D__GFORTRAN \
            -D__HAS_ISO_C_BINDING
 
 CPPFLAGS = $(DFLAGS) -traditional -C
-CFLAGS   = $(DFLAGS) -O0
-FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
-NVFLAGS  = $(DFLAGS) -O0 -gencode arch=compute_35,code=sm_35
+# CFLAGS   = $(DFLAGS) -O0
+# FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
+# NVFLAGS  = $(DFLAGS) -O0 -gencode arch=compute_35,code=sm_35
+CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
+FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
+           -ffree-form -ffree-line-length-none
+NVFLAGS  = $(DFLAGS) -O3 -gencode arch=compute_35,code=sm_35
 LDFLAGS  = $(FCFLAGS)
 
 OBJECTS_ARCHITECTURE = machine_gfortran.o

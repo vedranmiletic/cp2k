@@ -6,7 +6,7 @@
 # - LIBXC          2.0.3
 # - LIBINT         1.1.5 (with non default: --with-libint-max-am=5
 #                                           --with-libderiv-max-am1=4)
-# - OpenCL         1.1 (NVIDIA)
+# - OpenCL         1.1 (INTEL)
 #
 
 # LIB's ################################################################
@@ -29,12 +29,12 @@ LIBS     = -L${FFTW3_PATH}/lib \
 # PROG's ###############################################################
 PERL     = perl
 CPP      =
-#CC       = gcc
-#FC       = gfortran
-#LD       = gfortran
-CC       = gcc -g
-FC       = gfortran -g -fbacktrace
-LD       = gfortran -g
+# CC       = gcc -g
+# FC       = gfortran -g -fbacktrace
+# LD       = gfortran -g
+CC       = gcc
+FC       = gfortran
+LD       = gfortran
 AR       = ar -r
 
 # FLAG's ###############################################################
@@ -48,11 +48,11 @@ DFLAGS   = -D__GFORTRAN \
            -D__USE_INTEL_CL
 
 CPPFLAGS = $(DFLAGS) -traditional -C
-#CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
-#FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
-#           -ffree-form -ffree-line-length-none
-CFLAGS   = $(DFLAGS) -O0
-FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
+# CFLAGS   = $(DFLAGS) -O0
+# FCFLAGS  = $(DFLAGS) -O0 -ffree-form -ffree-line-length-none
+CFLAGS   = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops
+FCFLAGS  = $(DFLAGS) -O3 -march=native -ffast-math -funroll-loops -ftree-vectorize \
+           -ffree-form -ffree-line-length-none
 LDFLAGS  = $(FCFLAGS)
 
 OBJECTS_ARCHITECTURE = machine_gfortran.o
