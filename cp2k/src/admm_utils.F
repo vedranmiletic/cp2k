@@ -42,10 +42,18 @@ MODULE admm_utils
 
   CONTAINS
 
-  SUBROUTINE admm_correct_for_eigenvalues(ispin, admm_env, ks_matrix, ks_matrix_aux_fit, error)
+! *****************************************************************************
+!> \brief ...
+!> \param ispin ...
+!> \param admm_env ...
+!> \param ks_matrix ...
+!> \param error ...
+!> \param ks_matrix_aux_fit ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+! *****************************************************************************
+  SUBROUTINE admm_correct_for_eigenvalues(ispin, admm_env, ks_matrix,  error)
     INTEGER, INTENT(IN)                      :: ispin
     TYPE(admm_type), POINTER                 :: admm_env
-    TYPE(cp_dbcsr_type), POINTER             :: ks_matrix, ks_matrix_aux_fit
+    TYPE(cp_dbcsr_type), POINTER             :: ks_matrix
     TYPE(cp_error_type), INTENT(INOUT)       :: error
 
     INTEGER                                  :: nao_aux_fit, nao_orb
@@ -131,10 +139,18 @@ MODULE admm_utils
 
   END SUBROUTINE admm_correct_for_eigenvalues
 
-  SUBROUTINE admm_uncorrect_for_eigenvalues(ispin, admm_env, ks_matrix, ks_matrix_aux_fit, error)
+! *****************************************************************************
+!> \brief ...
+!> \param ispin ...
+!> \param admm_env ...
+!> \param ks_matrix ...
+!> \param error ...
+!> \param ks_matrix_aux_fit ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+! *****************************************************************************
+  SUBROUTINE admm_uncorrect_for_eigenvalues(ispin, admm_env, ks_matrix, error)
     INTEGER, INTENT(IN)                      :: ispin
     TYPE(admm_type), POINTER                 :: admm_env
-    TYPE(cp_dbcsr_type), POINTER             :: ks_matrix, ks_matrix_aux_fit
+    TYPE(cp_dbcsr_type), POINTER             :: ks_matrix
     TYPE(cp_error_type), INTENT(INOUT)       :: error
 
     INTEGER                                  :: nao_aux_fit, nao_orb

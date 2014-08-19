@@ -57,7 +57,7 @@ CONTAINS
 !> \brief allocates and initializes a derivative type
 !> \param derivative the object to create
 !> \param desc the derivative description
-!> \param cr 3d_ptr    : the data array (the ownership of it passes to the
+!> \param cr3d_ptr the data array (the ownership of it passes to the
 !>                      derivative type), the array is not zeroed
 !> \param error variable to control error logging, stopping,...
 !>                      see module cp_error_handling

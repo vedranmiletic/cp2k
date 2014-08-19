@@ -28,35 +28,36 @@ MODULE input_cp2k_dft
        cholesky_reduce, cholesky_restore, constant_env, core_guess, &
        debug_print_level, densities_guess, diag_block_davidson, &
        diag_block_krylov, diag_ot, diag_standard, direct_p_mix, &
-       do_admm_basis_set_projection, do_admm_block_aux_basis_off, &
-       do_admm_block_aux_basis_on, do_admm_block_density_matrix, &
-       do_admm_block_purify_blocked, do_admm_block_purify_full, &
-       do_admm_block_purify_off, do_admm_purify_cauchy, &
-       do_admm_purify_cauchy_subspace, do_admm_purify_mo_diag, &
-       do_admm_purify_mo_no_diag, do_admm_purify_none, do_arnoldi, do_bch, &
-       do_cn, do_ddapc_constraint, do_ddapc_restraint, do_em, do_etrs, &
-       do_full_density, do_gapw_gcs, do_gapw_gct, do_gapw_log, do_loc_both, &
-       do_loc_crazy, do_loc_direct, do_loc_homo, do_loc_jacobi, &
-       do_loc_l1_norm_sd, do_loc_lumo, do_loc_max, do_loc_min, do_loc_none, &
-       do_method_am1, do_method_dftb, do_method_gapw, do_method_gapw_xc, &
-       do_method_gpw, do_method_lrigpw, do_method_mndo, do_method_mndod, &
-       do_method_ofgpw, do_method_pdg, do_method_pm3, do_method_pm6, &
-       do_method_pnnl, do_method_rm1, do_method_scptb, do_pade, &
-       do_ppl_analytic, do_ppl_grid, do_pwgrid_ns_fullspace, &
-       do_pwgrid_ns_halfspace, do_pwgrid_spherical, do_s2_constraint, &
-       do_s2_restraint, do_se_is_kdso, do_se_is_kdso_d, do_se_is_slater, &
-       do_se_lr_ewald, do_se_lr_ewald_gks, do_se_lr_ewald_r3, do_se_lr_none, &
-       do_spin_density, do_taylor, ehrenfest, gaussian, gaussian_env, &
-       general_roks, high_print_level, high_spin_roks, history_guess, &
-       kerker_mix, kg_color_dsatur, kg_color_greedy, kg_tnadd_atomic, &
-       kg_tnadd_embed, low_print_level, ls_2pnt, ls_3pnt, ls_gold, ls_none, &
-       medium_print_level, mopac_guess, multisec_mix, no_excitations, &
-       no_guess, no_mix, numerical, oe_gllb, oe_lb, oe_none, oe_saop, oe_sic, &
-       op_loc_berry, op_loc_boys, op_loc_pipek, orb_dx2, orb_dxy, orb_dy2, &
-       orb_dyz, orb_dz2, orb_dzx, orb_px, orb_py, orb_pz, orb_s, &
-       ot_algo_irac, ot_algo_taylor_or_diag, ot_chol_irac, ot_lwdn_irac, &
-       ot_mini_broyden, ot_mini_cg, ot_mini_diis, ot_mini_sd, ot_poly_irac, &
-       ot_precond_full_all, ot_precond_full_kinetic, ot_precond_full_single, &
+       dispersion_d3, dispersion_uff, do_admm_basis_set_projection, &
+       do_admm_block_aux_basis_off, do_admm_block_aux_basis_on, &
+       do_admm_block_density_matrix, do_admm_block_purify_blocked, &
+       do_admm_block_purify_full, do_admm_block_purify_off, &
+       do_admm_purify_cauchy, do_admm_purify_cauchy_subspace, &
+       do_admm_purify_mo_diag, do_admm_purify_mo_no_diag, &
+       do_admm_purify_none, do_arnoldi, do_bch, do_cn, do_ddapc_constraint, &
+       do_ddapc_restraint, do_em, do_etrs, do_full_density, do_gapw_gcs, &
+       do_gapw_gct, do_gapw_log, do_loc_both, do_loc_crazy, do_loc_direct, &
+       do_loc_homo, do_loc_jacobi, do_loc_l1_norm_sd, do_loc_lumo, &
+       do_loc_max, do_loc_min, do_loc_none, do_method_am1, do_method_dftb, &
+       do_method_gapw, do_method_gapw_xc, do_method_gpw, do_method_lrigpw, &
+       do_method_mndo, do_method_mndod, do_method_ofgpw, do_method_pdg, &
+       do_method_pm3, do_method_pm6, do_method_pnnl, do_method_rm1, &
+       do_method_scptb, do_pade, do_ppl_analytic, do_ppl_grid, &
+       do_pwgrid_ns_fullspace, do_pwgrid_ns_halfspace, do_pwgrid_spherical, &
+       do_s2_constraint, do_s2_restraint, do_se_is_kdso, do_se_is_kdso_d, &
+       do_se_is_slater, do_se_lr_ewald, do_se_lr_ewald_gks, &
+       do_se_lr_ewald_r3, do_se_lr_none, do_spin_density, do_taylor, &
+       ehrenfest, gaussian, gaussian_env, general_roks, high_print_level, &
+       high_spin_roks, history_guess, kerker_mix, kg_color_dsatur, &
+       kg_color_greedy, kg_tnadd_atomic, kg_tnadd_embed, low_print_level, &
+       ls_2pnt, ls_3pnt, ls_gold, ls_none, medium_print_level, mopac_guess, &
+       multisec_mix, no_excitations, no_guess, no_mix, numerical, oe_gllb, &
+       oe_lb, oe_none, oe_saop, oe_sic, op_loc_berry, op_loc_boys, &
+       op_loc_pipek, orb_dx2, orb_dxy, orb_dy2, orb_dyz, orb_dz2, orb_dzx, &
+       orb_px, orb_py, orb_pz, orb_s, ot_algo_irac, ot_algo_taylor_or_diag, &
+       ot_chol_irac, ot_lwdn_irac, ot_mini_broyden, ot_mini_cg, ot_mini_diis, &
+       ot_mini_sd, ot_poly_irac, ot_precond_full_all, &
+       ot_precond_full_kinetic, ot_precond_full_single, &
        ot_precond_full_single_inverse, ot_precond_none, ot_precond_s_inverse, &
        ot_precond_solver_default, ot_precond_solver_direct, &
        ot_precond_solver_inv_chol, ot_precond_solver_sainv, &
@@ -87,6 +88,7 @@ MODULE input_cp2k_dft
   USE input_cp2k_almo,                 ONLY: create_almo_scf_section
   USE input_cp2k_atom,                 ONLY: create_powell_section
   USE input_cp2k_distribution,         ONLY: create_distribution_section
+  USE input_cp2k_kpoints,              ONLY: create_kpoints_section
   USE input_cp2k_ls,                   ONLY: create_ls_scf_section
   USE input_cp2k_mm,                   ONLY: create_dipoles_section,&
                                              create_neighbor_lists_section
@@ -547,7 +549,7 @@ CONTAINS
     CALL create_ext_pot_section(subsection,error)
     CALL section_add_subsection(section, subsection, error=error)
     CALL section_release(subsection,error=error)
-! ZMP sections to include the external density or v_xc potential
+    ! ZMP sections to include the external density or v_xc potential
     CALL create_ext_den_section(subsection,error)
     CALL section_add_subsection(section, subsection, error=error)
     CALL section_release(subsection,error=error)
@@ -557,6 +559,10 @@ CONTAINS
     CALL section_release(subsection,error=error)
 
     CALL create_poisson_section(subsection,error)
+    CALL section_add_subsection(section, subsection, error=error)
+    CALL section_release(subsection,error=error)
+
+    CALL create_kpoints_section(subsection,error)
     CALL section_add_subsection(section, subsection, error=error)
     CALL section_release(subsection,error=error)
 
@@ -587,6 +593,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Implicit Solvation Model
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author tlaino
@@ -643,6 +650,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Create Sphere cavity
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author tlaino
@@ -684,6 +692,8 @@ CONTAINS
   END SUBROUTINE create_sphere_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author tlaino
@@ -745,6 +755,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief parameters fo the localization of wavefunctions
+!> \param section ...
+!> \param error ...
 !> \par History
 !>      03.2005 created [MI]
 ! *****************************************************************************
@@ -984,6 +996,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Controls the printing of the basic info coming from the LOCALIZE
 !>        section
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author teo
@@ -1487,6 +1500,13 @@ CONTAINS
 
        CALL cp_print_key_section_create(print_key,"dft_control_parameters",&
             description="Controls the printing of dft control parameters.", &
+            print_level=medium_print_level,filename="__STD_OUT__",&
+            error=error)
+       CALL section_add_subsection(section,print_key,error=error)
+       CALL section_release(print_key,error=error)
+
+       CALL cp_print_key_section_create(print_key,"KPOINTS",&
+            description="Controls the printing of kpoint information.", &
             print_level=medium_print_level,filename="__STD_OUT__",&
             error=error)
        CALL section_add_subsection(section,print_key,error=error)
@@ -1998,6 +2018,14 @@ CONTAINS
        CALL section_add_subsection(section,print_key,error=error)
        CALL section_release(print_key,error=error)
 
+       CALL cp_print_key_section_create(print_key_section=print_key,&
+            name="OPTIMIZE_LRI_BASIS",&
+            description="Optimize the exponents of the LRI basis set",&
+            print_level=low_print_level,&
+            filename="OPTIMIZED_LRI_BASIS",error=error)
+       CALL section_add_subsection(section,print_key,error=error)
+       CALL section_release(print_key,error=error)
+
        CALL cp_print_key_section_create(&
             print_key_section=print_key,&
             name="PLUS_U",&
@@ -2017,6 +2045,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the input section for dealing with homo lumos, including dumping cubes
+!> \param print_key ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_mo_cubes_section(print_key,error)
     TYPE(section_type), POINTER              :: print_key
@@ -2100,6 +2130,11 @@ CONTAINS
 
   END SUBROUTINE create_mo_cubes_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param print_key ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_stm_section(print_key,error)
     TYPE(section_type), POINTER              :: print_key
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -2176,6 +2211,11 @@ CONTAINS
 
   END SUBROUTINE create_stm_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_wfn_mix_section(section, error)
 
     TYPE(section_type), POINTER              :: section
@@ -2287,9 +2327,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the input section for the molecular states
-!> \param section the section to create
+!> \param print_key ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param section the section to create UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \author teo
 ! *****************************************************************************
   SUBROUTINE create_molecular_states_section(print_key,error)
@@ -2347,6 +2388,11 @@ CONTAINS
   END SUBROUTINE create_molecular_states_section
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param print_key ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_wannier_states_section(print_key,error)
     TYPE(section_type), POINTER              :: print_key
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -2630,10 +2676,17 @@ CONTAINS
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
+       CALL keyword_create(keyword, name="DEBUG_LRI_INTEGRALS",&
+            description="Debug the integrals needed for LRIGPW.",&
+            usage="DEBUG_LRI_INTEGRALS TRUE",&
+            default_l_val=.FALSE.,lone_keyword_l_val=.TRUE.,error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
        ! Integers
        CALL keyword_create(keyword, name="LMAXN1",&
             variants=(/"LMAXRHO1"/),&
-            description="GAPW : max L number for espansion of the atomic densities in spherical gaussians",&
+            description="GAPW : max L number for expansion of the atomic densities in spherical gaussians",&
             usage="LMAXN1 integer",&
             default_i_val=-1,error=error)
        CALL section_add_keyword(section,keyword,error=error)
@@ -2816,10 +2869,18 @@ CONTAINS
        CALL create_harris_section(subsection,error)
        CALL section_add_subsection(section, subsection, error=error)
        CALL section_release(subsection,error=error)
+
+       CALL create_optimize_lri_basis_section(subsection,error)
+       CALL section_add_subsection(section, subsection, error=error)
+       CALL section_release(subsection,error=error)
     END IF
 
   END SUBROUTINE create_qs_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_dftb_control_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -2874,6 +2935,13 @@ CONTAINS
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
+       CALL keyword_create(keyword, name="DIAGONAL_DFTB3",&
+            description="Use a diagonal version of the 3rd order energy correction (DFTB3) ",&
+            lone_keyword_l_val=.TRUE.,&
+            usage="DIAGONAL_DFTB3",default_l_val=.FALSE., error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
        CALL keyword_create(keyword, name="HB_SR_GAMMA",&
             description="Uses a modified version for the GAMMA within the SCC-DFTB scheme, "//&
             "specifically tuned for hydrogen bonds.",&
@@ -2892,6 +2960,10 @@ CONTAINS
 
   END SUBROUTINE create_dftb_control_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_scptb_control_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -2948,7 +3020,8 @@ CONTAINS
 
        CALL keyword_create(keyword,name="D3_SCALING",&
             description="Scaling parameters (s6,sr6,s8) for the D3 dispersion method,",&
-            usage="D3_SCALING 1.0 1.0 1.0", n_var=3, default_r_vals=(/1.0_dp,1.0_dp,1.0_dp/),required=.FALSE.,error=error)
+            usage="D3_SCALING 1.0 1.0 1.0", n_var=3, default_r_vals=(/1.0_dp,1.0_dp,1.0_dp/),&
+            required=.FALSE.,error=error)
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
@@ -2986,6 +3059,10 @@ CONTAINS
 
   END SUBROUTINE create_scptb_control_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_admm_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3048,6 +3125,10 @@ CONTAINS
     END IF
   END SUBROUTINE create_admm_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_admm_block_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3117,6 +3198,10 @@ CONTAINS
   END SUBROUTINE create_admm_block_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_dftb_parameter_section(section, error)
 
     TYPE(section_type), POINTER              :: section
@@ -3164,6 +3249,18 @@ CONTAINS
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
+       CALL keyword_create(keyword, name="DISPERSION_TYPE",&
+            description="Use dispersion correction of the specified type."//&
+            " Dispersion correction has to be switched on in the DFTB section.",&
+            usage="DISPERSION_TYPE (UFF|D3)",&
+            enum_c_vals=s2a("UFF","D3"),&
+            enum_i_vals=(/dispersion_uff, dispersion_d3/),&
+            enum_desc=s2a("Uses the UFF force field for a pair potential dispersion correction.",&
+            "Uses the Grimme D3 method (simplified) for a pair potential dispersion correction."),&
+            default_i_val=dispersion_uff, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
        CALL keyword_create(keyword, name="UFF_FORCE_FIELD",&
             description="Name of file with UFF parameters that will be used "//&
             "for the dispersion correction. Needs to be specified when "//&
@@ -3173,9 +3270,47 @@ CONTAINS
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
+       CALL keyword_create(keyword,name="DISPERSION_PARAMETER_FILE",&
+            description="Specify file that contains the atomic dispersion "//&
+            "parameters for the D3 method",&
+            usage="DISPERSION_PARAMETER_FILE filename",&
+            n_var=1,type_of_var=char_t,default_c_val="",error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="DISPERSION_RADIUS",&
+            description="Define radius of dispersion interaction",&
+            usage="DISPERSION_RADIUS",default_r_val=15._dp, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="COORDINATION_CUTOFF",&
+            description="Define cutoff for coordination number calculation",&
+            usage="COORDINATION_CUTOFF",default_r_val=1.e-6_dp, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword,name="D3_SCALING",&
+            description="Scaling parameters (s6,sr6,s8) for the D3 dispersion method,",&
+            usage="D3_SCALING 1.0 1.0 1.0", n_var=3, default_r_vals=(/0.0_dp,0.0_dp,0.0_dp/),&
+            required=.FALSE.,error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="HB_SR_PARAM",&
+            description="Uses a modified version for the GAMMA within the SCC-DFTB scheme, "//&
+            "specifically tuned for hydrogen bonds. Specify the exponent used in the exponential.",&
+            usage="HB_SR_PARAM {real}",default_r_val=4.0_dp, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
     END IF
   END SUBROUTINE create_dftb_parameter_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_se_control_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3271,6 +3406,39 @@ CONTAINS
        CALL section_add_keyword(section,keyword,error=error)
        CALL keyword_release(keyword,error=error)
 
+       CALL keyword_create(keyword, name="DISPERSION",&
+            description="Use dispersion correction",&
+            lone_keyword_l_val=.TRUE.,&
+            usage="DISPERSION",default_l_val=.FALSE., error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="DISPERSION_PARAMETER_FILE",&
+            description="Specify file that contains the atomic dispersion parameters",&
+            usage="DISPERSION_PARAMETER_FILE filename",&
+            n_var=1,type_of_var=char_t,default_c_val="",error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="DISPERSION_RADIUS",&
+            description="Define radius of dispersion interaction",&
+            usage="DISPERSION_RADIUS",default_r_val=15._dp, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="COORDINATION_CUTOFF",&
+            description="Define cutoff for coordination number calculation",&
+            usage="COORDINATION_CUTOFF",default_r_val=1.e-6_dp, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="D3_SCALING",&
+            description="Scaling parameters (s6,sr6,s8) for the D3 dispersion method,",&
+            usage="D3_SCALING 1.0 1.0 1.0", n_var=3, default_r_vals=(/0.0_dp,0.0_dp,0.0_dp/),&
+            required=.FALSE.,error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
        NULLIFY(subsection)
        CALL create_coulomb_section(subsection,error)
        CALL section_add_subsection(section, subsection, error=error)
@@ -3312,8 +3480,8 @@ CONTAINS
 !> \param section the section to create
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \author Teodoro Laino [tlaino]
 !> \date  03.2009
+!> \author Teodoro Laino [tlaino]
 ! *****************************************************************************
   SUBROUTINE create_lr_corr_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3364,8 +3532,8 @@ CONTAINS
 !> \param section the section to create
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \author Teodoro Laino [tlaino]
 !> \date  03.2009
+!> \author Teodoro Laino [tlaino]
 ! *****************************************************************************
   SUBROUTINE create_coulomb_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3418,8 +3586,8 @@ CONTAINS
 !> \param section the section to create
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \author Teodoro Laino [tlaino]
 !> \date  03.2009
+!> \author Teodoro Laino [tlaino]
 ! *****************************************************************************
   SUBROUTINE create_exchange_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3474,8 +3642,8 @@ CONTAINS
 !> \param section the section to create
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \author Teodoro Laino [tlaino]
 !> \date  03.2009
+!> \author Teodoro Laino [tlaino]
 ! *****************************************************************************
   SUBROUTINE create_screening_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3570,6 +3738,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief creates the input section for use with the GA part of the code
 !> \param section the section to create
+!> \param error ...
 !> \author Teodoro Laino [tlaino] - University of Zurich - 05.2008
 ! *****************************************************************************
   SUBROUTINE create_se_ga_section(section,error)
@@ -3664,6 +3833,10 @@ CONTAINS
 
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_mulliken_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -3705,6 +3878,10 @@ CONTAINS
 
   END SUBROUTINE create_mulliken_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_density_fitting_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -3786,6 +3963,10 @@ CONTAINS
   END SUBROUTINE create_density_fitting_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_ddapc_restraint_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -3865,6 +4046,10 @@ CONTAINS
   END SUBROUTINE create_ddapc_restraint_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_becke_restraint_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -3943,6 +4128,10 @@ CONTAINS
 
   END SUBROUTINE create_becke_restraint_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_s2_restraint_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -4564,6 +4753,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the KG section
+!> \param section ...
+!> \param error ...
 !> \author Martin Haeufel [2012.07]
 ! *****************************************************************************
   SUBROUTINE create_kg_section(section,error)
@@ -4933,6 +5124,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the interpolation section for the periodic QM/MM
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author tlaino
@@ -5065,7 +5257,62 @@ CONTAINS
   END SUBROUTINE create_harris_section
 
 ! *****************************************************************************
+!> \brief input section for optimization of the auxililary basis for LRIGPW
+!> \param section the section to create
+!> \param error variable to control error logging, stopping,...
+!>        see module cp_error_handling
+!> \author Dorothea Golze [05.2014]
+! *****************************************************************************
+  SUBROUTINE create_optimize_lri_basis_section(section,error)
+    TYPE(section_type), POINTER              :: section
+    TYPE(cp_error_type), INTENT(inout)       :: error
+
+    CHARACTER(len=*), PARAMETER :: &
+      routineN = 'create_optimize_lri_basis_section', &
+      routineP = moduleN//':'//routineN
+
+    LOGICAL                                  :: failure
+    TYPE(keyword_type), POINTER              :: keyword
+
+    failure=.FALSE.
+
+    CPPrecondition(.NOT.ASSOCIATED(section),cp_failure_level,routineP,error,failure)
+    IF (.NOT. failure) THEN
+       CALL section_create(section,name="OPTIMIZE_LRI_BASIS",&
+            description="This section specifies the parameters for optimizing "//&
+            "the lri auxiliary basis sets for LRIGPW. The Powell optimizer is used.",&
+            n_keywords=1, n_subsections=0, repeats=.FALSE., required=.FALSE.,&
+            error=error)
+
+       NULLIFY(keyword)
+
+       CALL keyword_create(keyword, name="ACCURACY", &
+            description="Target accuracy for the objective function (RHOEND)",&
+            usage="ACCURACY 5.0E-4", default_r_val=1.0E-5_dp,&
+            error=error)
+       CALL section_add_keyword(section, keyword, error=error)
+       CALL keyword_release(keyword, error=error)
+
+       CALL keyword_create(keyword, name="MAX_FUN", &
+            description="Maximum number of function evaluations",&
+            usage="MAX_FUN 200", default_i_val=4000,&
+            error=error)
+       CALL section_add_keyword(section, keyword, error=error)
+       CALL keyword_release(keyword, error=error)
+
+       CALL keyword_create(keyword, name="STEP_SIZE", &
+            description="Initial step size for search algorithm (RHOBEG)",&
+            usage="STEP_SIZE 1.0E-1", default_r_val=5.0E-2_dp,&
+            error=error)
+       CALL section_add_keyword(section, keyword, error=error)
+       CALL keyword_release(keyword, error=error)
+
+    END IF
+  END SUBROUTINE create_optimize_lri_basis_section
+
+! *****************************************************************************
 !> \brief creates the multigrid
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author fawzi
@@ -5175,6 +5422,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the interpolation section
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author tlaino
@@ -5280,6 +5528,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the sic (self interaction correction) section
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author fawzi
@@ -5357,6 +5606,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the low spin roks section
+!> \param section ...
+!> \param error ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   SUBROUTINE create_low_spin_roks_section(section,error)
@@ -5401,8 +5652,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Creates the section for applying an electrostatic external potential
-!> \author teo
+!> \param section ...
+!> \param error ...
 !> \date 12.2009
+!> \author teo
 ! *****************************************************************************
   SUBROUTINE create_ext_pot_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -5478,8 +5731,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief ZMP Creates the section for reading user supplied external density
-!> \author D. Varsano [daniele.varsano@nano.cnr.it] 
+!> \param section ...
+!> \param error ...
 !> \date 03.2011
+!> \author D. Varsano [daniele.varsano@nano.cnr.it] 
 ! *****************************************************************************
   SUBROUTINE create_ext_den_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -5552,8 +5807,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief ZMP Creates the section for creating the external v_xc 
-!> \author D. Varsano [daniele.varsano@nano.cnr.it] 
+!> \param section ...
+!> \param error ...
 !> \date 03.2011
+!> \author D. Varsano [daniele.varsano@nano.cnr.it] 
 ! *****************************************************************************
   SUBROUTINE create_ext_vxc_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -5593,6 +5850,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the section for static periodic fields
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Florian Schiffmann
@@ -5641,6 +5899,7 @@ CONTAINS
   END SUBROUTINE create_per_efield_section
 ! *****************************************************************************
 !> \brief creates the section for time dependent nonperiodic fields
+!> \param section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Florian Schiffmann
@@ -5728,6 +5987,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief makes the orbital transformation section
+!> \param section ...
+!> \param error ...
 !> \par History
 !>      11.2004 created [Joost VandeVondele]
 ! *****************************************************************************
@@ -6115,6 +6376,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the diagonalization section
+!> \param section ...
+!> \param error ...
 !> \par History
 !>      10.2008 created [JGH]
 ! *****************************************************************************
@@ -6239,6 +6502,11 @@ CONTAINS
   END SUBROUTINE create_diagonalization_section
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_davidson_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -6332,6 +6600,11 @@ CONTAINS
 
   END SUBROUTINE create_davidson_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_krylov_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -6401,6 +6674,11 @@ CONTAINS
   END SUBROUTINE create_krylov_section
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_diag_subspace_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -6474,6 +6752,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief makes the input section for core-level spectroscopy simulations
+!> \param section ...
+!> \param error ...
 !> \par History
 !>      03.2005 created [MI]
 ! *****************************************************************************
@@ -6774,8 +7054,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief      Create CP2K input section for the smearing of occupation numbers
-!> \author     Matthias Krack (MK)
+!> \param section ...
+!> \param error ...
 !> \date       27.08.2008
+!> \author     Matthias Krack (MK)
 !> \version    1.0
 ! *****************************************************************************
   SUBROUTINE create_smear_section(section,error)
@@ -6907,8 +7189,10 @@ CONTAINS
 ! *****************************************************************************
 !> \brief      Create CP2K input section for the mixing of the density matrix to
 !>             be used only with diagonalization methods, i.e. not with OT
-!> \author     MI
+!> \param section ...
+!> \param error ...
 !> \date       20.02.2009
+!> \author     MI
 !> \version    1.0
 ! *****************************************************************************
   SUBROUTINE create_mixing_section(section,error)
@@ -7177,6 +7461,10 @@ CONTAINS
   END SUBROUTINE create_mixing_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_rtp_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -7414,6 +7702,10 @@ CONTAINS
   END SUBROUTINE create_rtp_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_constant_env_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -7454,6 +7746,11 @@ CONTAINS
 
   END SUBROUTINE create_constant_env_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE create_gaussian_env_section(section,error)
     TYPE(section_type), POINTER              :: section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -7493,6 +7790,10 @@ CONTAINS
     END IF
 
   END SUBROUTINE create_gaussian_env_section
+! *****************************************************************************
+!> \brief ...
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_ramp_env_section(section,error)
     TYPE(section_type), POINTER              :: section

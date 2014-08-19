@@ -216,6 +216,7 @@ CONTAINS
 !> \param pool the pool from where you get the element
 !> \param element will contain the new element
 !>\param name the name for the new matrix (optional)
+!> \param name ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -245,7 +246,7 @@ CONTAINS
           
        ELSE
           NULLIFY(element)
-              CALL cp_fm_create(element,matrix_struct=pool%el_struct,error=error)
+          CALL cp_fm_create(element,matrix_struct=pool%el_struct,error=error)
        END IF
        
     IF (PRESENT(name)) THEN
@@ -268,7 +269,7 @@ CONTAINS
 !> \param pool the pool from where you get the elements
 !> \param n_elements the number of elements in the vector
 !> \param elements will contain the new vector
-!> \param name: the name for the new matrixes (optional)
+!> \param name the name for the new matrixes (optional)
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -319,13 +320,13 @@ CONTAINS
 !> \param element the element to give back
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \par History
+!>      08.2002 created [fawzi]
+!> \author Fawzi Mohamed
 !> \note
 !>      transfers the ownership of the element to the pool
 !>      (it is as if you had called cp_fm_release)
 !>      Accept give_backs of non associated elements?
-!> \par History
-!>      08.2002 created [fawzi]
-!> \author Fawzi Mohamed
 ! *****************************************************************************
   SUBROUTINE fm_pool_give_back_fm(pool, element, error)
     TYPE(cp_fm_pool_type), POINTER           :: pool
@@ -369,14 +370,14 @@ CPSourceFileRef,&
 !> \param elements the elements to give back
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \par History
+!>      08.2002 created [fawzi]
+!> \author Fawzi Mohamed
 !> \note
 !>      transfers the ownership of the elements to the pool
 !>      and deallocates the array of elements
 !>      (it is as if you had called cp_fm_vect_dealloc)
 !>      Accept give_backs of non associated arrays?
-!> \par History
-!>      08.2002 created [fawzi]
-!> \author Fawzi Mohamed
 ! *****************************************************************************
   SUBROUTINE fm_pool_give_back_fm_vect(pool, elements, error)
     TYPE(cp_fm_pool_type), POINTER           :: pool
@@ -414,6 +415,7 @@ CPSourceFileRef,&
 !> \param pool the pool you are interested in
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \retval res ...
 !> \par History
 !>      05.2002 created [fawzi]
 !> \author Fawzi Mohamed
@@ -542,7 +544,7 @@ END SUBROUTINE fm_pools_flush_cache
 !> \brief Returns a vector with an element from each pool
 !> \param pools the pools to create the elements from
 !> \param elements will contain the vector of elements
-!> \param name: the name for the new matrixes (optional)
+!> \param name the name for the new matrixes (optional)
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -598,11 +600,11 @@ END SUBROUTINE fm_pools_create_fm_vect
 !> \param elements the vector of elements to give back
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
-!>      accept unassociated vect?
 !> \par History
 !>      09.2002 created [fawzi]
 !> \author Fawzi Mohamed
+!> \note
+!>      accept unassociated vect?
 ! *****************************************************************************
 SUBROUTINE fm_pools_give_back_fm_vect(pools,elements,error)
     TYPE(cp_fm_pool_p_type), DIMENSION(:), &

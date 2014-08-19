@@ -246,7 +246,7 @@ CONTAINS
     END INTERFACE
 
     IF (TARGET==source) THEN
-       WRITE(6,*) "Warning: m_mov ",TRIM(TARGET)," equals ", TRIM(source)
+       WRITE(*,*) "Warning: m_mov ",TRIM(TARGET)," equals ", TRIM(source)
        RETURN
     ENDIF
 
@@ -257,8 +257,8 @@ CONTAINS
     ! now move
     istat = rename(TRIM(source)//c_null_char, TRIM(TARGET)//c_null_char)
     IF (istat .NE. 0) THEN
-      WRITE(6,*) "Trying to move "//TRIM(source)//" to "//TRIM(TARGET)//"."
-      WRITE(6,*) "rename returned status: ",istat
+      WRITE(*,*) "Trying to move "//TRIM(source)//" to "//TRIM(TARGET)//"."
+      WRITE(*,*) "rename returned status: ",istat
       STOP "Problem moving file"
     ENDIF
   END SUBROUTINE m_mov
@@ -335,6 +335,10 @@ CONTAINS
   SUBROUTINE m_getlog(user)
     CHARACTER(len=*), INTENT(OUT)            :: user
 
+    ! this is needed to load a statically linked binary on some architectures.
+#if defined(__HAS_NO_SHARED_GLIBC)
+    user="root ;-)"
+#else
     TYPE, BIND(C) :: passwd_struct
       TYPE(C_PTR)             :: name
       !... more fields, which we don't need and where Linux deviates from POSIX
@@ -374,6 +378,7 @@ CONTAINS
     IF(i > LEN(name_long)) RETURN
 
     user = TRIM(name_long)
+#endif
   END SUBROUTINE m_getlog
 
 

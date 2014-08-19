@@ -101,8 +101,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Calculate the Quickstep forces.
-!> \author  MK
+!> \param qs_env ...
+!> \param globenv ...
+!> \param error ...
 !> \date    29.10.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE qs_forces(qs_env,globenv,error)
@@ -209,7 +212,7 @@ CONTAINS
        CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
        CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
             natom_of_kind=natom_of_kind)
-       CALL allocate_qs_force(force,natom_of_kind)
+       CALL allocate_qs_force(force,natom_of_kind,error)
        DEALLOCATE (natom_of_kind,STAT=istat)
        CPPostconditionNoFail(istat==0,cp_warning_level,routineP,error)
        CALL set_qs_env(qs_env,force=force,error=error)
@@ -219,7 +222,7 @@ CONTAINS
           CALL harris_env_set(harris_env=harris_env, harris_force=harris_force, error=error)
        END IF
     END IF
-    CALL zero_qs_force(force)
+    CALL zero_qs_force(force,error)
 
     CALL get_qs_env(qs_env=qs_env,&
          matrix_s=matrix_s,&
@@ -487,8 +490,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Write a Quickstep force data structure to output unit
-!> \author  MK
+!> \param qs_force ...
+!> \param atomic_kind_set ...
+!> \param ftype ...
+!> \param output_unit ...
+!> \param print_section ...
+!> \param error ...
 !> \date    05.06.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE write_forces(qs_force,atomic_kind_set,ftype,output_unit,&

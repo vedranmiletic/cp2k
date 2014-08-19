@@ -161,6 +161,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the SCP charge distribution on the grid
+!> \param scp ...
+!> \param qs_env ...
+!> \param scpv ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_scp_charge(scp,qs_env,scpv,error)
 
@@ -297,6 +301,9 @@ CONTAINS
   END SUBROUTINE calculate_scp_charge
 ! *****************************************************************************
 !> \brief computes the density of the non-linear core correction on the grid
+!> \param rho_nlcc ...
+!> \param qs_env ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_rho_nlcc(rho_nlcc,qs_env,error)
 
@@ -489,6 +496,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the local pseudopotential (without erf term) on the grid
+!> \param vppl ...
+!> \param qs_env ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_ppl_grid(vppl,qs_env,error)
 
@@ -674,13 +684,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Collocates an arbitrary density from the aux_basis_set onto a grid.
-!> \param rho The PW-Grid onto which the density is collocated
-!> \param rho_g The realspace-grid onto which the density is collocated
-!> \param rho_r The G-space-grid onto which the density is collocated
 !> \param total_rho Gives back the integral of the collocated density
 !> \param qs_env The QS environment of matter
 !> \param error variable to control error logging, stopping,...
 !>               see module cp_error_handling
+!> \param rho The PW-Grid onto which the density is collocated UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param rho_g The realspace-grid onto which the density is collocated UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param rho_r The G-space-grid onto which the density is collocated UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      08.2005 initial create [tdk]
 !> \author Thomas D. Kuehne (tkuehne@phys.chem.ethz.ch)
@@ -869,6 +879,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Collocates the fitted lri density on a grid.
+!> \param lri_rho_g ...
+!> \param lri_rho_r ...
+!> \param qs_env ...
+!> \param lri_env ...
+!> \param lri_coef ...
+!> \param total_rho ...
+!> \param error ...
 !> \par History
 !>      04.2013
 !> \author Dorothea Golze
@@ -887,13 +904,15 @@ CONTAINS
     CHARACTER(len=*), PARAMETER :: routineN = 'calculate_lri_rho_elec', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: atom_a, handle, iatom, ierr, igrid_level, ikind, ipgf, iset, &
-      j, m1, maxco, na1, natom, ncoa, nkind, npme, nseta, sgfa
-    INTEGER, DIMENSION(:), POINTER           :: atom_list, cores, la_max, &
-                                                la_min, npgfa, nsgfa
+    INTEGER :: atom_a, dir, group_size, handle, iatom, ierr, igrid_level, &
+      ikind, ipgf, iset, m1, maxco, my_pos, na1, natom, ncoa, nkind, nseta, &
+      offset, sgfa
+    INTEGER, DIMENSION(3)                    :: lb, location, tp, ub
+    INTEGER, DIMENSION(:), POINTER           :: atom_list, la_max, la_min, &
+                                                npgfa, nsgfa
     INTEGER, DIMENSION(:, :), POINTER        :: first_sgfa
-    LOGICAL                                  :: distributed_grids, failure, &
-                                                map_consistent, parallel
+    LOGICAL                                  :: failure, map_consistent, &
+                                                map_it_here
     REAL(KIND=dp)                            :: eps_rho_rspace
     REAL(KIND=dp), DIMENSION(3)              :: ra
     REAL(KIND=dp), DIMENSION(:), POINTER     :: aci
@@ -919,11 +938,13 @@ CONTAINS
       DIMENSION(:), POINTER                  :: rs_descs
     TYPE(realspace_grid_p_type), &
       DIMENSION(:), POINTER                  :: rs_rho
+    TYPE(realspace_grid_type), POINTER       :: rs_grid
 
-    NULLIFY(aci, atomic_kind, atomic_kind_set, atom_list, cell, cores, cube_info,&
+    NULLIFY(aci, atomic_kind, atomic_kind_set, atom_list, cell, cube_info,&
             dft_control, first_sgfa, gridlevel_info, la_max, la_min, lri_basis_set,&
             logger, mgrid_gspace, mgrid_rspace, npgfa, nsgfa, pab, para_env,&
-            particle_set, pw_env, pw_pools, rs_descs, rs_rho, sphi_a, work, zeta)
+            particle_set, pw_env, pw_pools, rs_descs, rs_grid, rs_rho, sphi_a,&
+            work, zeta)
             
     CALL timeset(routineN,handle)
     
@@ -968,89 +989,99 @@ CONTAINS
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,&
                                     "pab",maxco*dp_size)
     nkind = SIZE(atomic_kind_set)
+    offset = 0
+    my_pos=mgrid_rspace(1)%pw%pw_grid%para%my_pos
+    group_size=mgrid_rspace(1)%pw%pw_grid%para%group_size
+
     DO ikind = 1,nkind
 
-      atomic_kind => atomic_kind_set(ikind)
+       atomic_kind => atomic_kind_set(ikind)
 
-      CALL get_atomic_kind(atomic_kind=atomic_kind, lri_basis_set=lri_basis_set, natom=natom, &
-                           atom_list=atom_list)
-      
-      !Take the lri basis set here!
-      CALL get_gto_basis_set(gto_basis_set=lri_basis_set, lmax=la_max,&
-                             lmin=la_min, zet=zeta, nset=nseta, npgf=npgfa,&
-                             sphi=sphi_a, first_sgf=first_sgfa, nsgf_set=nsgfa)
+       CALL get_atomic_kind(atomic_kind=atomic_kind, atom_list=atom_list,&
+                           lri_basis_set=lri_basis_set, natom=natom)
+       
+       !Take the lri basis set here!
+       CALL get_gto_basis_set(gto_basis_set=lri_basis_set, lmax=la_max,&
+                              lmin=la_min, zet=zeta, nset=nseta, npgf=npgfa,&
+                              sphi=sphi_a, first_sgf=first_sgfa, nsgf_set=nsgfa)
 
-      CALL reallocate (cores, 1, natom)
-      npme = 0
-      cores = 0
-      
-      distributed_grids = .FALSE.
-      parallel = .FALSE.
-      DO igrid_level = 1, gridlevel_info%ngrid_levels
-         IF (rs_descs(igrid_level)%rs_desc%distributed) distributed_grids = .TRUE.
-         IF (rs_descs(igrid_level)%rs_desc%parallel) parallel = .TRUE.
-      ENDDO
+       DO iatom = 1,natom
+          atom_a=atom_list(iatom)
+          ra(:) = pbc(particle_set(atom_a)%r, cell)
+          aci => lri_coef(ikind)%acoef(iatom,:) 
 
-      DO iatom = 1, natom
-         IF(parallel .AND. .NOT. distributed_grids) THEN
-           ! replicated realspace grid, split the atoms up between procs
-            IF (MODULO(iatom,para_env%num_pe) == para_env%mepos ) THEN
-               npme = npme + 1
-               cores (npme) = iatom
-            ENDIF
-         ELSE
-              npme = npme + 1
-              cores (npme) = iatom
-         ENDIF
-      END DO
-
-      DO j = 1,npme
-         iatom = cores(j)
-         atom_a=atom_list(iatom)
-         ra(:) = pbc(particle_set(atom_a)%r, cell)
-         aci => lri_coef(ikind)%acoef(iatom,:) 
-
-         DO iset = 1,nseta
-           sgfa = first_sgfa(1,iset)
-           ncoa = npgfa(iset)*ncoset(la_max(iset))
-           m1=sgfa+nsgfa(iset)-1
-           CALL reallocate (work,1,nsgfa(iset),1,1)
-           work(1:nsgfa(iset),1)=aci(sgfa:m1)
-           pab = 0._dp
+          DO iset = 1,nseta
+             sgfa = first_sgfa(1,iset)
+             ncoa = npgfa(iset)*ncoset(la_max(iset))
+             m1=sgfa+nsgfa(iset)-1
+             CALL reallocate (work,1,nsgfa(iset),1,1)
+             work(1:nsgfa(iset),1)=aci(sgfa:m1)
+             pab = 0._dp
  
-           CALL dgemm("N","N",ncoa,1,nsgfa(iset),1.0_dp,lri_basis_set%sphi(1,sgfa),&
-                SIZE(lri_basis_set%sphi,1),work(1,1),SIZE(work,1),0.0_dp,pab(1,1),SIZE(pab,1))
-          
-           DO ipgf = 1,npgfa(iset)
-             na1 = (ipgf-1)*ncoset(la_max(iset))
-             igrid_level = gaussian_gridlevel(gridlevel_info, zeta(ipgf,iset))
+             CALL dgemm("N","N",ncoa,1,nsgfa(iset),1.0_dp,lri_basis_set%sphi(1,sgfa),&
+                  SIZE(lri_basis_set%sphi,1),work(1,1),SIZE(work,1),0.0_dp,pab(1,1),&
+                  SIZE(pab,1))
+             
+             DO ipgf = 1,npgfa(iset)
+                na1 = (ipgf-1)*ncoset(la_max(iset))
+                igrid_level = gaussian_gridlevel(gridlevel_info, zeta(ipgf,iset))
+                rs_grid => rs_rho(igrid_level)%rs_grid
+                 
+                map_it_here=.FALSE.
+                
+                IF (.NOT. ALL (rs_grid%desc%perd == 1)) THEN
+                   DO dir = 1,3
+                      ! bounds of local grid (i.e. removing the 'wings'), if periodic
+                      tp(dir) = FLOOR(DOT_PRODUCT(cell%h_inv(dir,:),ra)*rs_grid%desc%npts(dir))
+                      tp(dir) = MODULO ( tp(dir), rs_grid%desc%npts(dir) )
+                      IF (rs_grid%desc%perd(dir) .NE. 1) THEN
+                         lb(dir) = rs_grid%lb_local ( dir ) + rs_grid%desc%border
+                         ub(dir) = rs_grid%ub_local ( dir ) - rs_grid%desc%border
+                      ELSE
+                         lb(dir) = rs_grid%lb_local ( dir )
+                         ub(dir) = rs_grid%ub_local ( dir )
+                      ENDIF
+                      ! distributed grid, only map if it is local to the grid
+                      location(dir)=tp(dir)+rs_grid%desc%lb(dir)
+                   ENDDO
+                   IF (lb(1)<=location(1) .AND. location(1)<=ub(1) .AND. &
+                       lb(2)<=location(2) .AND. location(2)<=ub(2) .AND. &
+                       lb(3)<=location(3) .AND. location(3)<=ub(3)) THEN
+                     map_it_here=.TRUE.
+                   ENDIF
+                ELSE
+                   ! not distributed, just a round-robin distribution over the full set of CPUs
+                   IF (MODULO(offset,group_size)==my_pos) map_it_here=.TRUE.
+                ENDIF
 
-             CALL collocate_pgf_product_rspace(la_max=la_max(iset), zeta=zeta(ipgf,iset), &
-                                               la_min=la_min(iset),&
-                                               lb_max=0, zetb=0.0_dp, lb_min=0,&
-                                               ra=ra,rab=(/0.0_dp,0.0_dp,0.0_dp/),rab2=0.0_dp,&
-                                               scale=1._dp, pab=pab, o1=na1, o2=0,&     
-                                               rsgrid=rs_rho(igrid_level)%rs_grid,cell=cell,&
-                                               cube_info=cube_info(igrid_level),&
-                                               eps_rho_rspace=eps_rho_rspace,&
-                                               ga_gb_function=FUNC_AB, &
-                                               map_consistent=map_consistent,&
-                                               error=error)
-           END DO
-         END DO
+                IF (map_it_here) THEN
+                   CALL collocate_pgf_product_rspace(la_max=la_max(iset), zeta=zeta(ipgf,iset), &
+                                                    la_min=la_min(iset),&
+                                                    lb_max=0, zetb=0.0_dp, lb_min=0,&
+                                                    ra=ra,rab=(/0.0_dp,0.0_dp,0.0_dp/),&
+                                                    rab2=0.0_dp, scale=1._dp,&
+                                                    pab=pab, o1=na1, o2=0,&     
+                                                    rsgrid=rs_grid,cell=cell,&
+                                                    cube_info=cube_info(igrid_level),&
+                                                    eps_rho_rspace=eps_rho_rspace,&
+                                                    ga_gb_function=FUNC_AB, &
+                                                    map_consistent=map_consistent,&
+                                                    error=error) 
+                ENDIF 
+             END DO
 
-         DEALLOCATE (work,STAT=ierr)
-         IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,"work")
+             offset=offset+nsgfa(iset)
 
-      END DO
+          END DO
+
+          DEALLOCATE (work,STAT=ierr)
+          IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,"work")
+
+       END DO
     END DO
 
     DEALLOCATE (pab,STAT=ierr)
     IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,"pab")
-
-    DEALLOCATE (cores,STAT=ierr)
-    IF (ierr /= 0) CALL stop_memory(routineN,moduleN,__LINE__,"cores")
-    
 
     CALL pw_zero(lri_rho_g%pw,error=error)
     CALL pw_zero(lri_rho_r%pw,error=error)
@@ -1082,6 +1113,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the density of the core charges on the grid
+!> \param rho_core ...
+!> \param total_rho ...
+!> \param qs_env ...
+!> \param only_nopaw ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_rho_core(rho_core,total_rho,qs_env,only_nopaw,error)
 
@@ -1221,6 +1257,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief collocate a single gaussian on the grid
+!> \param rho_gb ...
+!> \param qs_env ...
+!> \param iatom_in ...
+!> \param error ...
 !> \par History
 !>        12.2011 created
 !> \author Dorothea Golze
@@ -1309,6 +1349,11 @@ END SUBROUTINE calculate_rho_single_gaussian
 
 ! *****************************************************************************
 !> \brief computes the image charge density on grid (including coeffcients)
+!> \param rho_metal ...
+!> \param coeff ...
+!> \param total_rho_metal ...
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>        01.2012 created
 !> \author Dorothea Golze
@@ -1413,6 +1458,11 @@ SUBROUTINE calculate_rho_metal(rho_metal,coeff,total_rho_metal,qs_env,error)
 END SUBROUTINE calculate_rho_metal
 ! *****************************************************************************
 !> \brief collocate a single gaussian on the grid for periodic RESP fitting
+!> \param rho_gb ...
+!> \param qs_env ...
+!> \param eta ...
+!> \param iatom_in ...
+!> \param error ...
 !> \par History
 !>        06.2012 created
 !> \author Dorothea Golze
@@ -1502,6 +1552,12 @@ END SUBROUTINE calculate_rho_metal
  END SUBROUTINE calculate_rho_resp_single
 ! *****************************************************************************
 !> \brief computes the RESP charge density on grid based on the RESP charges
+!> \param rho_resp ...
+!> \param coeff ...
+!> \param natom ...
+!> \param eta ...
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>        01.2012 created
 !> \author Dorothea Golze
@@ -1603,12 +1659,26 @@ END SUBROUTINE calculate_rho_resp_all
 
 ! *****************************************************************************
 !> \brief computes the density corresponding to a given density matrix on the grid
-!> \note
-!>      both rho and rho_gspace contain the new rho
-!>      (in real and g-space respectively)
+!> \param matrix_p ...
+!> \param rho ...
+!> \param rho_gspace ...
+!> \param total_rho ...
+!> \param qs_env ...
+!> \param soft_valid ...
+!> \param compute_tau ...
+!> \param compute_grad ...
+!> \param basis_set_id ...
+!> \param der_type ...
+!> \param idir ...
+!> \param task_list_external ...
+!> \param pw_env_external ...
+!> \param error ...
 !> \par History
 !>      IAB (15-Feb-2010): Added OpenMP parallelisation to task loop
 !>                         (c) The Numerical Algorithms Group (NAG) Ltd, 2010 on behalf of the HECToR project
+!> \note
+!>      both rho and rho_gspace contain the new rho
+!>      (in real and g-space respectively)
 ! *****************************************************************************
   SUBROUTINE calculate_rho_elec(matrix_p, rho,rho_gspace, total_rho,&
        qs_env, soft_valid, compute_tau, compute_grad, basis_set_id, der_type, idir, &
@@ -2157,6 +2227,13 @@ END SUBROUTINE calculate_rho_resp_all
 ! *****************************************************************************
 !> \brief computes the gradient of the density corresponding to a given
 !>        density matrix on the grid
+!> \param matrix_p ...
+!> \param drho ...
+!> \param drho_gspace ...
+!> \param qs_env ...
+!> \param soft_valid ...
+!> \param basis_set_id ...
+!> \param error ...
 !> \note  this is an alternative to calculate the gradient through FFTs
 ! *****************************************************************************
   SUBROUTINE calculate_drho_elec(matrix_p,drho,drho_gspace,qs_env,&
@@ -2558,6 +2635,21 @@ END SUBROUTINE calculate_rho_resp_all
 
 ! *****************************************************************************
 !> \brief maps a given wavefunction on the grid
+!> \param mo_vectors ...
+!> \param ivector ...
+!> \param rho ...
+!> \param rho_gspace ...
+!> \param atomic_kind_set ...
+!> \param cell ...
+!> \param dft_control ...
+!> \param particle_set ...
+!> \param pw_env ...
+!> \param basis_set_id ...
+!> \param external_vector ...
+!> \param error ...
+!> \par History
+!>      08.2002 created [Joost VandeVondele]
+!>      03.2006 made independent of qs_env [Joost VandeVondele]
 !> \note
 !>      modified calculate_rho_elec, should write the wavefunction represented by
 !>      it's presumably dominated by the FFT and the rs->pw and back routines
@@ -2565,9 +2657,6 @@ END SUBROUTINE calculate_rho_resp_all
 !>    BUGS ???
 !>      does it take correctly the periodic images of the basis functions into account
 !>      i.e. is only correct if the basis functions are localised enough to be just in 1 cell ?
-!> \par History
-!>      08.2002 created [Joost VandeVondele]
-!>      03.2006 made independent of qs_env [Joost VandeVondele]
 ! *****************************************************************************
   SUBROUTINE calculate_wavefunction(mo_vectors,ivector,rho,rho_gspace, &
                    atomic_kind_set,cell,dft_control,particle_set, &
@@ -2815,6 +2904,36 @@ END SUBROUTINE calculate_rho_resp_all
 
 ! *****************************************************************************
 !> \brief low level collocation of primitive gaussian functions
+!> \param la_max ...
+!> \param zeta ...
+!> \param la_min ...
+!> \param lb_max ...
+!> \param zetb ...
+!> \param lb_min ...
+!> \param ra ...
+!> \param rab ...
+!> \param rab2 ...
+!> \param scale ...
+!> \param pab ...
+!> \param o1 ...
+!> \param o2 ...
+!> \param rsgrid ...
+!> \param cell ...
+!> \param cube_info ...
+!> \param eps_rho_rspace ...
+!> \param ga_gb_function ...
+!> \param lgrid ...
+!> \param ithread ...
+!> \param map_consistent ...
+!> \param collocate_rho0 ...
+!> \param rpgf0_s ...
+!> \param idir ...
+!> \param ir ...
+!> \param rsgauge ...
+!> \param rsbuf ...
+!> \param use_subpatch ...
+!> \param subpatch_pattern ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE collocate_pgf_product_rspace(la_max,zeta,la_min,&
                                           lb_max,zetb,lb_min,&
@@ -3359,6 +3478,8 @@ END SUBROUTINE calculate_rho_resp_all
     ! this treats efficiently the orthogonal case
     !
 ! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_ortho()
 
 
@@ -3436,6 +3557,9 @@ END SUBROUTINE calculate_rho_resp_all
 
     END SUBROUTINE collocate_ortho
 
+! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_gauge_ortho()
     INTEGER                                  :: i, igmax, igmin, j, j2, jg, &
                                                 jg2, jgmin, k, k2, kg, kg2, &
@@ -3491,6 +3615,9 @@ END SUBROUTINE calculate_rho_resp_all
       ENDDO
     END SUBROUTINE collocate_gauge_ortho
 
+! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_ortho_set_to_0()
     INTEGER                                  :: i, igmax, igmin, j, j2, jg, &
                                                 jg2, jgmin, k, k2, kg, kg2, &
@@ -3532,6 +3659,8 @@ END SUBROUTINE calculate_rho_resp_all
 !
 !   this is a general 'optimized' routine to do the collocation
 !
+! *****************************************************************************
+!> \brief ...
 ! *****************************************************************************
     SUBROUTINE collocate_general_opt()
 
@@ -3733,7 +3862,7 @@ END SUBROUTINE calculate_rho_resp_all
         ENDDO
       ENDDO
       !t2=nanotime_ia32()
-      !write(6,*) t2-t1
+      !write(*,*) t2-t1
       ! deallocation needed to pass around a pgi bug..
       DEALLOCATE(coef_ijk)
       DEALLOCATE(coef_map)
@@ -3742,6 +3871,9 @@ END SUBROUTINE calculate_rho_resp_all
 
     END SUBROUTINE collocate_general_opt
 
+! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_general_subpatch
     INTEGER, DIMENSION(2, 3)                 :: local_b
     INTEGER, DIMENSION(3)                    :: local_s, periodic
@@ -3777,6 +3909,9 @@ END SUBROUTINE calculate_rho_resp_all
 
     END SUBROUTINE
 
+! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_general_wings
     INTEGER, DIMENSION(2, 3)                 :: local_b
     INTEGER, DIMENSION(3)                    :: periodic
@@ -3817,6 +3952,8 @@ END SUBROUTINE calculate_rho_resp_all
 !   this is a general 'reference' routine to do the collocation
 !
 ! *****************************************************************************
+!> \brief ...
+! *****************************************************************************
     SUBROUTINE collocate_general()
 
     INTEGER                                  :: i, index_max(3), &
@@ -3852,6 +3989,10 @@ END SUBROUTINE calculate_rho_resp_all
 
     END SUBROUTINE collocate_general
 
+! *****************************************************************************
+!> \brief ...
+!> \param point ...
+!> \retval res ...
 ! *****************************************************************************
     FUNCTION primitive_value(point) RESULT(res)
     REAL(KIND=dp)                            :: point(3), res
@@ -3903,6 +4044,22 @@ END SUBROUTINE calculate_rho_resp_all
 
 ! *****************************************************************************
 !> \brief low level collcation of primitive gaussian functions in g-space
+!> \param la_max ...
+!> \param zeta ...
+!> \param la_min ...
+!> \param lb_max ...
+!> \param zetb ...
+!> \param lb_min ...
+!> \param ra ...
+!> \param rab ...
+!> \param rab2 ...
+!> \param scale ...
+!> \param pab ...
+!> \param na ...
+!> \param nb ...
+!> \param eps_rho_gspace ...
+!> \param gsq_max ...
+!> \param pw ...
 ! *****************************************************************************
   SUBROUTINE collocate_pgf_product_gspace(la_max,zeta,la_min,&
                                           lb_max,zetb,lb_min,&

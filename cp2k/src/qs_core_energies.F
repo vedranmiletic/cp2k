@@ -18,7 +18,8 @@ MODULE qs_core_energies
                                              atprop_type
   USE cell_methods,                    ONLY: cell_type,&
                                              get_cell
-  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_trace,&
+  USE cp_dbcsr_interface,              ONLY: cp_dbcsr_p_type,&
+                                             cp_dbcsr_trace,&
                                              cp_dbcsr_type
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE distribution_1d_types,           ONLY: distribution_1d_type
@@ -52,11 +53,102 @@ MODULE qs_core_energies
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'qs_core_energies'
 
-  PUBLIC :: calculate_ecore,&
+  PUBLIC :: calculate_ptrace,&
             calculate_ecore_overlap,&
             calculate_ecore_self
 
+  INTERFACE calculate_ptrace
+    MODULE PROCEDURE calculate_ptrace_1, calculate_ptrace_gamma, calculate_ptrace_kp
+  END INTERFACE
+
+! *****************************************************************************
+
 CONTAINS
+
+! *****************************************************************************
+!> \brief  Calculate the trace of a operator matrix with the density matrix.
+!>         Sum over all spin components (in P, no spin in H)
+!> \param hmat ...
+!> \param pmat ...
+!> \param ecore ...
+!> \param nspin ...
+!> \param error ...
+!> \date    29.07.2014
+!> \par History
+!>         - none
+!> \author  JGH
+!> \version 1.0
+! *****************************************************************************
+  SUBROUTINE calculate_ptrace_gamma(hmat,pmat,ecore,nspin,error)
+
+    TYPE(cp_dbcsr_p_type), DIMENSION(:), &
+      POINTER                                :: hmat, pmat
+    REAL(KIND=dp), INTENT(OUT)               :: ecore
+    INTEGER, INTENT(IN)                      :: nspin
+    TYPE(cp_error_type), INTENT(INOUT)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'calculate_ptrace_gamma', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: handle, ispin
+    REAL(KIND=dp)                            :: etr
+
+    CALL timeset(routineN,handle)
+
+    ecore = 0.0_dp
+    DO ispin=1,nspin
+       etr=0.0_dp
+       CALL cp_dbcsr_trace(hmat(1)%matrix,pmat(ispin)%matrix,etr,error=error)
+       ecore = ecore + etr
+    END DO
+
+    CALL timestop(handle)
+
+  END SUBROUTINE calculate_ptrace_gamma
+
+! *****************************************************************************
+!> \brief  Calculate the trace of a operator matrix with the density matrix.
+!>         Sum over all spin components (in P, no spin in H) and the real space
+!>         coordinates
+!> \param hmat    H matrix
+!> \param pmat    P matrices
+!> \param ecore   Tr(HP) output
+!> \param nspin   Number of P matrices
+!> \param error   CP2K error handling
+!> \date    29.07.2014
+!> \author  JGH
+!> \version 1.0
+! *****************************************************************************
+  SUBROUTINE calculate_ptrace_kp(hmat,pmat,ecore,nspin,error)
+
+    TYPE(cp_dbcsr_p_type), DIMENSION(:, :), &
+      POINTER                                :: hmat, pmat
+    REAL(KIND=dp), INTENT(OUT)               :: ecore
+    INTEGER, INTENT(IN)                      :: nspin
+    TYPE(cp_error_type), INTENT(INOUT)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'calculate_ptrace_kp', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: handle, ic, ispin, nc
+    REAL(KIND=dp)                            :: etr
+
+    CALL timeset(routineN,handle)
+
+    nc = SIZE(pmat,2)
+
+    ecore = 0.0_dp
+    DO ispin=1,nspin
+       DO ic = 1, nc
+          etr=0.0_dp
+          CALL cp_dbcsr_trace(hmat(1,ic)%matrix,pmat(ispin,ic)%matrix,etr,error=error)
+          ecore = ecore + etr
+       END DO
+    END DO
+
+    CALL timestop(handle)
+
+  END SUBROUTINE calculate_ptrace_kp
 
 ! *****************************************************************************
 !> \brief  Calculate the core Hamiltonian energy which includes the kinetic
@@ -64,21 +156,25 @@ CONTAINS
 !>          the core Hamiltonian matrix h and the density matrix p have the
 !>          same sparse matrix structure (same atomic blocks and block
 !>          ordering)
-!> \author  MK
+!> \param h ...
+!> \param p ...
+!> \param ecore ...
+!> \param error ...
 !> \date    03.05.2001
 !> \par History
 !>         - simplified taking advantage of new non-redundant matrix
 !>           structure (27.06.2003,MK)
 !>         - simplified using DBCSR trace function (21.07.2010, jhu)
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
-  SUBROUTINE calculate_ecore(h,p,ecore,error)
+  SUBROUTINE calculate_ptrace_1(h,p,ecore,error)
 
     TYPE(cp_dbcsr_type), POINTER             :: h, p
     REAL(KIND=dp), INTENT(OUT)               :: ecore
     TYPE(cp_error_type), INTENT(INOUT)       :: error
 
-    CHARACTER(len=*), PARAMETER :: routineN = 'calculate_ecore', &
+    CHARACTER(len=*), PARAMETER :: routineN = 'calculate_ptrace_1', &
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: handle
@@ -90,17 +186,23 @@ CONTAINS
 
     CALL timestop(handle)
 
-  END SUBROUTINE calculate_ecore
+  END SUBROUTINE calculate_ptrace_1
 
 ! *****************************************************************************
 !> \brief   Calculate the overlap energy of the core charge distribution.
-!> \author  MK
+!> \param qs_env ...
+!> \param para_env ...
+!> \param calculate_forces ...
+!> \param molecular ...
+!> \param E_overlap_core ...
+!> \param error ...
 !> \date    30.04.2001
 !> \par History
 !>       - Force calculation added (03.06.2002,MK)
 !>       - Parallelized using a list of local atoms for rows and
 !>         columns (19.07.2003,MK)
 !>       - Use precomputed neighborlists (sab_core) and nl iterator (28.07.2010,jhu)
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE calculate_ecore_overlap(qs_env,para_env,calculate_forces,molecular, &
@@ -263,8 +365,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Calculate the self energy of the core charge distribution.
-!> \author  MK
+!> \param qs_env ...
+!> \param E_self_core ...
+!> \param error ...
 !> \date    27.04.2001
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE calculate_ecore_self(qs_env,E_self_core,error)

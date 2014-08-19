@@ -61,6 +61,15 @@ MODULE atom_kind_orbitals
 CONTAINS
 
 ! *****************************************************************************
+!> \brief ...
+!> \param atomic_kind ...
+!> \param iunit ...
+!> \param pmat ...
+!> \param ispin ...
+!> \param confine ...
+!> \param xc_section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE calculate_atomic_orbitals (atomic_kind,iunit,pmat,ispin,confine,&
                                         xc_section,error)
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
@@ -150,8 +159,8 @@ CONTAINS
          potential%confinement=.TRUE.
       END IF
       potential%acon=0.1_dp
-      potential%rcon=2._dp*ptable(z)%vdw_radius*bohr
-      potential%ncon=2
+      potential%rcon=2.0_dp*ptable(z)%vdw_radius*bohr
+      potential%scon=2.0_dp
 
       CALL get_potential(gth_potential,&
                          zeff=zeff,&
@@ -252,8 +261,8 @@ CONTAINS
          potential%confinement=.FALSE.
       END IF
       potential%acon=0.1_dp
-      potential%rcon=2._dp*ptable(z)%vdw_radius*bohr
-      potential%ncon=2
+      potential%rcon=2.0_dp*ptable(z)%vdw_radius*bohr
+      potential%scon=2.0_dp
       CALL set_atom(atom,zcore=z,potential=potential,error=error)
     END IF
 
@@ -564,6 +573,16 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param density ...
+!> \param atomic_kind ...
+!> \param ngto ...
+!> \param iunit ...
+!> \param allelectron ...
+!> \param confine ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE calculate_atomic_density (density,atomic_kind,ngto,iunit,allelectron,confine,error)
     REAL(KIND=dp), DIMENSION(:, :), &
       INTENT(INOUT)                          :: density
@@ -649,8 +668,8 @@ CONTAINS
          potential%confinement=.TRUE.
       END IF
       potential%acon=0.1_dp
-      potential%rcon=2._dp*ptable(z)%vdw_radius*bohr
-      potential%ncon=2
+      potential%rcon=2.0_dp*ptable(z)%vdw_radius*bohr
+      potential%scon=2.0_dp
 
       CALL get_potential(gth_potential,&
                          zeff=zeff,&
@@ -751,8 +770,8 @@ CONTAINS
          potential%confinement=.FALSE.
       END IF
       potential%acon=0.1_dp
-      potential%rcon=2._dp*ptable(z)%vdw_radius*bohr
-      potential%ncon=2
+      potential%rcon=2.0_dp*ptable(z)%vdw_radius*bohr
+      potential%scon=2.0_dp
       CALL set_atom(atom,zcore=z,potential=potential,error=error)
     END IF
 
@@ -975,6 +994,13 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param atomic_kind ...
+!> \param rel_control ...
+!> \param rtmat ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE calculate_atomic_relkin (atomic_kind,rel_control,rtmat,error)
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(rel_control_type), POINTER          :: rel_control

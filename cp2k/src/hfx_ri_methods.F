@@ -58,8 +58,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates and initializes an ri_env
-!> \param ri_env the ri_environment you want to create
-!>
+!> \param qs_env ...
+!> \param error ...
 !> \author JGH
 ! *****************************************************************************
   SUBROUTINE hfx_ri_env_create (qs_env,error)
@@ -170,6 +170,9 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Calculate energy and potential for the HFX RI approximation
 !>
+!> \param qs_env ...
+!> \param calculate_force ...
+!> \param error ...
 !> \author JGH
 ! *****************************************************************************
   SUBROUTINE hfx_ri_energy_potential (qs_env,calculate_force,error)
@@ -222,6 +225,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief calculates the HFX energy in RI approximation
+!> \param qs_env ...
+!> \param error ...
 !> \author JGH
 ! *****************************************************************************
   SUBROUTINE hfx_ri_energy (qs_env,error)
@@ -247,6 +252,13 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param s_mstruct_changed ...
+!> \param print_on ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE optimize_ri_coeff (qs_env,s_mstruct_changed,print_on,error)
     TYPE(qs_environment_type), POINTER       :: qs_env
     LOGICAL, INTENT(IN)                      :: s_mstruct_changed, print_on
@@ -346,7 +358,7 @@ CONTAINS
        CALL ri_vector_norm(rnorm, ri_res, error)
 
        IF ( output_unit > 0 .AND. print_on ) THEN
-          WRITE(6,'(T15,A,T25,A,T35,i4,T50,A,T61,F20.10)') "HFX_RI|","Iteration :",iter,"Residual=",rnorm
+          WRITE(*,'(T15,A,T25,A,T35,i4,T50,A,T61,F20.10)') "HFX_RI|","Iteration :",iter,"Residual=",rnorm
        END IF
 
        IF ( rnorm < eps_ri ) THEN
@@ -389,6 +401,15 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param calculate_energy ...
+!> \param calculate_fock ...
+!> \param calculate_force ...
+!> \param calculate_virial ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE ri_energy_potential (qs_env,calculate_energy,calculate_fock,&
                                   calculate_force,calculate_virial,error)
     TYPE(qs_environment_type), POINTER       :: qs_env

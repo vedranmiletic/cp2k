@@ -56,6 +56,11 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param atom_section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE atom_pseudo_opt(atom_section,error)
     TYPE(section_vals_type), POINTER         :: atom_section
     TYPE(cp_error_type), INTENT(INOUT)       :: error
@@ -132,12 +137,12 @@ CONTAINS
     IF ( .NOT.p_pot%confinement .AND. .NOT.ae_pot%confinement ) THEN
       !set default confinement potential
       p_pot%confinement = .TRUE.
-      p_pot%ncon = 2
+      p_pot%scon = 2.0_dp
       p_pot%acon = 0.5_dp
       ! this seems to be the default in the old code
       p_pot%rcon = (2._dp*ptable(zval)%covalent_radius*bohr)**2
       ae_pot%confinement = .TRUE.
-      ae_pot%ncon = 2
+      ae_pot%scon = 2.0_dp
       ae_pot%acon = 0.5_dp
       ! this seems to be the default in the old code
       ae_pot%rcon = (2._dp*ptable(zval)%covalent_radius*bohr)**2

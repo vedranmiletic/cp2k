@@ -44,6 +44,11 @@ CONTAINS
 
   ! Lookup functions
 
+! *****************************************************************************
+!> \brief ...
+!> \param n ...
+!> \retval parent ...
+! *****************************************************************************
   ELEMENTAL FUNCTION get_parent(n) RESULT (parent)
     INTEGER, INTENT(IN)                      :: n
     INTEGER                                  :: parent
@@ -51,6 +56,11 @@ CONTAINS
     parent = INT(n/2)
   END FUNCTION get_parent
 
+! *****************************************************************************
+!> \brief ...
+!> \param n ...
+!> \retval child ...
+! *****************************************************************************
   ELEMENTAL FUNCTION get_left_child(n) RESULT (child)
     INTEGER, INTENT(IN)                      :: n
     INTEGER                                  :: child
@@ -58,6 +68,11 @@ CONTAINS
     child = 2*n
   END FUNCTION get_left_child
 
+! *****************************************************************************
+!> \brief ...
+!> \param n ...
+!> \retval child ...
+! *****************************************************************************
   ELEMENTAL FUNCTION get_right_child(n) RESULT (child)
     INTEGER, INTENT(IN)                      :: n
     INTEGER                                  :: child
@@ -65,6 +80,12 @@ CONTAINS
     child = 2*n+1
   END FUNCTION get_right_child
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param n ...
+!> \retval value ...
+! *****************************************************************************
   ELEMENTAL FUNCTION get_value(heap, n) RESULT (value)
     TYPE(heap_t), INTENT(IN)                 :: heap
     INTEGER, INTENT(IN)                      :: n
@@ -73,6 +94,12 @@ CONTAINS
     value = heap%nodes(n)%node%value
   END FUNCTION get_value
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param key ...
+!> \retval value ...
+! *****************************************************************************
   ELEMENTAL FUNCTION get_value_by_key(heap, key) RESULT (value)
     TYPE(heap_t), INTENT(IN)                 :: heap
     INTEGER(KIND=keyt), INTENT(IN)           :: key
@@ -86,6 +113,12 @@ CONTAINS
 
   ! Initialization functions
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param n ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_new (heap, n, error)
     TYPE(heap_t), INTENT(OUT)                :: heap
     INTEGER, INTENT(IN)                      :: n
@@ -101,6 +134,11 @@ CONTAINS
     error = (stat /= 0)
   END SUBROUTINE heap_new
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_release (heap, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     LOGICAL, INTENT(OUT)                     :: error
@@ -118,6 +156,12 @@ CONTAINS
   END SUBROUTINE heap_release
 
   !> \brief Fill heap with given values
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param values ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_fill (heap, values, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER(KIND=valt), DIMENSION(:), &
@@ -146,7 +190,14 @@ CONTAINS
 
   END SUBROUTINE heap_fill
 
-  ! \brief Returns the first heap element without removing it.
+! *****************************************************************************
+!> \brief Returns the first heap element without removing it.
+!> \param heap ...
+!> \param key ...
+!> \param value ...
+!> \param found ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_get_first (heap, key, value, found, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER(KIND=keyt), INTENT(OUT)          :: key
@@ -164,8 +215,15 @@ CONTAINS
     ENDIF
   END SUBROUTINE heap_get_first
 
-  ! \brief Returns and removes the first heap element and rebalances
-  !        the heap.
+! *****************************************************************************
+!> \brief Returns and removes the first heap element and rebalances
+!>        the heap.
+!> \param heap ...
+!> \param key ...
+!> \param value ...
+!> \param found ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_pop (heap, key, value, found, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER(KIND=keyt), INTENT(OUT)          :: key
@@ -186,8 +244,14 @@ CONTAINS
     ENDIF
   END SUBROUTINE heap_pop
 
-  ! \brief Changes the value of the heap element with given key and
-  !        rebalances the heap.
+! *****************************************************************************
+!> \brief Changes the value of the heap element with given key and
+!>        rebalances the heap.
+!> \param heap ...
+!> \param key ...
+!> \param value ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_reset_node (heap, key, value, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER(KIND=keyt), INTENT(IN)           :: key
@@ -209,6 +273,12 @@ CONTAINS
     ENDIF
   END SUBROUTINE heap_reset_node
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param e1 ...
+!> \param e2 ...
+! *****************************************************************************
   PURE SUBROUTINE heap_swap (heap, e1, e2)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER, INTENT(IN)                      :: e1, e2
@@ -231,7 +301,12 @@ CONTAINS
     heap%index(key2) = e1
   END SUBROUTINE heap_swap
 
-  ! \brief Sets node e1 to e2
+! *****************************************************************************
+!> \brief Sets node e1 to e2
+!> \param heap ...
+!> \param e1 ...
+!> \param e2 ...
+! *****************************************************************************
   PURE SUBROUTINE heap_copy_node (heap, e1, e2)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER, INTENT(IN)                      :: e1, e2
@@ -252,6 +327,12 @@ CONTAINS
   END SUBROUTINE heap_copy_node
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param node ...
+!> \param key ...
+!> \param value ...
+! *****************************************************************************
   PURE SUBROUTINE node_get_node (node, key, value)
     TYPE(heap_node), INTENT(IN)              :: node
     INTEGER(KIND=keyt), INTENT(OUT)          :: key
@@ -262,6 +343,13 @@ CONTAINS
     key = node%key
     value = node%value
   END SUBROUTINE node_get_node
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param n ...
+!> \param key ...
+!> \param value ...
+! *****************************************************************************
   PURE SUBROUTINE node_get_heap (heap, n, key, value)
     TYPE(heap_t), INTENT(IN)                 :: heap
     INTEGER, INTENT(IN)                      :: n
@@ -272,6 +360,12 @@ CONTAINS
 
     CALL node_get_node (heap%nodes(n)%node, key, value)
   END SUBROUTINE node_get_heap
+! *****************************************************************************
+!> \brief ...
+!> \param node ...
+!> \param key ...
+!> \param value ...
+! *****************************************************************************
   PURE SUBROUTINE node_set_node (node, key, value)
     TYPE(heap_node), INTENT(OUT)             :: node
     INTEGER(KIND=keyt), INTENT(IN)           :: key
@@ -282,6 +376,13 @@ CONTAINS
     node%key = key
     node%value = value
   END SUBROUTINE node_set_node
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param n ...
+!> \param key ...
+!> \param value ...
+! *****************************************************************************
   PURE SUBROUTINE node_set_heap (heap, n, key, value)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER, INTENT(IN)                      :: n
@@ -295,7 +396,12 @@ CONTAINS
   END SUBROUTINE node_set_heap
 
 
-  ! \brief Balances a heap by bubbling down from the given element.
+! *****************************************************************************
+!> \brief Balances a heap by bubbling down from the given element.
+!> \param heap ...
+!> \param first ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE bubble_down (heap, first, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER, INTENT(IN)                      :: first
@@ -350,7 +456,13 @@ CONTAINS
   END SUBROUTINE bubble_down
 
 
-  ! \brief Balances a heap by bubbling up from the given element.
+! *****************************************************************************
+!> \brief Balances a heap by bubbling up from the given element.
+!> \param heap ...
+!> \param first ...
+!> \param new_pos ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE bubble_up (heap, first, new_pos, error)
     TYPE(heap_t), INTENT(INOUT)              :: heap
     INTEGER, INTENT(IN)                      :: first
@@ -391,6 +503,11 @@ CONTAINS
     new_pos = e
   END SUBROUTINE bubble_up
 
+! *****************************************************************************
+!> \brief ...
+!> \param heap ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE heap_check (heap, error)
     TYPE(heap_t), INTENT(in)                 :: heap
     LOGICAL, INTENT(out)                     :: error

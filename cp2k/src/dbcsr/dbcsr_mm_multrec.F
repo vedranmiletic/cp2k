@@ -144,8 +144,9 @@ MODULE dbcsr_mm_multrec
   CONTAINS
 
 ! *****************************************************************************
-! \brief Initialize the library
-! \author Ole Schuett
+!> \brief Initialize the library
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_lib_init(error)
     TYPE(dbcsr_error_type), INTENT(INOUT)    :: error
@@ -155,8 +156,11 @@ MODULE dbcsr_mm_multrec
 
 
 ! *****************************************************************************
-! \brief Finalize the library
-! \author Ole Schuett
+!> \brief Finalize the library
+!> \param group ...
+!> \param output_unit ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_lib_finalize(group, output_unit, error)
     INTEGER, INTENT(IN)                      :: group, output_unit
@@ -170,11 +174,17 @@ MODULE dbcsr_mm_multrec
 !> \brief Sets up recursive multiplication
 !>
 !>
-!> \param[in] left, right     left and right DBCSR matrices
+!> \param this ...
+!> \param left ...
+!> \param right ...
 !> \param[in,out] product     resulting DBCSR product matrix
-!> \param[in] retain_sparsity      (optional) retain the sparsity of the
-!>                                 existing product matrix, default is no
+!> \param keep_sparsity ...
 !> \param[in] eps             (optional) on-the-fly filtering epsilon
+!> \param row_max_epss ...
+!> \param error ...
+!> \param[in] left, right     left and right DBCSR matrices UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] retain_sparsity      (optional) retain the sparsity of the
+!>                                 existing product matrix, default is no UNMATCHED_PROCEDURE_ARGUMENT: please check 
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_init(this, left, right, product, &
        keep_sparsity, eps, row_max_epss, error)
@@ -372,16 +382,20 @@ MODULE dbcsr_mm_multrec
 !> <li> converts everything into "local indexing"
 !> </ul>
 !>
-!> \param[in] left, right     left and right DBCSR matrices
-!> \param[in,out] product     resulting DBCSR product matrix
-!> \param[in] retain_sparsity      (optional) retain the sparsity of the
-!>                                 existing product matrix, default is no
-!> \param[in] a_norms         (optional) norms of left-matrix blocks
-!> \param[in] b_norms         (optional) norms of right-matrix blocks
-!> \param[in] eps             (optional) on-the-fly filtering epsilon
-!> \param[in] row_max_epss  (optional) on-the-fly filtering epsilon per block
+!> \param this ...
+!> \param left ...
+!> \param right ...
 !> \param[out] flop           (optional) number of effective double-precision
 !>                            floating point operations performed
+!> \param[in] a_norms         (optional) norms of left-matrix blocks
+!> \param[in] b_norms         (optional) norms of right-matrix blocks
+!> \param error ...
+!> \param[in] eps             (optional) on-the-fly filtering epsilon UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] left, right     left and right DBCSR matrices UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in,out] product     resulting DBCSR product matrix UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] retain_sparsity      (optional) retain the sparsity of the
+!>                                 existing product matrix, default is no UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] row_max_epss  (optional) on-the-fly filtering epsilon per block UNMATCHED_PROCEDURE_ARGUMENT: please check 
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_multiply(this, left, right, flop,&
        a_norms, b_norms, error)
@@ -464,8 +478,10 @@ MODULE dbcsr_mm_multrec
 
 
 ! *****************************************************************************
-! \brief Signal approaching end of multiplication
-! \author Ole Schuett
+!> \brief Signal approaching end of multiplication
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_phaseout(this, error)
     TYPE(dbcsr_mm_multrec_type), &
@@ -480,11 +496,13 @@ MODULE dbcsr_mm_multrec
 !> \brief Sets up recursive multiplication
 !>
 !>
-!> \param[in] left, right     left and right DBCSR matrices
-!> \param[in,out] product     resulting DBCSR product matrix
+!> \param this ...
+!> \param error ...
+!> \param[in] eps             (optional) on-the-fly filtering epsilon UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] left, right     left and right DBCSR matrices UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in,out] product     resulting DBCSR product matrix UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \param[in] retain_sparsity      (optional) retain the sparsity of the
-!>                                 existing product matrix, default is no
-!> \param[in] eps             (optional) on-the-fly filtering epsilon
+!>                                 existing product matrix, default is no UNMATCHED_PROCEDURE_ARGUMENT: please check 
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_multrec_finalize(this, error)
     TYPE(dbcsr_mm_multrec_type), &
@@ -538,6 +556,23 @@ MODULE dbcsr_mm_multrec
 
 ! *****************************************************************************
 !> \brief Performs recursive multiplication
+!> \param this ...
+!> \param left ...
+!> \param right ...
+!> \param mi ...
+!> \param mf ...
+!> \param ni ...
+!> \param nf ...
+!> \param ki ...
+!> \param kf ...
+!> \param ai ...
+!> \param af ...
+!> \param a_index ...
+!> \param bi ...
+!> \param bf ...
+!> \param b_index ...
+!> \param error ...
+!> \param d ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   RECURSIVE SUBROUTINE sparse_multrec(this, left, right, mi, mf, ni, nf, ki, kf,&
@@ -638,9 +673,15 @@ MODULE dbcsr_mm_multrec
 
 
 ! ******************************************************************************
-!> \brief
+! *****************************************************************************
+!> \brief ...
+!> \param ai ...
+!> \param af ...
+!> \param a ...
+!> \param val ...
+!> \retval res ...
 !> \author JV
-! ******************************************************************************
+! *****************************************************************************
   PURE FUNCTION find_cut_row(ai,af,a,val) RESULT(res)
     INTEGER, INTENT(IN)                      :: ai, af
     INTEGER, DIMENSION(3, 1:af), INTENT(IN)  :: a
@@ -683,9 +724,15 @@ MODULE dbcsr_mm_multrec
 
 
 ! ******************************************************************************
-!> \brief
+! *****************************************************************************
+!> \brief ...
+!> \param ai ...
+!> \param af ...
+!> \param a ...
+!> \param val ...
+!> \retval res ...
 !> \author JV
-! ******************************************************************************
+! *****************************************************************************
   PURE FUNCTION find_cut_col(ai,af,a,val) RESULT(res)
     INTEGER, INTENT(IN)                      :: ai, af
     INTEGER, DIMENSION(3, 1:af), INTENT(IN)  :: a
@@ -730,7 +777,13 @@ MODULE dbcsr_mm_multrec
 
 ! ******************************************************************************
 !> \brief Packs a globally-indexed array into a locally-indexed array.
-! ******************************************************************************
+!> \param row_i ...
+!> \param col_i ...
+!> \param local_rows ...
+!> \param local_cols ...
+!> \param first ...
+!> \param last ...
+! *****************************************************************************
   PURE SUBROUTINE remap_local2global(row_i, col_i, local_rows, local_cols,&
        first, last)
     INTEGER, INTENT(in)                      :: last, first
@@ -770,7 +823,11 @@ MODULE dbcsr_mm_multrec
 ! *****************************************************************************
 !> \brief Gathers the local elements from all data (full_data) for
 !>        single precision elements.
-!> \see local_filter
+!> \param full_data ...
+!> \param nle ...
+!> \param local_elements ...
+!> \param local_data ...
+!> \note see local_filter 
 ! *****************************************************************************
   PURE SUBROUTINE local_filter_sp (full_data, nle, local_elements, local_data)
     REAL(KIND=sp), DIMENSION(:), INTENT(IN)  :: full_data

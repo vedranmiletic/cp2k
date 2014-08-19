@@ -13,7 +13,7 @@
 
 MODULE ma_errors
 
-  USE ma_kinds,                        ONLY: default_output_unit
+  USE machine,                         ONLY: default_output_unit
 
   IMPLICIT NONE
 
@@ -33,9 +33,8 @@ CONTAINS
 
 ! ****************************************************************************
 !> \brief To show the library erros
-!> \var message         The error message
-!> \var unit_num        The output console
-! ****************************************************************************
+!> \param message         The error message
+! *****************************************************************************
   SUBROUTINE ma_error (message)
     CHARACTER(LEN=*), INTENT(IN), OPTIONAL   :: message
 
@@ -52,9 +51,8 @@ CONTAINS
 
 ! ****************************************************************************
 !> \brief To show the library erros
-!> \var message         The error message
-!> \var unit_num        The output console
-! ****************************************************************************
+!> \param error_type ...
+! *****************************************************************************
   SUBROUTINE ma_error_stop (error_type)
     INTEGER                                  :: error_type
 

@@ -22,15 +22,11 @@ MODULE qmmm_update
                                              force_env_release,&
                                              force_env_type,&
                                              use_qmmm
-  USE input_cp2k_restarts,             ONLY: update_input
+  USE input_restart_force_eval,        ONLY: update_force_eval
   USE input_section_types,             ONLY: section_vals_get,&
                                              section_vals_get_subs_vals,&
                                              section_vals_release,&
                                              section_vals_type
-  USE md_ener_types,                   ONLY: md_ener_type
-  USE md_energies,                     ONLY: update_nfree_qm
-  USE md_environment_types,            ONLY: get_md_env,&
-                                             md_environment_type
   USE qmmm_create,                     ONLY: qmmm_create_force_env_low
   USE qmmm_force_mixing,               ONLY: setup_force_mixing_qmmm_sections,&
                                              update_force_mixing_labels
@@ -39,9 +35,10 @@ MODULE qmmm_update
                                              primary_subsys,&
                                              qmmm_env_qm_release,&
                                              qmmm_env_qm_retain
+  USE timings,                         ONLY: timeset,&
+                                             timestop
   USE virial_types,                    ONLY: virial_release,&
                                              virial_retain
-  USE wiener_process,                  ONLY: copy_wiener_process
 #include "./common/cp_common_uses.f90"
 
   IMPLICIT NONE
@@ -54,38 +51,41 @@ MODULE qmmm_update
 
 CONTAINS
 
-  SUBROUTINE qmmm_update_force_mixing_env(md_env, force_env, root_section, error)
-    TYPE(md_environment_type), POINTER       :: md_env
+! *****************************************************************************
+!> \brief ...
+!> \param force_env ...
+!> \param root_section ...
+!> \param error ...
+! *****************************************************************************
+  SUBROUTINE qmmm_update_force_mixing_env(force_env, root_section, error)
     TYPE(force_env_type), POINTER            :: force_env
     TYPE(section_vals_type), POINTER         :: root_section
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     INTEGER                                  :: iforce_eval, nforce_eval
-    TYPE(md_ener_type), POINTER              :: md_ener
 
-    CALL qmmm_update_force_mixing_env_low(md_env, force_env, root_section, error)
+    CALL qmmm_update_force_mixing_env_low(force_env, root_section, error)
     IF (ASSOCIATED(force_env%sub_force_env)) THEN
       nforce_eval = SIZE(force_env%sub_force_env)
       ! loop over sub force envs, e.g. for mixed force env
       DO iforce_eval=1, nforce_eval
          ! QMMM sub force envs are dups of top level, which have FORCE_MIXING, so explicitly avoid recursing into those
          IF (force_env%in_use /= use_qmmm) THEN 
-            CALL qmmm_update_force_mixing_env_low(md_env, force_env%sub_force_env(iforce_eval)%force_env, root_section, error)
+            CALL qmmm_update_force_mixing_env_low(force_env%sub_force_env(iforce_eval)%force_env, root_section, error)
          ENDIF
       END DO
-    ENDIF
-
-    NULLIFY(md_ener)
-    CALL get_md_env(md_env, md_ener=md_ener, error=error)
-    IF (ASSOCIATED(md_ener)) THEN
-      CALL update_nfree_qm(md_ener, force_env, error)
     ENDIF
 
   END SUBROUTINE qmmm_update_force_mixing_env
 
 
-  SUBROUTINE qmmm_update_force_mixing_env_low(md_env, force_env, root_section, error)
-    TYPE(md_environment_type), POINTER       :: md_env
+! *****************************************************************************
+!> \brief ...
+!> \param force_env ...
+!> \param root_section ...
+!> \param error ...
+! *****************************************************************************
+  SUBROUTINE qmmm_update_force_mixing_env_low(force_env, root_section, error)
     TYPE(force_env_type), POINTER            :: force_env
     TYPE(section_vals_type), POINTER         :: root_section
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -129,7 +129,7 @@ CONTAINS
 CPSourceFileRef,&
                only_ionode=.TRUE.)
 
-       CALL update_input(md_env,force_env,root_section,error=error)
+       CALL update_force_eval(force_env, root_section, .FALSE., error)
 
        ALLOCATE(sub_force_env(2),stat=stat)
        CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
@@ -202,5 +202,84 @@ CPSourceFileRef,&
       ENDIF
 
   END SUBROUTINE qmmm_update_force_mixing_env_low
+
+
+! *****************************************************************************
+!> \brief ...
+!> \param from_local_particle_kinds ...
+!> \param from_local_particles ...
+!> \param to_local_particle_kinds ...
+!> \param to_local_particles ...
+!> \param error ...
+! *****************************************************************************
+  SUBROUTINE copy_wiener_process(from_local_particle_kinds, from_local_particles, to_local_particle_kinds, to_local_particles,error)
+    TYPE(atomic_kind_list_type), POINTER     :: from_local_particle_kinds
+    TYPE(distribution_1d_type), POINTER      :: from_local_particles
+    TYPE(atomic_kind_list_type), POINTER     :: to_local_particle_kinds
+    TYPE(distribution_1d_type), POINTER      :: to_local_particles
+    TYPE(cp_error_type), INTENT(INOUT)       :: error
+
+    CHARACTER(LEN=*), PARAMETER :: routineN = 'copy_wiener_process', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER :: from_iparticle_kind, from_iparticle_local(1), &
+      from_nparticle_kind, from_nparticle_local, handle, to_iparticle_global, &
+      to_iparticle_kind, to_iparticle_local, to_nparticle_kind, &
+      to_nparticle_local, tot_from_nparticle_local, tot_to_nparticle_local
+    LOGICAL                                  :: failure, found_it
+
+     CALL timeset(routineN,handle)
+     CPPrecondition (ASSOCIATED(from_local_particles),cp_failure_level,routineP,error,failure)
+     CPPrecondition (ASSOCIATED(to_local_particles),cp_failure_level,routineP,error,failure)
+
+     IF (.NOT. ASSOCIATED(from_local_particles%local_particle_set)) RETURN
+     CPPrecondition (.NOT. ASSOCIATED(to_local_particles%local_particle_set),cp_failure_level,routineP,error,failure)
+
+     from_nparticle_kind = from_local_particle_kinds%n_els
+     to_nparticle_kind = to_local_particle_kinds%n_els
+
+     ! make sure total number of particles hasn't changed, even if particle kinds have
+     tot_from_nparticle_local = 0
+     DO from_iparticle_kind=1, from_nparticle_kind
+       tot_from_nparticle_local = tot_from_nparticle_local + from_local_particles%n_el(from_iparticle_kind)
+     END DO
+     tot_to_nparticle_local = 0
+     DO to_iparticle_kind=1, to_nparticle_kind
+       tot_to_nparticle_local = tot_to_nparticle_local + to_local_particles%n_el(to_iparticle_kind)
+     END DO
+     CPPrecondition (tot_from_nparticle_local == tot_to_nparticle_local, cp_failure_level,routineP,error,failure)
+
+     ALLOCATE(to_local_particles%local_particle_set(to_nparticle_kind))
+     DO to_iparticle_kind=1, to_nparticle_kind
+
+        to_nparticle_local = to_local_particles%n_el(to_iparticle_kind)
+        ALLOCATE(to_local_particles%local_particle_set(to_iparticle_kind)%rng(to_nparticle_local))
+
+        DO to_iparticle_local=1, to_nparticle_local
+           to_iparticle_global = to_local_particles%list(to_iparticle_kind)%array(to_iparticle_local)
+           ALLOCATE(to_local_particles%local_particle_set(to_iparticle_kind)%rng(to_iparticle_local)%stream)
+
+           found_it = .FALSE.
+           ! find the matching kind/index where this particle was before
+           DO from_iparticle_kind=1, from_nparticle_kind
+              from_nparticle_local = from_local_particles%n_el(from_iparticle_kind)
+              IF (MINVAL(ABS( from_local_particles%list(from_iparticle_kind)%array(1:from_nparticle_local) -&
+                  to_iparticle_global)) == 0) THEN
+                from_iparticle_local = MINLOC(ABS( &
+                    from_local_particles%list(from_iparticle_kind)%array(1:from_nparticle_local) - to_iparticle_global))
+                to_local_particles%local_particle_set(to_iparticle_kind)%rng(to_iparticle_local)%stream = &
+                   from_local_particles%local_particle_set(from_iparticle_kind)%rng(from_iparticle_local(1))%stream
+                found_it = .TRUE.
+                EXIT
+              ENDIF
+           END DO
+           CPPostcondition (found_it, cp_failure_level,routineP,error,failure)
+
+        END DO ! to_iparticle_local
+
+     END DO ! to_iparticle_kind
+     CALL timestop(handle)
+
+  END SUBROUTINE copy_wiener_process
 
 END MODULE qmmm_update

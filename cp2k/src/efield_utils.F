@@ -53,6 +53,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the time dependend potential on the grid
+!> \param qs_env ...
+!> \param v_efield_rspace ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -115,6 +118,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the amplitude of the efield within a given envelop
+!> \param dft_control ...
+!> \param field ...
+!> \param sim_step ...
+!> \param sim_time ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -149,6 +157,7 @@ CONTAINS
           END IF
        END IF
        IF(efield%envelop_id==ramp_env)THEN
+! check this part, it seems to be wrong
           IF(sim_step.GE.efield%envelop_i_vars(1).AND.sim_step.GE.efield%envelop_i_vars(2)) &
                strength=strength*(sim_step-efield%envelop_i_vars(1))/(efield%envelop_i_vars(2)-efield%envelop_i_vars(1))
           IF(sim_step.GE.efield%envelop_i_vars(3).AND.sim_step.GE.efield%envelop_i_vars(4)) &
@@ -168,6 +177,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the force and the enrgy due to a efield on the cores
+!> \param qs_env ...
+!> \param calculate_forces ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 

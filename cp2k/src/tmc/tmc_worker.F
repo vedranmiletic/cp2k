@@ -110,6 +110,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief worker get tasks form master and fulfill them  
 !> \param tmc_env structure for storing all the tmc parameters
+!> \param ana_list ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 11.2012
@@ -645,9 +646,13 @@ CONTAINS
 !>        usually using the approximate potential, could be also Hybrid MC.
 !>        The amount of steps are predefinded by the user, but should be huge 
 !>        enough to reach the equilibrium state for this potential
-!> \param 
+!> \param conf ...
+!> \param env_id ...
+!> \param tmc_env ...
+!> \param calc_status ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 11.2012
 ! *****************************************************************************
   SUBROUTINE nested_markov_chain_MC(conf, env_id, tmc_env, calc_status, error)
@@ -819,8 +824,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief get the initial confuguration (pos,...) 
+!> \param tmc_params ...
 !> \param init_conf the structure the data should be stored
 !> force_env 
+!> \param env_id ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 11.2012
@@ -877,8 +884,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief get the pointer to the atoms, for easy handling
-!> \param force_env
+!> \param env_id ...
 !> \param atoms pointer to atomic_kind 
+!> \param cell ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 01.2013
@@ -980,7 +988,6 @@ CONTAINS
 ! *****************************************************************************
 !> \brief set the communicator in the SCF environment 
 !>        to receive the intermediate energies on the (global) master side
-!> \param comm the master-worker communicator
 !> \param env_id the ID of the related force environment
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling

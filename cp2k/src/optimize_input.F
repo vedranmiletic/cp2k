@@ -4,6 +4,7 @@
 !-----------------------------------------------------------------------------!
 MODULE optimize_input
   USE cell_methods,                    ONLY: parse_cell_line
+  USE cp2k_info,                       ONLY: write_restart_header
   USE cp_external_control,             ONLY: external_control
   USE cp_output_handling,              ONLY: cp_add_iter_level,&
                                              cp_iterate,&
@@ -22,7 +23,6 @@ MODULE optimize_input
                                              destroy_force_env,&
                                              set_cell
   USE input_constants,                 ONLY: opt_force_matching
-  USE input_cp2k_restarts,             ONLY: write_restart_header
   USE input_section_types,             ONLY: section_type,&
                                              section_vals_get,&
                                              section_vals_get_subs_vals,&
@@ -100,6 +100,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief main entry point for methods aimed at optimizing parameters in a CP2K input file
+!> \param input_declaration ...
+!> \param root_section ...
+!> \param para_env ...
+!> \param error ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   SUBROUTINE run_optimize_input(input_declaration, root_section, para_env, error)
@@ -155,6 +159,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief optimizes parameters by force/energy matching results against reference values
+!> \param oi_env ...
+!> \param input_declaration ...
+!> \param root_section ...
+!> \param para_env ...
+!> \param error ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   SUBROUTINE force_matching(oi_env,input_declaration,root_section,para_env, error)
@@ -449,7 +458,7 @@ CONTAINS
                CALL section_vals_val_set(variable_section,"VALUE",i_rep_section=free_var_index(i_free_var), &
                                          r_val=free_vars(i_free_var),error=error)
             ENDDO
-            CALL write_restart_header(restart_unit, error)
+            CALL write_restart_header(restart_unit)
             CALL section_vals_write(root_section,unit_nr=restart_unit,hide_root=.TRUE., error=error)
          ENDIF
          CALL cp_print_key_finished_output(restart_unit,logger,root_section,"OPTIMIZE_INPUT%RESTART", error=error)
@@ -504,10 +513,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief reads the reference data for force matching results, the format of the files needs to be the CP2K xyz trajectory format
-!> \param force_traj: forces
-!> \param pos_traj: position
-!> \param energy_traj: energies, as extracted from the forces file
-!> \param cell_traj: cell parameters, as extracted from a CP2K cell file
+!> \param oi_env ...
+!> \param para_env ...
+!> \param force_traj forces 
+!> \param pos_traj position 
+!> \param energy_traj energies, as extracted from the forces file
+!> \param cell_traj cell parameters, as extracted from a CP2K cell file 
+!> \param error ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   SUBROUTINE read_reference_data(oi_env,para_env,force_traj,pos_traj,energy_traj,cell_traj,error)
@@ -631,7 +643,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief parses the input section, and stores in the optimize input environment
-!> \param oi_env: optimize input environment
+!> \param oi_env optimize input environment
+!> \param root_section ...
+!> \param error ...
 !> \author Joost VandeVondele
 ! *****************************************************************************
   SUBROUTINE parse_input(oi_env,root_section,error)

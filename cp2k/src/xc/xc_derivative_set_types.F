@@ -64,6 +64,7 @@ CONTAINS
 !>                        Defaults to false.
 !> \param error variable to control error logging, stopping,...
 !>                        see module cp_error_handling
+!> \retval res ...
 ! *****************************************************************************
   FUNCTION xc_dset_get_derivative(derivative_set, description, allocate_deriv, error) &
        RESULT(res)
@@ -119,6 +120,7 @@ CONTAINS
 !> \param derivative_set the set where to search for the derivative
 !> \param pw_pool pool where to get the cr3d arrays needed to store the
 !>        derivatives
+!> \param local_bounds ...
 !> \param error variable to control error logging, stopping,...
 !>                  see module cp_error_handling
 ! *****************************************************************************
@@ -171,7 +173,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief releases a derivative set
-!> \param set the set to release
+!> \param derivative_set the set to release
 !> \param error variable to control error logging, stopping,...
 !>                  see module cp_error_handling
 ! *****************************************************************************
@@ -240,6 +242,10 @@ SUBROUTINE xc_dset_retain(deriv_set,error)
   END IF
 END SUBROUTINE xc_dset_retain
 
+! *****************************************************************************
+!> \brief ...
+!> \param deriv_set ...
+!> \param error ...
 ! *****************************************************************************
 SUBROUTINE xc_dset_zero_all(deriv_set, error)
 

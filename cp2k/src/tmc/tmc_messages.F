@@ -56,7 +56,6 @@ MODULE tmc_messages
   INTEGER, PARAMETER                         :: message_end_flag = 25
 
   INTEGER, PARAMETER                         :: DEBUG = 0
-  INTEGER, PARAMETER                         :: tmc_out_file_nr =6
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'tmc_messages'
 
@@ -83,9 +82,9 @@ CONTAINS
 ! *****************************************************************************
 !> \brief checks if the core is the group master
 !> \param para_env defines the mpi communicator
-!> \param master return value, logical
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param master return value, logical
 !> \author Mandes 01.2013
 ! *****************************************************************************
   FUNCTION check_if_group_master(para_env, error) RESULT(master)
@@ -111,13 +110,17 @@ CONTAINS
 !>        type. Send first info message with task type and message sizes and
 !>        then the int and real messages. The same for receiving
 !> \param msg_type defines the message types, see message tags definition
-!> \param send_recv: 1= send, 0= receive
-!> \param dest: defines the target or source of message 
+!> \param send_recv 1= send, 0= receive
+!> \param dest defines the target or source of message 
 !>              (-1=braodcast, 0= master, 1... working group)
 !> \param para_env defines the mpi communicator
 !> \param tmc_params stuct with parameters (global settings)
-!> \param elem: a subtree element from which info are readed or written in
-!> \param T_ind: (optinal) given because not in tree structure
+!> \param elem a subtree element from which info are readed or written in
+!> \param elem_array ...
+!> \param list_elem ...
+!> \param result_count ...
+!> \param wait_for_message ...
+!> \param success ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 12.2012
@@ -173,10 +176,10 @@ CONTAINS
       IF((DEBUG.GE.7).AND.(dest.NE.bcast_group).AND.&
          (dest.NE.MASTER_COMM_ID)) THEN
          IF(PRESENT(elem)) THEN
-           WRITE(tmc_out_file_nr,*)"send element info to ", dest, " of type ", msg_type,"of subtree", elem%sub_tree_nr, &
+           WRITE(*,*)"send element info to ", dest, " of type ", msg_type,"of subtree", elem%sub_tree_nr, &
                                    "elem", elem%nr
          ELSE
-           WRITE(tmc_out_file_nr,*)"send element info to ", dest, " of type ", msg_type
+           WRITE(*,*)"send element info to ", dest, " of type ", msg_type
          END IF
       END IF
       SELECT CASE (msg_type)
@@ -231,7 +234,7 @@ CONTAINS
         !TODO send characters CALL mp_send(m_send%task_char, dest, message_tag, para_env%group)
       END IF
       IF(DEBUG.GE.1) &
-        WRITE(tmc_out_file_nr,*)"TMC|message: ID: ",para_env%mepos, &
+        WRITE(*,*)"TMC|message: ID: ",para_env%mepos, &
           " send element info to   ", dest, " of stat ", m_send%info(1), &
           " with size int/real/char", m_send%info(2:), " with comm ", &
           para_env%group, " and tag ", message_tag
@@ -310,7 +313,7 @@ CONTAINS
         CALL mp_recv(m_send%info, dest, message_tag, para_env%group)
       END IF
       IF(DEBUG.GE.1) &
-        WRITE(tmc_out_file_nr,*)"TMC|message: ID: ",para_env%mepos, &
+        WRITE(*,*)"TMC|message: ID: ",para_env%mepos, &
           " recv element info from ", dest, " of stat ", m_send%info(1), &
           " with size int/real/char", m_send%info(2:)
        !-- receive message integer part
@@ -400,11 +403,6 @@ CONTAINS
   END SUBROUTINE tmc_message
 
 ! *****************************************************************************
-!> \brief following pairs of routines creating outgoing and 
-!>        handling incoming messages are defined
-! *****************************************************************************
-
-! *****************************************************************************
 !> \brief set the messege just with an status tag
 !> \param msg_type the status tag 
 !> \param m_send the message structure
@@ -412,6 +410,7 @@ CONTAINS
 !>        see module cp_error_handling
 !> \author Mandes 12.2012
 ! *****************************************************************************
+
   SUBROUTINE create_status_message(msg_type, m_send, error)
     INTEGER                                  :: msg_type
     TYPE(message_send), POINTER              :: m_send
@@ -521,7 +520,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief the message for the initial values (cell size) to the workers
 !> \param msg_type the status tag 
-!> \param tmc_parms to send the cell properties
+!> \param tmc_params to send the cell properties
 !> \param m_send the message structure
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -580,7 +579,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief the message for the initial values (cell size) to the workers
 !> \param msg_type the status tag 
-!> \param tmc_parms to send the cell properties
+!> \param tmc_params to send the cell properties
 !> \param m_send the message structure
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -636,7 +635,8 @@ CONTAINS
 !> \param msg_type the status tag 
 !> \param elem the intial tree element with initial coordinates and energy 
 !>        (using the approximated potential)
-!> \param tmc_parms to send the cell properties
+!> \param result_count ...
+!> \param tmc_params to send the cell properties
 !> \param m_send the message structure
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -724,6 +724,7 @@ CONTAINS
 !> \param msg_type the status tag 
 !> \param elem the intial tree element with initial coordinates and energy 
 !>        (using the approximated potential)
+!> \param result_count ...
 !> \param m_send the message structure
 !> \param tmc_params the param struct with necessary values for allocation
 !> \param error variable to control error logging, stopping,...
@@ -1032,7 +1033,7 @@ CONTAINS
        counter = 1
        IF(elem%sub_tree_nr .NE. m_send%task_int(counter+1) .OR. &
           elem%nr .NE. m_send%task_int(counter+3)) THEN
-          WRITE(6,*)"ERROR: read_energy_result: master got energy result of subtree elem ", &
+          WRITE(*,*)"ERROR: read_energy_result: master got energy result of subtree elem ", &
                     m_send%task_int(counter+1),  m_send%task_int(counter+3), &
                     " but expect result of subtree elem", elem%sub_tree_nr, elem%nr
           STOP "read_energy_result: got energy result from unexpected tree element."
@@ -1059,6 +1060,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief create message for sending back the approximate energy of new conf
+!> \param msg_type ...
 !> \param elem tree element with calculated approx energy 
 !> \param m_send the message structure
 !> \param tmc_params stuct with parameters (global settings)
@@ -1595,7 +1597,7 @@ CONTAINS
 !> \brief creating message for requesting analysing a new configuration
 !>        we plot temperatur index into the sub tree number and 
 !>        the Markov chain number into the element number
-!> \param elem tree element with new coordinates 
+!> \param list_elem ...
 !> \param m_send the message structure
 !> \param tmc_params stuct with parameters (global settings)
 !> \param error variable to control error logging, stopping,...
@@ -1750,7 +1752,8 @@ CONTAINS
 !> \brief routines send atom names to the global master 
 !>        (using broadcast in a specialized group consisting of the master 
 !>        and the first energy worker master)
-!> \param atoms
+!> \param atoms ...
+!> \param source ...
 !> \param para_env the communicator environment
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -1795,10 +1798,13 @@ CONTAINS
   !============================================================================
 ! *****************************************************************************
 !> \brief send stop command to all group participants
-!> \param 
-!> \param 
+!> \param para_env ...
+!> \param worker_info ...
+!> \param tmc_params ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
+!> \param 
 !> \author Mandes 01.2013
 ! *****************************************************************************
   SUBROUTINE stop_whole_group(para_env, worker_info, tmc_params, error)

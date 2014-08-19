@@ -56,6 +56,7 @@ MODULE qs_energy_types
                        dft_plus_u,& ! DFT+U energy contribution
                        ktS,& ! electronic entropic contribution
                        efermi,& ! Fermi energy
+                       dftb3,& ! DFTB 3rd order correction
                        mp2,&
                        total,&
                        tot_old,&
@@ -79,8 +80,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Allocate and/or initialise a Quickstep energy data structure.
-!> \author  MK
+!> \param qs_energy ...
 !> \date    13.06.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE allocate_qs_energy(qs_energy)
@@ -107,8 +109,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Deallocate a Quickstep energy data structure.
-!> \author  MK
+!> \param qs_energy ...
 !> \date    13.06.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE deallocate_qs_energy(qs_energy)
@@ -137,8 +140,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Initialise a Quickstep energy data structure.
-!> \author  MK
+!> \param qs_energy ...
 !> \date    13.06.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE init_qs_energy(qs_energy)
@@ -175,6 +179,7 @@ CONTAINS
       qs_energy%ee_core = 0.0_dp
       qs_energy%s2_restraint = 0.0_dp
       qs_energy%dft_plus_u = 0.0_dp
+      qs_energy%dftb3 = 0.0_dp
       qs_energy%kTS = 0.0_dp
       qs_energy%mp2 = 0.0_dp
       qs_energy%efermi = 0.0_dp
@@ -263,6 +268,7 @@ CONTAINS
       qs_energy_out%ee_core         = qs_energy_in%ee_core
       qs_energy_out%s2_restraint    = qs_energy_in%s2_restraint
       qs_energy_out%dft_plus_u      = qs_energy_in%dft_plus_u
+      qs_energy_out%dftb3           = qs_energy_in%dftb3     
       qs_energy_out%ktS             = qs_energy_in%ktS
       qs_energy_out%efermi          = qs_energy_in%efermi
       qs_energy_out%mp2             = qs_energy_in%mp2

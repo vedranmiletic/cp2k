@@ -11,7 +11,8 @@
 !> \author fawzi
 ! *****************************************************************************
 MODULE input_cp2k_global
-  USE bibliography,                    ONLY: Frigo2005
+  USE bibliography,                    ONLY: Borstnik2014,&
+                                             Frigo2005
   USE cp_blacs_env,                    ONLY: BLACS_GRID_COL,&
                                              BLACS_GRID_ROW,&
                                              BLACS_GRID_SQUARE
@@ -497,8 +498,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Creates the machine architecture section
-!> \author  Christiane Pousa Ribeiro
+!> \param section ...
+!> \param error ...
 !> \date    2011-08-15
+!> \author  Christiane Pousa Ribeiro
 ! *****************************************************************************
   SUBROUTINE create_march_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -632,8 +635,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Creates the dbcsr section for configuring DBCSR
-!> \author  Urban Borstnik
+!> \param section ...
+!> \param error ...
 !> \date    2011-04-05
+!> \author  Urban Borstnik
 ! *****************************************************************************
   SUBROUTINE create_dbcsr_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -652,7 +657,7 @@ CONTAINS
     CALL section_create(section,name="DBCSR",&
          description="Configuration options for the DBCSR library.",&
          n_keywords=1, n_subsections=0, repeats=.FALSE., required=.FALSE.,&
-         error=error)
+         citations=(/Borstnik2014/), error=error)
 
     NULLIFY (keyword)
 
@@ -830,8 +835,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Creates the dbcsr section for configuring FM
-!> \author  Florian Schiffmann
+!> \param section ...
+!> \param error ...
 !> \date    2011-04-05
+!> \author  Florian Schiffmann
 ! *****************************************************************************
   SUBROUTINE create_fm_section(section,error)
     TYPE(section_type), POINTER              :: section

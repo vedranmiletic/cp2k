@@ -96,7 +96,8 @@ MODULE cp2k_runs
                                              default_string_length,&
                                              dp
   USE library_tests,                   ONLY: lib_test
-  USE machine,                         ONLY: m_chdir,&
+  USE machine,                         ONLY: default_output_unit,&
+                                             m_chdir,&
                                              m_flush,&
                                              m_getcwd,&
                                              m_walltime
@@ -137,10 +138,12 @@ CONTAINS
 ! *****************************************************************************
 !> \brief performs an instance of a cp2k run
 !>      cp2k_run_OK == .TRUE. if everything went fine
+!> \param input_declaration ...
 !> \param input_file_name name of the file to be opened for input
-!> \param ouput_unit unit to which output should be written
-!> \param mpi_env the mpi environement for the run (the caller is
-!>                        responsible to get rid of it)
+!> \param output_unit unit to which output should be written
+!> \param mpi_comm ...
+!> \retval cp2k_run_OK ...
+!> \author Joost VandeVondele
 !> \note
 !>      para_env should be a valid communicator
 !>      output_unit should be writeable by at least the lowest rank of the mpi group
@@ -155,7 +158,6 @@ CONTAINS
 !>      above arguments. Ideally, anything that is called afterwards should be
 !>      able to run simultaneously / multithreaded / sequential / parallel / ...
 !>      and able to fail safe
-!> \author Joost VandeVondele
 ! *****************************************************************************
   RECURSIVE FUNCTION cp2k_run(input_declaration,input_file_name,output_unit,mpi_comm) RESULT(cp2k_run_OK)
     TYPE(section_type), POINTER              :: input_declaration
@@ -485,10 +487,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief performs a farming run that performs several independent cp2k_runs
+!> \param input_declaration ...
+!> \param root_section ...
+!> \param para_env ...
+!> \param error ...
+!> \author Joost VandeVondele
 !> \note
 !>      needs to be part of this module as the cp2k_run -> farming_run -> cp2k_run
 !>      calling style creates a hard circular dependency
-!> \author Joost VandeVondele
 ! *****************************************************************************
   RECURSIVE SUBROUTINE farming_run(input_declaration,root_section,para_env, error)
     TYPE(section_type), POINTER              :: input_declaration
@@ -835,6 +841,9 @@ CONTAINS
 
   CONTAINS
 ! *****************************************************************************
+!> \brief ...
+!> \param i ...
+! *****************************************************************************
     SUBROUTINE execute_job(i)
     INTEGER                                  :: i
 
@@ -920,7 +929,7 @@ CONTAINS
        ! remove the default keyword that ignores things outside the section
        CALL keyword_release(root_section%keywords(0)%keyword,error=error)
 
-       CALL section_describe_html(root_section,"InputReference",0,6,error=error)
+       CALL section_describe_html(root_section,"InputReference",0,default_output_unit,error=error)
 
        CALL open_file(unit_number=unit_nr,file_name="index.html",&
             file_action="WRITE", file_status="REPLACE")
@@ -1059,6 +1068,9 @@ CONTAINS
   END SUBROUTINE write_cp2k_html_manual
 
 ! *****************************************************************************
+!> \brief ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE write_xml_file(error)
 
     TYPE(cp_error_type), INTENT(INOUT)       :: error
@@ -1142,15 +1154,16 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief runs the given input
+!> \param input_declaration ...
 !> \param input_file_path the path of the input file
 !> \param output_file_path path of the output file (to which it is appended)
-!>        if it is "__STD_OUT__" the unit 6 is used
+!>        if it is "__STD_OUT__" the default_output_unit is used
+!> \param ierr will return a number different from 0 if there was an error
 !> \param mpi_comm the mpi communicator to be used for this environment
 !>        it will not be freed
-!> \param ierr will return a number different from 0 if there was an error
+!> \author fawzi
 !> \note
 !>      moved here because of circular dependencies
-!> \author fawzi
 ! *****************************************************************************
   SUBROUTINE run_input(input_declaration,input_file_path,output_file_path,ierr,mpi_comm)
     TYPE(section_type), POINTER              :: input_declaration
@@ -1177,7 +1190,7 @@ CONTAINS
     END IF
     IF (para_env%mepos==para_env%source) THEN
        IF (output_file_path=="__STD_OUT__") THEN
-          unit_nr=6
+          unit_nr=default_output_unit
        ELSE
           CALL open_file(file_name=output_file_path,file_status="UNKNOWN",&
                file_action="WRITE", file_position="APPEND",&

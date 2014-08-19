@@ -107,7 +107,6 @@ How to compile CP2K code
        calculations.  The Fortran compiler must use an appended
        underscore for linking C subroutines.
      * USE __CUDA_PROFILING to turn on Nvidia Tools Extensions.
-     * Consult cuda_tools/README for more information.
 
  2i) Machine architecture abstraction support (optional, under development):
      * Use the __HWLOC or __LIBNUMA to compile with hwloc or libnuma support
@@ -129,10 +128,11 @@ How to compile CP2K code
      * Consult machine/README for more information.
 
  2k) Library of exchange-correlation functionals libxc (optional, v2.0.1):
-     * The version 2.0.1 (ONLY this one) of libxc needs to be downloaded
+     * The version 2.0.1 (or later) of libxc needs to be downloaded
        (http://www.tddft.org/programs/octopus/wiki/index.php/Libxc) and installed.
        During the installation, the directory $(LIBXC_DIR)/lib is created.
      * Add -D__LIBXC2 to DFLAGS and -L$(LIBXC_DIR)/lib -lxc to LIBS.
+     * Add -D__LIBXC2 to DFLAGS and -L$(LIBXC_DIR)/lib -lxcf90 -lxc to LIBS for version 2.2.0.
 
  2l) Library ELPA for the solution of the eigenvalue problem
      * One version of ELPA need to be downloaded (http://elpa.rzg.mpg.de/software or directly
@@ -215,6 +215,9 @@ How to compile CP2K code
                           unreadable (reverts to f77 style mpif.h includes)
      -D__NO_IPI_DRIVER disables the socket interface in case of troubles compiling 
                        on systems that do not support POSIX sockets
+     -D__HAS_NO_SHARED_GLIBC should be defined on systems where a shared glibc is
+                       not available at runtime for some reason e.g. on HPC systems
+                       where some filesystems are not available on the compute nodes
 
  3c) CP2K currently assumes Fortran2003 compliance, even though few features are used.
      Explicitly required, are full ISO_C_BINDING support, rank remapping, procedure pointers.

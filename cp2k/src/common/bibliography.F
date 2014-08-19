@@ -69,19 +69,20 @@ MODULE bibliography
        Putrino2002, Sebastiani2001, Weber2009, Tran2013, Golze2013,    &
        Tuckerman1992,  Zhao1994, Tozer1996, Goedecker2004,             &
        Khaliullin2013, Hutter2014, Bengtsson1999, Kantorovich2008,     &
-       Kantorovich2008a, Wellendorff2012
+       Kantorovich2008a, Wellendorff2012, Niklasson2014, Borstnik2014, &
+       QUIP_ref
 
 CONTAINS
 
 ! *****************************************************************************
 !> \brief adds references that can later be cited / printed using the key
+!> \par History
+!>      08.2007 created [Joost VandeVondele]
 !> \note
 !>     - note that the ISI record is fixed format (line length limited and the
 !>       first 3 characters can indicate record type)
 !>     - please add DOI whenever available, this will result in a clickable
 !>       link in the input reference manual.
-!> \par History
-!>      08.2007 created [Joost VandeVondele]
 ! *****************************************************************************
   SUBROUTINE add_all_references()
 
@@ -150,6 +151,15 @@ CONTAINS
          "UT ISI:A1986C899400011",&
          "ER"),&
          DOI="10.1103/PhysRevB.33.7983")
+
+    CALL add_reference(key=QUIP_ref, ISI_record=s2a(&
+         "AU QUIP", &
+         "TI libAtoms/QUIP libraries from http://www.libatoms.org, please cite",&
+         "   web site and references for appropriate potential invoked",&
+         "SO web site", &
+         "PY 2014", &
+         "ER"),&
+         DOI="")
 
     CALL add_reference(key=VandenCic2006, ISI_record=s2a(&
          "AU Vanden-Eijnden, E",&
@@ -2620,6 +2630,49 @@ CONTAINS
          "DI 10.1103/PhysRevB.78.094305",&
          "ER"),&
          DOI="10.1103/PhysRevB.78.094305")
+
+    CALL add_reference(key=Niklasson2014, ISI_record=s2a(&
+         "PT J",&
+         "AU Rubensson, E.",&
+         "AU Niklasson, A.",&
+         "TI Interior Eigenvalues from Density Matrix Expansions in Quantum",&
+         "    Mechanical Molecular Dynamics",&
+         "SO SIAM Journal on Scientific Computing",&
+         "PD MAR",&
+         "PY 2014",&
+         "VL 36",&
+         "IS 2",&
+         "BP B147",&
+         "EP B170",&
+         "DI 10.1137/130911585",&
+         "ER" ),&
+         DOI="10.1137/130911585")
+
+    CALL add_reference(key=Borstnik2014, ISI_record=s2a(&
+         "PT J",&
+         "AU Borstnik, U",&
+         "   VandeVondele, J",&
+         "   Weber, V",&
+         "   Hutter, J",&
+         "AF Borstnik, Urban",&
+         "   VandeVondele, Joost",&
+         "   Weber, Valery",&
+         "   Hutter, Juerg",&
+         "TI Sparse matrix multiplication: The distributed block-compressed sparse",&
+         "   row library",&
+         "SO PARALLEL COMPUTING",&
+         "SN 0167-8191",&
+         "EI 1872-7336",&
+         "PD MAY",&
+         "PY 2014",&
+         "VL 40",&
+         "IS 5-6",&
+         "BP 47",&
+         "EP 58",&
+         "DI 10.1016/j.parco.2014.03.012",&
+         "UT WOS:000338614300001",&
+         "ER"),&
+         DOI="10.1016/j.parco.2014.03.012")
 
   END SUBROUTINE add_all_references
 

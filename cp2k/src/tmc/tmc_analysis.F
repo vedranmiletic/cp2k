@@ -79,10 +79,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates a new para environment for tmc analysis
-!> \param input global environment
+!> \param tmc_ana_section ...
 !> \param tmc_ana TMC analysis environment
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param input global environment UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE tmc_read_ana_input(tmc_ana_section, tmc_ana, error)
@@ -217,6 +218,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief initialize all the necessarry analysis structures
+!> \param ana_env ...
 !> \param nr_dim dimension of the pos, frc etc. array
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -293,9 +295,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief print analysis restart file
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE analysis_restart_print(ana_env, error)
@@ -395,9 +398,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief read analysis restart file
-!> \param 
+!> \param ana_env ...
+!> \param elem ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE analysis_restart_read(ana_env, elem, error)
@@ -495,13 +500,15 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief call all the necessarry analysis routines
-!         analysis the previous element with the weight of the different 
+!>         analysis the previous element with the weight of the different 
 !>        configuration numbers
 !>        and stores the actual in the structur % last_elem
 !>        afterwards the previous configuration can be deallocated (outside)
-!> \param 
+!> \param elem ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE do_tmc_analysis(elem, ana_env, error)
@@ -628,9 +635,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief call all the necessarry analysis printing routines
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE finalize_tmc_analysis(ana_env, error)
@@ -674,10 +682,15 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief read the files and analyze the configurations
-!> \param elem temporary element for writing in 
-!>        (need the correct dimension in pos)
+!> \param start_id ...
+!> \param end_id ...
+!> \param dir_ind ...
+!> \param ana_env ...
+!> \param tmc_params ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param elem temporary element for writing in 
+!>        (need the correct dimension in pos) UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \author Mandes 03.2013
 ! *****************************************************************************
   SUBROUTINE analyze_file_configurations(start_id, end_id, dir_ind, &
@@ -768,9 +781,13 @@ CONTAINS
 ! *****************************************************************************
 !> \brief calculates the density in rectantangulares 
 !>        defined by the number of bins in each direction
-!> \param 
+!> \param elem ...
+!> \param weight ...
+!> \param atoms ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE calc_density_3d(elem, weight, atoms, ana_env, error)
@@ -941,9 +958,10 @@ CONTAINS
 ! *****************************************************************************
 !> \brief print the density in rectantangulares 
 !>        defined by the number of bins in each direction
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE print_density_3d(ana_env, error)
@@ -1055,9 +1073,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief init radial distribution function structures
-!> \param
+!> \param ana_pair_correl ...
+!> \param atoms ...
+!> \param cell ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE ana_pair_correl_init(ana_pair_correl, atoms, cell, error)
@@ -1134,9 +1155,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief calculates the radial distribution function  
-!> \param 
+!> \param elem ...
+!> \param weight ...
+!> \param atoms ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE calc_paircorrelation(elem, weight, atoms, ana_env, error)
@@ -1153,6 +1178,7 @@ CONTAINS
     INTEGER                                  :: handle, i, ind, j, pair_ind
     LOGICAL                                  :: failure
     REAL(KIND=dp)                            :: dist
+    REAL(KIND=dp), DIMENSION(3)              :: cell_size
 
     failure = .FALSE.
     CPPrecondition(ASSOCIATED(elem),cp_failure_level,routineP,error,failure)
@@ -1190,16 +1216,19 @@ CONTAINS
       END DO second_elem_loop
     END DO first_elem_loop
     ana_env%pair_correl%conf_counter = ana_env%pair_correl%conf_counter + weight
-
+    CALL get_cell(cell=ana_env%cell, abc=cell_size)
+    ana_env%pair_correl%sum_box_scale = ana_env%pair_correl%sum_box_scale + &
+                                (elem%box_scale(:) * weight)
     ! end the timing
     CALL timestop(handle)
   END SUBROUTINE calc_paircorrelation
 
 ! *****************************************************************************
 !> \brief print the radial distribution function for each pair of atoms 
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE print_paircorrelation(ana_env, error)
@@ -1212,7 +1241,7 @@ CONTAINS
     CHARACTER(LEN=default_path_length)       :: file_name
     INTEGER                                  :: bin, file_ptr, handle, pair
     LOGICAL                                  :: failure
-    REAL(KIND=dp)                            :: vol, voldr
+    REAL(KIND=dp)                            :: aver_box_scale(3), vol, voldr
     REAL(KIND=dp), DIMENSION(3)              :: cell_size
 
     failure = .FALSE.
@@ -1223,8 +1252,11 @@ CONTAINS
     ! start the timing
     CALL timeset(routineN,handle)
 
-    CALL get_cell(cell=ana_env%cell, abc=cell_size)    
-    vol = cell_size(1)*cell_size(2)*cell_size(3)
+    CALL get_cell(cell=ana_env%cell, abc=cell_size)
+    aver_box_scale(:) = ana_env%pair_correl%sum_box_scale(:) / ana_env%pair_correl%conf_counter
+    vol = (cell_size(1)*aver_box_scale(1))*&
+          (cell_size(2)*aver_box_scale(2))*&
+          (cell_size(3)*aver_box_scale(3))
 
     DO pair=1, SIZE(ana_env%pair_correl%pairs)
       file_name = expand_file_name_temp(TRIM(ana_env%out_file_prefix)//&
@@ -1247,10 +1279,9 @@ CONTAINS
       DO bin=1, ana_env%pair_correl%nr_bins
         voldr = 4.0/3.0* PI* ana_env%pair_correl%step_lenght**3 * &
                   (REAL(bin,KIND=dp)**3-REAL(bin-1,KIND=dp)**3)
-        WRITE(file_ptr,*) (bin-0.5)*ana_env%pair_correl%step_lenght*au2a , &
-                    ana_env%pair_correl%g_r(pair,bin)/&
-                    ((ana_env%pair_correl%pairs(pair)%pair_count/vol)*&
-                    voldr*ana_env%pair_correl%conf_counter)
+      WRITE(file_ptr,*) (bin-0.5)*ana_env%pair_correl%step_lenght*au2a , &
+                    (ana_env%pair_correl%g_r(pair,bin)/ana_env%pair_correl%conf_counter)/&
+                    (voldr*ana_env%pair_correl%pairs(pair)%pair_count/vol)
       END DO
       CALL close_file(unit_number=file_ptr)
 
@@ -1258,9 +1289,8 @@ CONTAINS
         WRITE(*,*)"TMC|ANALYSIS_G_R_"//&
           TRIM(ana_env%pair_correl%pairs(pair)%f_n)//"_"//&
           TRIM(ana_env%pair_correl%pairs(pair)%s_n)//"_X= ",&
-          SUM(ana_env%pair_correl%g_r(pair,:)/&
-             ((ana_env%pair_correl%pairs(pair)%pair_count/vol)*&
-              voldr*ana_env%pair_correl%conf_counter))
+          SUM(ana_env%pair_correl%g_r(pair,:)/ana_env%pair_correl%conf_counter/&
+             voldr*ana_env%pair_correl%pairs(pair)%pair_count/vol)
     END DO
 
     ! end the timing
@@ -1273,9 +1303,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief init radial distribution function structures
-!> \param
+!> \param ana_dip_mom ...
+!> \param atoms ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE ana_dipole_moment_init(ana_dip_mom, atoms, error)
@@ -1318,9 +1350,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief calculates the classical cell dipole moment
-!> \param 
+!> \param elem ...
+!> \param weight ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE calc_dipole_moment(elem, weight, ana_env, error)
@@ -1378,9 +1413,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prints final values for classical cell dipole moment calculation
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE print_dipole_moment(ana_env, error)
@@ -1397,9 +1433,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief calculates the dipole moment analysis
-!> \param 
+!> \param elem ...
+!> \param weight ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 03.2013
 ! *****************************************************************************
   SUBROUTINE calc_dipole_analysis(elem, weight, ana_env, error)
@@ -1470,9 +1509,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prints the actual dipole moment analysis (trajectories)
-!> \param 
+!> \param elem ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 03.2013
 ! *****************************************************************************
   SUBROUTINE print_act_dipole_analysis(elem, ana_env, error)
@@ -1578,9 +1619,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prints the dipole moment analysis
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 03.2013
 ! *****************************************************************************
   SUBROUTINE print_dipole_analysis(ana_env, error)
@@ -1670,9 +1712,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief calculates the mean square displacement
-!> \param 
+!> \param elem ...
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE calc_displacement(elem, ana_env, error)
@@ -1734,9 +1778,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prints final values for the displacement calculations
-!> \param 
+!> \param ana_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 02.2013
 ! *****************************************************************************
   SUBROUTINE print_average_displacement(ana_env, error)

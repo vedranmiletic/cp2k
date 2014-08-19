@@ -55,6 +55,7 @@ MODULE qs_environment
                                              cp_print_key_finished_output,&
                                              cp_print_key_should_output,&
                                              cp_print_key_unit_nr
+  USE cp_para_env,                     ONLY: cp_para_env_retain
   USE cp_para_types,                   ONLY: cp_para_env_type
   USE cp_subsys_methods,               ONLY: cp_subsys_read_colvar
   USE cp_subsys_types,                 ONLY: cp_subsys_create,&
@@ -97,12 +98,12 @@ MODULE qs_environment
   USE hfx_ri_methods,                  ONLY: hfx_ri_env_create
   USE hfx_types,                       ONLY: hfx_create
   USE input_constants,                 ONLY: &
-       do_et_becke, do_et_ddapc, do_method_am1, do_method_dftb, &
-       do_method_gapw, do_method_gapw_xc, do_method_gpw, do_method_lrigpw, &
-       do_method_mndo, do_method_mndod, do_method_ofgpw, do_method_pdg, &
-       do_method_pm3, do_method_pm6, do_method_pnnl, do_method_rm1, &
-       do_method_scptb, do_multipole_none, general_roks, rel_none, &
-       rel_trans_atom, restart_guess, use_aux_fit_basis_set, &
+       dispersion_d3, do_et_becke, do_et_ddapc, do_method_am1, &
+       do_method_dftb, do_method_gapw, do_method_gapw_xc, do_method_gpw, &
+       do_method_lrigpw, do_method_mndo, do_method_mndod, do_method_ofgpw, &
+       do_method_pdg, do_method_pm3, do_method_pm6, do_method_pnnl, &
+       do_method_rm1, do_method_scptb, do_multipole_none, general_roks, &
+       rel_none, rel_trans_atom, restart_guess, use_aux_fit_basis_set, &
        use_lri_basis_set, vdw_pairpot_dftd3, xc_vdw_fun_none, &
        xc_vdw_fun_nonloc, xc_vdw_fun_pairpot
   USE input_section_types,             ONLY: section_vals_get,&
@@ -111,6 +112,12 @@ MODULE qs_environment
                                              section_vals_val_get
   USE kg_environment,                  ONLY: kg_env_create
   USE kinds,                           ONLY: dp
+  USE kpoint_methods,                  ONLY: kpoint_env_initialize,&
+                                             kpoint_initialize,&
+                                             kpoint_initialize_mos
+  USE kpoint_types,                    ONLY: kpoint_type,&
+                                             read_kpoint_section,&
+                                             write_kpoint_info
   USE lri_environment_types,           ONLY: lri_basis_init,&
                                              lri_env_create,&
                                              lri_environment_type
@@ -210,6 +217,18 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Read the input and the database files for the setup of the
 !>      QUICKSTEP environment.
+!> \param qs_env ...
+!> \param root_section ...
+!> \param subsys ...
+!> \param cell ...
+!> \param cell_ref ...
+!> \param qmmm ...
+!> \param qmmm_periodic ...
+!> \param qmmm_env_qm ...
+!> \param force_env_section ...
+!> \param subsys_section ...
+!> \param use_motion_section ...
+!> \param error ...
 !> \author Creation (22.05.2000,MK)
 ! *****************************************************************************
   SUBROUTINE qs_init(qs_env,root_section,subsys,cell,cell_ref,qmmm,&
@@ -233,7 +252,7 @@ CONTAINS
 
     INTEGER                                  :: ikind, istat, method_id, &
                                                 natom, nkind
-    LOGICAL :: do_et, do_exx, do_hfx, do_hfx_ri, failure, harris_flag, &
+    LOGICAL :: do_et, do_exx, do_hfx, do_hfx_ri, do_kp, failure, harris_flag, &
       mp2_present, my_qmmm, my_qmmm_multipole, my_qmmm_periodic, use_ref_cell
     REAL(kind=dp), DIMENSION(3)              :: abc
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rtmat
@@ -246,6 +265,7 @@ CONTAINS
     TYPE(cp_subsys_type), POINTER            :: my_subsys
     TYPE(ga_environment_type), POINTER       :: ga_env
     TYPE(gto_basis_set_type), POINTER        :: lri_basis_set, orb_basis_set
+    TYPE(kpoint_type), POINTER               :: kpoints
     TYPE(lri_environment_type), POINTER      :: lri_env
     TYPE(mol_kind_new_list_type), POINTER    :: mol_kinds
     TYPE(mol_new_list_type), POINTER         :: mols
@@ -258,13 +278,13 @@ CONTAINS
       POINTER                                :: particle_set
     TYPE(rel_control_type), POINTER          :: rel_control
     TYPE(section_vals_type), POINTER :: cell_section, colvar_section, &
-      et_coupling_section, harris_section, hfx_ri_section, hfx_section, &
-      kind_section, mp2_section
+      dft_section, et_coupling_section, harris_section, hfx_ri_section, &
+      hfx_section, kind_section, kpoint_section, mp2_section
 
     failure = .FALSE.
-    NULLIFY(my_subsys, molecule_kind_set, molecule_set, atomic_kind_set,&
+    NULLIFY(my_subsys,molecule_kind_set,molecule_set,atomic_kind_set,&
          particle_set,atomic_kinds,particles,mols,mol_kinds,my_cell,my_cell_ref,&
-         cell_section, harris_section, kind_section, ga_env)
+         cell_section,harris_section,kind_section,kpoint_section,dft_section,ga_env)
     para_env=>qs_env%para_env
     IF (.NOT.ASSOCIATED(subsys_section)) THEN
        subsys_section => section_vals_get_subs_vals(force_env_section,"SUBSYS",error=error)
@@ -362,6 +382,22 @@ CONTAINS
     IF (.NOT.PRESENT(cell_ref))    CALL cell_release(my_cell_ref,error=error)
     IF (.NOT.PRESENT(subsys)) CALL cp_subsys_release(my_subsys,error=error)
 
+    ! kpoints
+    CALL get_qs_env(qs_env=qs_env,kpoints=kpoints,error=error)
+    kpoint_section => section_vals_get_subs_vals(qs_env%input,"DFT%KPOINTS",error=error)
+    CALL read_kpoint_section(kpoints,kpoint_section,error)
+    particle_set => my_subsys%particles%els
+    CALL kpoint_initialize(kpoints, particle_set, qs_env%cell, error)
+    dft_section => section_vals_get_subs_vals(qs_env%input,"DFT",error=error)
+    CALL write_kpoint_info(kpoints,dft_section,error)
+    kpoints%para_env => para_env
+    CALL cp_para_env_retain(para_env, error)
+    CALL get_qs_env(qs_env=qs_env,do_kpoints=do_kp,error=error)
+    IF(do_kp) THEN
+       CALL kpoint_env_initialize(kpoints, error)
+       CALL kpoint_initialize_mos(kpoints, qs_env%mos, error)
+    END IF
+
     do_hfx =.FALSE.
     hfx_section => section_vals_get_subs_vals(qs_env%input,"DFT%XC%HF",error=error)
     CALL section_vals_get(hfx_section,explicit=do_hfx,error=error)
@@ -409,7 +445,7 @@ CONTAINS
     IF (do_et) CALL et_coupling_create(qs_env%et_coupling,error=error)
 
     ! lri env
-    IF (method_id == do_method_lrigpw) THEN
+    IF (method_id == do_method_lrigpw.OR.qs_env%dft_control%qs_control%lri_optbas) THEN
        NULLIFY(lri_env)
        CALL lri_env_create(lri_env,error)
        ! initialize the basic basis sets (orb and ri)
@@ -431,6 +467,10 @@ CONTAINS
           END IF
        END DO
        CALL lri_basis_init(lri_env,atomic_kind_set,error)
+       !
+       ! check for debug
+       CALL section_vals_val_get(force_env_section,"DFT%QS%DEBUG_LRI_INTEGRALS",&
+                                 l_val=lri_env%debug,error=error)
        !
        CALL set_qs_env (qs_env,lri_env=lri_env,error=error)
     END IF
@@ -463,6 +503,16 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Initialize the qs environment (subsys)
+!> \param qs_env ...
+!> \param subsys ...
+!> \param cell ...
+!> \param cell_ref ...
+!> \param use_ref_cell ...
+!> \param root_section ...
+!> \param subsys_section ...
+!> \param qmmm ...
+!> \param harris ...
+!> \param error ...
 !> \author Creation (22.05.2000,MK)
 ! *****************************************************************************
   SUBROUTINE qs_init_subsys(qs_env,subsys,cell,cell_ref,use_ref_cell,&
@@ -693,7 +743,7 @@ CONTAINS
        lmax_sphere = 2*maxlgto
        dft_control%qs_control%gapw_control%lmax_sphere= lmax_sphere
     END IF
-    IF(dft_control%qs_control%method == "LRIGPW") THEN
+    IF(dft_control%qs_control%method == "LRIGPW".OR.dft_control%qs_control%lri_optbas) THEN
        CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
             maxlgto=maxlgto_lri,basis_set_id=use_lri_basis_set)
        !take maxlgto from lri basis if larger (usually) 
@@ -969,6 +1019,64 @@ CONTAINS
          dispersion_env%type = xc_vdw_fun_none
       END IF
       CALL set_qs_env(qs_env, dispersion_env=dispersion_env, error=error)
+    ELSE IF (dft_control%qs_control%method_id == do_method_dftb) THEN
+      ALLOCATE(dispersion_env,STAT=istat)
+      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
+      ! set general defaults
+      dispersion_env%doabc=.FALSE.
+      dispersion_env%c9cnst=.FALSE.
+      dispersion_env%lrc=.FALSE.
+      dispersion_env%verbose=.FALSE.
+      NULLIFY(dispersion_env%c6ab,dispersion_env%maxci,dispersion_env%r0ab,dispersion_env%rcov,&
+              dispersion_env%r2r4,dispersion_env%cn,dispersion_env%cnkind,dispersion_env%cnlist)
+      NULLIFY(dispersion_env%q_mesh,dispersion_env%kernel,dispersion_env%d2phi_dk2,&
+              dispersion_env%d2y_dx2,dispersion_env%dftd_section)
+      NULLIFY(dispersion_env%sab_vdw,dispersion_env%sab_cn)
+      IF (dftb_control%dispersion .AND. dftb_control%dispersion_type == dispersion_d3) THEN
+         dispersion_env%type = xc_vdw_fun_pairpot
+         dispersion_env%pp_type = vdw_pairpot_dftd3
+         dispersion_env%eps_cn = dftb_control%epscn
+         dispersion_env%s6  = dftb_control%sd3(1)
+         dispersion_env%sr6 = dftb_control%sd3(2)
+         dispersion_env%s8  = dftb_control%sd3(3)
+         dispersion_env%rc_disp = dftb_control%rcdisp
+         dispersion_env%exp_pre = 0._dp
+         dispersion_env%scaling = 0._dp
+         dispersion_env%parameter_file_name = dftb_control%dispersion_parameter_file
+         CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,para_env=para_env,error=error)
+      ELSE
+         dispersion_env%type = xc_vdw_fun_none
+      END IF
+      CALL set_qs_env(qs_env, dispersion_env=dispersion_env, error=error)
+    ELSE IF(dft_control%qs_control%semi_empirical) THEN
+      ALLOCATE(dispersion_env,STAT=istat)
+      CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
+      ! set general defaults
+      dispersion_env%doabc=.FALSE.
+      dispersion_env%c9cnst=.FALSE.
+      dispersion_env%lrc=.FALSE.
+      dispersion_env%verbose=.FALSE.
+      NULLIFY(dispersion_env%c6ab,dispersion_env%maxci,dispersion_env%r0ab,dispersion_env%rcov,&
+              dispersion_env%r2r4,dispersion_env%cn,dispersion_env%cnkind,dispersion_env%cnlist)
+      NULLIFY(dispersion_env%q_mesh,dispersion_env%kernel,dispersion_env%d2phi_dk2,&
+              dispersion_env%d2y_dx2,dispersion_env%dftd_section)
+      NULLIFY(dispersion_env%sab_vdw,dispersion_env%sab_cn)
+      IF (se_control%dispersion) THEN
+         dispersion_env%type = xc_vdw_fun_pairpot
+         dispersion_env%pp_type = vdw_pairpot_dftd3
+         dispersion_env%eps_cn = se_control%epscn
+         dispersion_env%s6  = se_control%sd3(1)
+         dispersion_env%sr6 = se_control%sd3(2)
+         dispersion_env%s8  = se_control%sd3(3)
+         dispersion_env%rc_disp = se_control%rcdisp
+         dispersion_env%exp_pre = 0._dp
+         dispersion_env%scaling = 0._dp
+         dispersion_env%parameter_file_name = se_control%dispersion_parameter_file
+         CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,para_env=para_env,error=error)
+      ELSE
+         dispersion_env%type = xc_vdw_fun_none
+      END IF
+      CALL set_qs_env(qs_env, dispersion_env=dispersion_env, error=error)
     END IF
 
     !   *** Allocate the MO data types ***
@@ -1215,6 +1323,7 @@ CONTAINS
         dft_control%qs_control%method_id == do_method_gapw_xc .OR. &
         dft_control%qs_control%method_id == do_method_lrigpw .OR. &
         dft_control%qs_control%method_id == do_method_scptb .OR. &
+        dft_control%qs_control%method_id == do_method_dftb .OR. &
         dft_control%qs_control%method_id == do_method_ofgpw) THEN
       CALL get_qs_env(qs_env,dispersion_env=dispersion_env,error=error)
       CALL qs_write_dispersion(qs_env,dispersion_env,error=error)
@@ -1276,6 +1385,10 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Write the total number of kinds, atoms, etc. to the logical unit
 !>      number lunit.
+!> \param atomic_kind_set ...
+!> \param particle_set ...
+!> \param force_env_section ...
+!> \param error ...
 !> \author Creation (06.10.2000)
 ! *****************************************************************************
   SUBROUTINE write_total_numbers(atomic_kind_set,particle_set,force_env_section,error)

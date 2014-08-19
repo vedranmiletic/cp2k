@@ -110,7 +110,7 @@ MODULE qs_scf_post_gpw
   USE qs_collocate_density,            ONLY: calculate_rho_elec,&
                                              calculate_wavefunction
   USE qs_conductivity,                 ONLY: optical_conductivity
-  USE qs_core_energies,                ONLY: calculate_ecore
+  USE qs_core_energies,                ONLY: calculate_ptrace
   USE qs_electric_field_gradient,      ONLY: qs_efg_calc
   USE qs_energy_types,                 ONLY: qs_energy_type
   USE qs_environment_types,            ONLY: get_qs_env,&
@@ -130,12 +130,12 @@ MODULE qs_scf_post_gpw
                                              qs_loc_env_init,&
                                              qs_loc_init,&
                                              retain_history
+  USE qs_mo_io,                        ONLY: write_mo_set
   USE qs_mo_methods,                   ONLY: calculate_subspace_eigenvalues,&
                                              make_mo_eig
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type,&
-                                             set_mo_occupation,&
-                                             write_mo_set
+                                             set_mo_occupation
   USE qs_moments,                      ONLY: qs_moment_berry_phase,&
                                              qs_moment_locop
   USE qs_ot_eigensolver,               ONLY: ot_eigensolver
@@ -174,21 +174,22 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief collects possible post - scf calculations and prints info / computes properties.
+!> \param dft_section ...
 !> \param scf_env the scf_env whose info should be written out
 !> \param qs_env the qs_env in which the qs_env lives
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \par History
+!>      02.2003 created [fawzi]
+!>      10.2004 moved here from qs_scf [Joost VandeVondele]
+!>              started splitting out different subroutines
+!> \author fawzi
 !> \note
 !>      this function changes mo_eigenvectors and mo_eigenvalues, depending on the print keys.
 !>      In particular, MO_CUBES causes the MOs to be rotated to make them eigenstates of the KS
 !>      matrix, and mo_eigenvalues is updated accordingly. This can, for unconverged wavefunctions,
 !>      change afterwards slightly the forces (hence small numerical differences between MD
 !>      with and without the debug print level). Ideally this should not happen...
-!> \par History
-!>      02.2003 created [fawzi]
-!>      10.2004 moved here from qs_scf [Joost VandeVondele]
-!>              started splitting out different subroutines
-!> \author fawzi
 ! *****************************************************************************
   SUBROUTINE scf_post_calculation_gpw(dft_section, scf_env,qs_env, error)
 
@@ -206,7 +207,7 @@ CONTAINS
     LOGICAL :: check_write, compute_lumos, do_homo, do_mo_cubes, do_stm, &
       do_wannier_cubes, failure, has_homo, has_lumo, loc_explicit, &
       loc_print_explicit, my_localized_wfn, p_loc, p_loc_homo, p_loc_lumo
-    REAL(dp)                                 :: e_kin, e_kinAtt
+    REAL(dp)                                 :: e_kin
     REAL(KIND=dp)                            :: gap, homo_lumo(2,2)
     REAL(KIND=dp), DIMENSION(:), POINTER     :: mo_eigenvalues
     TYPE(admm_type), POINTER                 :: admm_env
@@ -214,13 +215,14 @@ CONTAINS
       POINTER                                :: atomic_kind_set
     TYPE(cp_1d_r_p_type), DIMENSION(:), &
       POINTER                                :: occupied_evals, &
-                                                unoccupied_evals
+                                                unoccupied_evals, &
+                                                unoccupied_evals_stm
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
-      POINTER                                :: kinetic_m, ks_rmpv, &
-                                                ks_rmpv_aux_fit, matrix_s, &
+      POINTER                                :: kinetic_m, ks_rmpv, matrix_s, &
                                                 mo_derivs
     TYPE(cp_fm_p_type), DIMENSION(:), POINTER :: homo_localized, &
-      lumo_localized, lumo_ptr, mo_loc_history, occupied_orbs, unoccupied_orbs
+      lumo_localized, lumo_ptr, mo_loc_history, occupied_orbs, &
+      unoccupied_orbs, unoccupied_orbs_stm
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
@@ -255,8 +257,8 @@ CONTAINS
     failure=.FALSE.
     my_localized_wfn = .FALSE.
     NULLIFY(admm_env, dft_control, pw_env, auxbas_pw_pool, pw_pools, mos, rho, &
-         mo_coeff, ks_rmpv, ks_rmpv_aux_fit, matrix_s, qs_loc_env_homo,qs_loc_env_lumo, scf_control, &
-         unoccupied_orbs, mo_eigenvalues, unoccupied_evals, molecule_set, mo_derivs,&
+         mo_coeff, ks_rmpv, matrix_s, qs_loc_env_homo,qs_loc_env_lumo, scf_control, &
+         unoccupied_orbs,unoccupied_orbs_stm,  mo_eigenvalues, unoccupied_evals, unoccupied_evals_stm,  molecule_set, mo_derivs,&
          tddfpt_control, subsys, particles, input, print_key, kinetic_m,marked_states)
     NULLIFY(homo_localized, lumo_localized,lumo_ptr)
 
@@ -287,14 +289,7 @@ CONTAINS
           CALL get_qs_env(qs_env,kinetic=kinetic_m,error=error)
           CPPrecondition(ASSOCIATED(kinetic_m),cp_failure_level,routineP,error,failure)
           CPPrecondition(ASSOCIATED(kinetic_m(1)%matrix),cp_failure_level,routineP,error,failure)
-          e_kin=0.0_dp
-          DO ispin=1,dft_control%nspins
-             CALL calculate_ecore(h=kinetic_m(1)%matrix,&
-                  p=rho%rho_ao(ispin)%matrix,&
-                  ecore=e_kinAtt,&
-                  error=error)
-             e_kin=e_kin+e_kinAtt
-          END DO
+          CALL calculate_ptrace(kinetic_m,rho%rho_ao,e_kin,dft_control%nspins,error)
           unit_nr = cp_print_key_unit_nr(logger,input,"DFT%PRINT%KINETIC_ENERGY",&
                extension=".Log",error=error)
           IF (unit_nr>0) THEN
@@ -399,9 +394,9 @@ CONTAINS
           ELSE
             CALL  get_qs_env(qs_env,mo_derivs=mo_derivs,error=error)
             IF(dft_control%do_admm) THEN
-              CALL get_qs_env(qs_env,admm_env=admm_env, matrix_ks_aux_fit=ks_rmpv_aux_fit, error=error)
+              CALL get_qs_env(qs_env,admm_env=admm_env, error=error)
               CALL make_mo_eig(mos,dft_control%nspins,ks_rmpv,scf_control,mo_derivs,admm_env=admm_env,&
-                 ks_aux=ks_rmpv_aux_fit,error=error)
+                 error=error)
             ELSE
                CALL make_mo_eig(mos,dft_control%nspins,ks_rmpv,scf_control,mo_derivs,error=error)
             END IF
@@ -478,9 +473,37 @@ CONTAINS
        ENDIF
 
        ! Gets the lumos, and eigenvalues for the lumos, and localize them if requested
-       nlumo = MAX(nlumo, nlumo_stm,nlumo_tddft)
-       compute_lumos=(do_mo_cubes .OR.dft_control%do_tddfpt_calculation .OR. do_stm ) .AND. nlumo .NE. 0
+       nlumo = MAX(nlumo, nlumo_tddft)
+       compute_lumos=(do_mo_cubes .OR.dft_control%do_tddfpt_calculation ) .AND. nlumo .NE. 0
        compute_lumos=compute_lumos.OR.p_loc_lumo
+
+       DO ispin = 1,dft_control%nspins
+         CALL get_mo_set(mo_set=mos(ispin)%mo_set, homo=homo, nmo=nmo)
+         compute_lumos=compute_lumos.AND.homo==nmo
+       END DO
+
+       IF(do_mo_cubes .AND. .NOT. compute_lumos) THEN
+
+         nlumo=section_get_ival(dft_section,"PRINT%MO_CUBES%NLUMO",error=error)
+         DO ispin = 1,dft_control%nspins
+
+            CALL get_mo_set(mo_set=mos(ispin)%mo_set, homo=homo, nmo=nmo, eigenvalues=mo_eigenvalues)
+            IF(nlumo > nmo-homo) THEN
+         ! this case not yet implemented
+            ELSE
+              IF (output_unit>0) WRITE(output_unit,*) " "
+              IF (output_unit>0) WRITE(output_unit,*) " Lowest eigenvalues of the unoccupied subspace spin ",ispin
+              IF (output_unit>0) WRITE(output_unit,*) "---------------------------------------------"
+              IF (output_unit>0) WRITE(output_unit,'(4(1X,1F16.8))') mo_eigenvalues(homo+1:homo+nlumo)
+
+             ! Prints the cube files of UNOCCUPIED ORBITALS
+             CALL get_mo_set(mo_set=mos(ispin)%mo_set,mo_coeff=mo_coeff) 
+             CALL qs_scf_post_unocc_cubes(input, dft_section, dft_control, logger, qs_env,&
+                  mo_coeff, wf_g, wf_r, particles, nlumo, homo, ispin, lumo=homo+1, error=error)
+            END IF
+         END DO
+
+       END IF
 
        IF (compute_lumos) THEN
           check_write=.TRUE.
@@ -507,7 +530,7 @@ CONTAINS
                 IF(p_loc_lumo.AND.nlumo.NE.-1)nlumos=MIN(nlumo,nlumos)
                 ! Prints the cube files of UNOCCUPIED ORBITALS
                 CALL qs_scf_post_unocc_cubes(input, dft_section, dft_control, logger, qs_env,&
-                     unoccupied_orbs, wf_g, wf_r, particles, nlumos, homo, ispin, error)
+                     unoccupied_orbs(ispin)%matrix, wf_g, wf_r, particles, nlumos, homo, ispin, error=error)
              END IF
           END DO
 
@@ -563,11 +586,6 @@ CONTAINS
        IF (p_loc_lumo)  CALL qs_loc_env_destroy(qs_loc_env_lumo, error=error)
 
 
-       !stm images
-       IF(do_stm)THEN
-         CALL th_stm_image(qs_env, stm_section, particles, unoccupied_orbs, &
-                         unoccupied_evals, error)
-       END IF
 
        ! generate a mix of wfns, and write to a restart
        CALL wfn_mix(mos, particle_set, dft_section, atomic_kind_set, &
@@ -600,6 +618,29 @@ CONTAINS
           END IF
        ENDIF
 
+       !stm images
+       IF(do_stm)THEN
+         ALLOCATE(unoccupied_orbs_stm(dft_control%nspins),STAT=istat)
+         CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
+         ALLOCATE(unoccupied_evals_stm(dft_control%nspins),STAT=istat)
+         CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
+         CALL  make_lumo(qs_env,scf_env,unoccupied_orbs_stm,unoccupied_evals_stm,nlumo_stm,nlumos,error=error)
+
+         CALL th_stm_image(qs_env, stm_section, particles, unoccupied_orbs_stm, &
+                         unoccupied_evals_stm, error=error)
+
+         DO ispin=1,dft_control%nspins
+             DEALLOCATE(unoccupied_evals_stm(ispin)%array,stat=istat)
+             CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
+             CALL cp_fm_release(unoccupied_orbs_stm(ispin)%matrix,error=error)
+         ENDDO
+         DEALLOCATE(unoccupied_evals_stm,stat=istat)
+         CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
+         DEALLOCATE(unoccupied_orbs_stm,stat=istat)
+         CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
+       END IF
+
+
        ! Print coherent X-ray diffraction spectrum
        CALL qs_scf_post_xray(input, dft_section, logger, qs_env, output_unit, error)
 
@@ -629,6 +670,20 @@ CONTAINS
   ! *****************************************************************************
   !> \brief Performs localization of the orbitals
   ! *****************************************************************************
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param qs_loc_env ...
+!> \param loc_section ...
+!> \param mo_local ...
+!> \param wf_r ...
+!> \param wf_g ...
+!> \param particles ...
+!> \param coeff ...
+!> \param evals ...
+!> \param marked_states ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE get_localization_info(qs_env,qs_loc_env,loc_section,mo_local,&
                                    wf_r, wf_g,particles,coeff,evals,marked_states,error)
 
@@ -764,6 +819,16 @@ CONTAINS
   ! *****************************************************************************
   !> \brief Gets the lumos, and eigenvalues for the lumos
   ! *****************************************************************************
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param scf_env ...
+!> \param unoccupied_orbs ...
+!> \param unoccupied_evals ...
+!> \param nlumo ...
+!> \param nlumos ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE make_lumo(qs_env,scf_env,unoccupied_orbs,unoccupied_evals,nlumo,nlumos,error)
 
     TYPE(qs_environment_type), POINTER       :: qs_env
@@ -784,8 +849,7 @@ CONTAINS
     LOGICAL                                  :: failure
     TYPE(admm_type), POINTER                 :: admm_env
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
-      POINTER                                :: ks_rmpv, ks_rmpv_aux_fit, &
-                                                matrix_s
+      POINTER                                :: ks_rmpv, matrix_s
     TYPE(cp_fm_struct_type), POINTER         :: fm_struct_tmp
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     TYPE(cp_logger_type), POINTER            :: logger
@@ -797,10 +861,10 @@ CONTAINS
 
     CALL timeset(routineN,handle)
 
-    NULLIFY(mos,ks_rmpv,scf_control,dft_control,admm_env,ks_rmpv_aux_fit)
+    NULLIFY(mos,ks_rmpv,scf_control,dft_control,admm_env)
     CALL get_qs_env(qs_env,mos=mos,matrix_ks=ks_rmpv,scf_control=scf_control,&
                     dft_control=dft_control,matrix_s=matrix_s,admm_env=admm_env,&
-                    matrix_ks_aux_fit=ks_rmpv_aux_fit, error=error)
+                    error=error)
     logger => cp_error_get_logger(error)
     output_unit= cp_logger_get_default_io_unit(logger)
 
@@ -813,8 +877,8 @@ CONTAINS
        IF (output_unit>0) WRITE(output_unit,FMT='(1X,A)') "-----------------------------------------------------"
        CALL get_mo_set(mo_set=mos(ispin)%mo_set,mo_coeff=mo_coeff,homo=homo,nao=nao,nmo=nmo)
        CALL cp_fm_get_info(mo_coeff, nrow_global=n,error=error)
-       nlumos=MAX(1,MIN(nlumo,nao-homo))
-       IF (nlumo==-1) nlumos=nao-homo
+       nlumos=MAX(1,MIN(nlumo,nao-nmo))
+       IF (nlumo==-1) nlumos=nao-nmo
        ALLOCATE(unoccupied_evals(ispin)%array(nlumos),stat=istat)
        CPPrecondition(istat==0,cp_failure_level,routineP,error,failure)
        CALL cp_fm_struct_create(fm_struct_tmp,para_env=qs_env%para_env,context=qs_env%blacs_env, &
@@ -836,7 +900,7 @@ CONTAINS
        ! ** If we do ADMM, we add have to modify the kohn-sham matrix
        IF( dft_control%do_admm ) THEN
          CALL admm_correct_for_eigenvalues(ispin, admm_env, ks_rmpv(ispin)%matrix, &
-                                           ks_rmpv_aux_fit(ispin)%matrix, error)
+                                           error)
        END IF
 
        CALL ot_eigensolver(matrix_h=ks_rmpv(ispin)%matrix,matrix_s=matrix_s(1)%matrix, &
@@ -855,7 +919,7 @@ CONTAINS
        ! ** If we do ADMM, we restore the original kohn-sham matrix
        IF( dft_control%do_admm ) THEN
          CALL admm_uncorrect_for_eigenvalues(ispin, admm_env, ks_rmpv(ispin)%matrix, &
-                                             ks_rmpv_aux_fit(ispin)%matrix, error)
+                                             error)
        END IF
 
     END DO
@@ -865,7 +929,11 @@ CONTAINS
   END SUBROUTINE make_lumo
 ! *****************************************************************************
 !> \brief Computes and Prints Atomic Charges with several methods
+!> \param input ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param rho ...
+!> \param matrix_s ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -922,6 +990,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints the Dipole (using localized charges)
+!> \param input ...
+!> \param dft_control ...
+!> \param qs_loc_env ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -1075,7 +1147,18 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints the Cube Files for MO
+!> \param input ...
+!> \param dft_section ...
+!> \param dft_control ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param mo_coeff ...
+!> \param wf_g ...
+!> \param wf_r ...
+!> \param particles ...
+!> \param homo ...
+!> \param ispin ...
+!> \param basis_set_id ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1150,28 +1233,41 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints the Cube Files for MO
+!> \param input ...
+!> \param dft_section ...
+!> \param dft_control ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param unoccupied_orbs ...
+!> \param wf_g ...
+!> \param wf_r ...
+!> \param particles ...
+!> \param nlumos ...
+!> \param homo ...
+!> \param ispin ...
+!> \param lumo ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
   SUBROUTINE qs_scf_post_unocc_cubes(input, dft_section, dft_control, logger, qs_env,&
-       unoccupied_orbs, wf_g, wf_r, particles, nlumos, homo, ispin, error)
+       unoccupied_orbs, wf_g, wf_r, particles, nlumos, homo, ispin, lumo, error)
     TYPE(section_vals_type), POINTER         :: input, dft_section
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(qs_environment_type), POINTER       :: qs_env
-    TYPE(cp_fm_p_type), DIMENSION(:), &
-      POINTER                                :: unoccupied_orbs
+    TYPE(cp_fm_type), POINTER                :: unoccupied_orbs
     TYPE(pw_p_type)                          :: wf_g, wf_r
     TYPE(particle_list_type), POINTER        :: particles
     INTEGER, INTENT(IN)                      :: nlumos, homo, ispin
+    INTEGER, INTENT(IN), OPTIONAL            :: lumo
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'qs_scf_post_unocc_cubes', &
       routineP = moduleN//':'//routineN
 
     CHARACTER(LEN=default_path_length)       :: filename, my_pos_cube, title
-    INTEGER                                  :: handle, ivector, unit_nr
+    INTEGER                                  :: handle, ifirst, index_mo, &
+                                                ivector, unit_nr
     LOGICAL                                  :: append_cube
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
@@ -1190,19 +1286,28 @@ CONTAINS
        IF(append_cube) THEN
           my_pos_cube="APPEND"
        END IF
-       DO ivector=1,nlumos
+       ifirst = 1
+       IF(PRESENT(lumo)) ifirst = lumo
+       DO ivector=ifirst, ifirst+nlumos-1
           CALL get_qs_env(qs_env=qs_env,&
                           atomic_kind_set=atomic_kind_set,&
                           cell=cell,&
                           particle_set=particle_set,&
                           pw_env=pw_env,&
                           error=error)
-          CALL calculate_wavefunction(unoccupied_orbs(ispin)%matrix, ivector, wf_r, wf_g, atomic_kind_set,&
+          CALL calculate_wavefunction(unoccupied_orbs, ivector, wf_r, wf_g, atomic_kind_set,&
                cell, dft_control, particle_set, pw_env, error=error)
-          WRITE(filename,'(a4,I5.5,a1,I1.1)')"WFN_",homo+ivector,"_",ispin
+
+          IF(ifirst==1) THEN
+             index_mo =  homo+ivector
+          ELSE
+             index_mo =  ivector
+          END IF
+          WRITE(filename,'(a4,I5.5,a1,I1.1)')"WFN_",index_mo,"_",ispin
+             
           unit_nr=cp_print_key_unit_nr(logger,input,"DFT%PRINT%MO_CUBES",extension=".cube",&
                middle_name=TRIM(filename),file_position=my_pos_cube,log_filename=.FALSE.,error=error)
-          WRITE(title,*) "WAVEFUNCTION ",homo+ivector," spin ",ispin," i.e. LUMO + ",ivector-1
+          WRITE(title,*) "WAVEFUNCTION ",index_mo," spin ",ispin," i.e. LUMO + ",ifirst+ivector-2
           CALL cp_pw_to_cube(wf_r%pw, unit_nr, title, particles=particles,&
                stride=section_get_ivals(dft_section,"PRINT%MO_CUBES%STRIDE",error=error),&
                error=error)
@@ -1216,7 +1321,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints the optical conductivity
+!> \param input ...
+!> \param dft_section ...
+!> \param dft_control ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param unoccupied_orbs ...
+!> \param unoccupied_evals ...
+!> \param output_unit ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1293,7 +1405,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints electric moments
+!> \param input ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param output_unit ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1363,7 +1478,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints the X-ray diffraction spectrum.
+!> \param input ...
+!> \param dft_section ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param output_unit ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1427,6 +1546,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes and prints Electric Field Gradient
+!> \param input ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -1459,7 +1580,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes the Electron Transfer Coupling matrix element
+!> \param input ...
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param dft_control ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1515,6 +1638,10 @@ CONTAINS
 ! *****************************************************************************
 !> \brief compute the electron localization function 
 !>
+!> \param input ...
+!> \param logger ...
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>      2012-07 Created [MI]
 ! *****************************************************************************
@@ -1623,6 +1750,13 @@ CONTAINS
   END SUBROUTINE qs_scf_post_elf
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param elf_r ...
+!> \param rho_cutoff ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE qs_elf_calc(qs_env, elf_r, rho_cutoff, error)
 
     TYPE(qs_environment_type), POINTER       :: qs_env
@@ -1790,6 +1924,8 @@ CONTAINS
 !> \brief computes the condition number of the overlap matrix and
 !>      prints the value of the total energy. This is needed
 !>      for BASIS_MOLOPT optimizations
+!> \param input ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -1868,6 +2004,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Dumps EPR
+!> \param input ...
+!> \param logger ...
 !> \param qs_env the qs_env in which the qs_env lives
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -1900,6 +2038,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Geminal optimizer
+!> \param input ...
+!> \param logger ...
+!> \param qs_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1948,6 +2089,7 @@ CONTAINS
 !>        SCF. Can write MO-dependent and MO free results (needed for call from
 !>        the linear scaling code)
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param scf_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -1979,6 +2121,7 @@ CONTAINS
 !>        Writes only MO dependent results. Split is necessary as ls_scf does not
 !>        provide MO's
 !> \param qs_env the qs_env in which the qs_env lives
+!> \param scf_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 ! *****************************************************************************
@@ -2003,8 +2146,7 @@ CONTAINS
       POINTER                                :: atomic_kind_set
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
-      POINTER                                :: ks_rmpv, ks_rmpv_aux_fit, &
-                                                matrix_s
+      POINTER                                :: ks_rmpv, matrix_s
     TYPE(cp_dbcsr_type), POINTER             :: mo_coeff_deriv
     TYPE(cp_fm_type), POINTER                :: mo_coeff
     TYPE(cp_logger_type), POINTER            :: logger
@@ -2041,7 +2183,7 @@ CONTAINS
     IF (.NOT. failure) THEN
        CALL get_qs_env(qs_env,dft_control=dft_control,molecule_set=molecule_set, &
             mos=mos,atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
-            rho=rho,matrix_ks=ks_rmpv,matrix_ks_aux_fit=ks_rmpv_aux_fit,admm_env=admm_env,&
+            rho=rho,matrix_ks=ks_rmpv,admm_env=admm_env,&
             scf_control=scf_control,matrix_s=matrix_s,&
             input=input,cell=cell,subsys=subsys,error=error)
        CALL cp_subsys_get(subsys,particles=particles,error=error)
@@ -2067,7 +2209,7 @@ CONTAINS
                 ! ** If we do ADMM, we add have to modify the kohn-sham matrix
                 IF( dft_control%do_admm ) THEN
                   CALL admm_correct_for_eigenvalues(ispin, admm_env, ks_rmpv(ispin)%matrix, &
-                                                    ks_rmpv_aux_fit(ispin)%matrix, error)
+                                                     error)
                 END IF
                 IF(PRESENT(scf_env))THEN
                    IF (scf_env%method == ot_method_nr) THEN
@@ -2097,7 +2239,7 @@ CONTAINS
                 ! ** If we do ADMM, we add have to modify the kohn-sham matrix
                 IF( dft_control%do_admm ) THEN
                   CALL admm_uncorrect_for_eigenvalues(ispin, admm_env, ks_rmpv(ispin)%matrix, &
-                                                      ks_rmpv_aux_fit(ispin)%matrix, error)
+                                                       error)
                 END IF
 
              END DO
@@ -2194,8 +2336,7 @@ CONTAINS
     TYPE(atomic_kind_type), POINTER          :: atomic_kind
     TYPE(cell_type), POINTER                 :: cell
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
-      POINTER                                :: ks_rmpv, ks_rmpv_aux_fit, &
-                                                matrix_s
+      POINTER                                :: ks_rmpv, matrix_s
     TYPE(cp_logger_type), POINTER            :: logger
     TYPE(cp_para_env_type), POINTER          :: para_env
     TYPE(cp_subsys_type), POINTER            :: subsys
@@ -2223,7 +2364,7 @@ CONTAINS
     failure=.FALSE.
     NULLIFY(cell, dft_control, pw_env, auxbas_pw_pool, pw_pools, &
          atomic_kind_set, particle_set, rho, ks_rmpv, matrix_s, &
-         dft_section, xc_section, input, particles, subsys, ks_rmpv_aux_fit)
+         dft_section, xc_section, input, particles, subsys)
 
     logger => cp_error_get_logger(error)
     output_unit= cp_logger_get_default_io_unit(logger)
@@ -2232,7 +2373,7 @@ CONTAINS
     IF (.NOT. failure) THEN
        CALL get_qs_env(qs_env,dft_control=dft_control, &
             atomic_kind_set=atomic_kind_set,particle_set=particle_set,&
-            rho=rho,matrix_ks=ks_rmpv,matrix_ks_aux_fit=ks_rmpv_aux_fit,&
+            rho=rho,matrix_ks=ks_rmpv,&
             matrix_s=matrix_s,input=input,cell=cell,subsys=subsys,para_env=para_env,error=error)
        dft_section => section_vals_get_subs_vals(input,"DFT",error=error)
        CALL cp_subsys_get(subsys,particles=particles,error=error)
@@ -2741,6 +2882,15 @@ CONTAINS
 
   END SUBROUTINE write_mo_free_results
 
+! *****************************************************************************
+!> \brief ...
+!> \param ca ...
+!> \param a ...
+!> \param cb ...
+!> \param b ...
+!> \param l ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE project_function_a(ca,a,cb,b,l,error)
     ! project function cb on ca
     REAL(KIND=dp), DIMENSION(:), INTENT(OUT) :: ca
@@ -2775,6 +2925,15 @@ CONTAINS
 
   END SUBROUTINE project_function_a
 
+! *****************************************************************************
+!> \brief ...
+!> \param ca ...
+!> \param a ...
+!> \param bfun ...
+!> \param grid_atom ...
+!> \param l ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE project_function_b(ca,a,bfun,grid_atom,l,error)
     ! project function f on ca
     REAL(KIND=dp), DIMENSION(:), INTENT(OUT) :: ca

@@ -115,7 +115,7 @@ END SUBROUTINE ep_qs_release
 !> \param ep_qs_env the env to modify
 !> \param dH_coeffs_ptr new coeffs, might be null, aquires ownership of
 !>        the pointer
-!> \param dS_coeffs the new coeffs, might be null, aquires ownership of
+!> \param dS_coeffs_ptr the new coeffs, might be null, aquires ownership of
 !>        the pointer
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling

@@ -26,10 +26,10 @@ MODULE graph_methods
                                              point_pbc
   USE kinds,                           ONLY: dp
   USE memory_utilities,                ONLY: reallocate
-  USE periodic_table,                  ONLY: nelem,&
+  USE periodic_table,                  ONLY: init_periodic_table,&
+                                             nelem,&
                                              ptable
-  USE physcon,                         ONLY: bohr,&
-                                             init_physcon
+  USE physcon,                         ONLY: bohr
   USE string_utilities,                ONLY: uppercase
 
   IMPLICIT NONE
@@ -43,6 +43,17 @@ MODULE graph_methods
 CONTAINS
 ! *****************************************************************************
 !> \brief Efficiently map the gaussians on the grid
+!> \param idim ...
+!> \param nn ...
+!> \param fes ...
+!> \param gauss ...
+!> \param ind ...
+!> \param ind0 ...
+!> \param nfes ...
+!> \param ndim ...
+!> \param ngauss ...
+!> \param ngrid ...
+!> \param iperd ...
 !> \par History
 !>      03.2006 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
@@ -91,13 +102,23 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Writes the FES on the file
+!> \param idim ...
+!> \param fes ...
+!> \param pos ...
+!> \param ndim ...
+!> \param ngrid ...
+!> \param dp_grid ...
+!> \param x0 ...
+!> \param ndw ...
+!> \param l_fes_int ...
+!> \param array ...
 !> \par History
 !>      03.2006 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
 !> \author Teodoro Laino
 ! *****************************************************************************
   RECURSIVE SUBROUTINE fes_write(idim, fes,  pos,  ndim, ngrid,&
-       & dp_grid, x0, ndw, l_fes_int, array)
+         dp_grid, x0, ndw, l_fes_int, array)
     INTEGER, INTENT(IN)                      :: idim
     REAL(KIND=dp), DIMENSION(:), POINTER     :: fes
     INTEGER, DIMENSION(:), POINTER           :: pos
@@ -120,10 +141,10 @@ CONTAINS
        IF(idim/=ndim-ndw+1) THEN
           IF (PRESENT(array)) THEN
              CALL fes_write(idim-1, fes,  pos,  ndim, ngrid, dp_grid,&
-                  & x0, ndw, l_fes_int, array)
+                    x0, ndw, l_fes_int, array)
           ELSE
              CALL fes_write(idim-1, fes,  pos,  ndim, ngrid, dp_grid,&
-                  & x0, ndw, l_fes_int)
+                    x0, ndw, l_fes_int)
           END IF
        ELSE
           IF (PRESENT(array)) THEN
@@ -167,6 +188,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Writes the FES on the file when stride is requested
+!> \param idim ...
+!> \param fes ...
+!> \param pos ...
+!> \param ndim ...
+!> \param ngrid ...
+!> \param dp_grid ...
+!> \param ndw ...
+!> \param l_fes_int ...
 !> \par History
 !>      03.2006 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
@@ -209,6 +238,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Finds minima of the FES
+!> \param fes ...
+!> \param ndim ...
+!> \param iperd ...
+!> \param ngrid ...
+!> \param dp_grid ...
+!> \param x0 ...
+!> \param ndw ...
 !> \par History
 !>      06.2009 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
@@ -235,8 +271,8 @@ CONTAINS
 
     ntrust  = ngrid/10
     ntrials = PRODUCT (ngrid)
-    WRITE(6,'(A,10I6)',ADVANCE="no")"FES| Trust hyper-radius ",ntrust
-    WRITE(6,'(A,10F12.6)')" which is equivalent to: ",ntrust*dp_grid
+    WRITE(*,'(A,10I6)',ADVANCE="no")"FES| Trust hyper-radius ",ntrust
+    WRITE(*,'(A,10F12.6)')" which is equivalent to: ",ntrust*dp_grid
 
     ALLOCATE(xx(ndim),dx(ndim),pos0(ndim),rnd(ndim),pos(ndim))
     ALLOCATE(history(ndim,ntrials))
@@ -309,13 +345,13 @@ CONTAINS
        IF (do_save) THEN
           pnt = point_no_pbc(pos,ngrid,ndim)
           xx  = x0+dp_grid*(pos-1)
-          WRITE(6,'(A,5F12.6)',ADVANCE="NO") "FES| Minimum found (",(xx(id),id=ndim,ndim-ndw+1,-1)
-          WRITE(6,'(A,F12.6,A,I6)')" ). FES value = ",-fes(pnt)," Hartree. Number of Iter: ",iter
+          WRITE(*,'(A,5F12.6)',ADVANCE="NO") "FES| Minimum found (",(xx(id),id=ndim,ndim-ndw+1,-1)
+          WRITE(*,'(A,F12.6,A,I6)')" ). FES value = ",-fes(pnt)," Hartree. Number of Iter: ",iter
           nacc = nacc + 1
           history (:,nacc) = pos
        END IF
     END DO Trials
-    WRITE(6,'(A,I6,A)') "FES| Number of Minimum found: ",nacc,"."
+    WRITE(*,'(A,I6,A)') "FES| Number of Minimum found: ",nacc,"."
 
     DEALLOCATE(xx,dx,pos0,rnd,pos)
     DEALLOCATE(history)
@@ -324,6 +360,15 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Finds path between two points (a) and (b)
+!> \param fes ...
+!> \param ndim ...
+!> \param ngrid ...
+!> \param dp_grid ...
+!> \param iperd ...
+!> \param x0 ...
+!> \param ndw ...
+!> \param mep_input_data ...
+!> \param l_int ...
 !> \par History
 !>      12.2010 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
@@ -513,6 +558,16 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Dump FES with a GAUSSIAN cube format - Useful for multidimensional FES
+!> \param idim ...
+!> \param fes ...
+!> \param pos ...
+!> \param ndim ...
+!> \param ngrid ...
+!> \param dp_grid ...
+!> \param x0 ...
+!> \param ndw ...
+!> \param l_fes_int ...
+!> \param file ...
 !> \par History
 !>      12.2013 created [tlaino]
 !>      teodoro.laino .at. gmail.com 
@@ -539,10 +594,10 @@ CONTAINS
     REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: rho, rhot
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: xat
 
-    CALL init_physcon
+    CALL init_periodic_table()
     IF (ndw .GT. 3) THEN
-       WRITE(6,*) 
-       WRITE(6,*) 'ERROR: GAUSSIAN format can only handle FES on 3 CV !'
+       WRITE(*,*)
+       WRITE(*,*) 'ERROR: GAUSSIAN format can only handle FES on 3 CV !'
        STOP
     END IF
 
@@ -555,9 +610,9 @@ CONTAINS
     rt(2)=-(cell(2,2)/2._dp)
     rt(3)=-(cell(3,3)/2._dp)
 
-    WRITE(6,*) 'Dumping GAUSSIAN CUBE format' 
-    WRITE(6,*) 'Cell vectors'
-    WRITE(6,*) 
+    WRITE(*,*) 'Dumping GAUSSIAN CUBE format'
+    WRITE(*,*) 'Cell vectors'
+    WRITE(*,*)
 
     residual = 0.0d0
     DO ix=1,3
@@ -567,16 +622,16 @@ CONTAINS
     END DO
 
     IF (residual .GT. 1.0d-6) THEN
-       WRITE(6,*) 
-       WRITE(6,*) 'ERROR: this progam can only handle orthogonal cells'
-       WRITE(6,*) ' with vectors pointing in the X, Y and Z directions'
+       WRITE(*,*)
+       WRITE(*,*) 'ERROR: this progam can only handle orthogonal cells'
+       WRITE(*,*) ' with vectors pointing in the X, Y and Z directions'
        STOP
     END IF
 
-    WRITE(6,*) 
-    WRITE(6,*) 'Cube grid mesh: ',ngrid(1),'x',ngrid(2),'x',ngrid(3)
-    WRITE(6,*) 'Origin in:',rt
-    WRITE(6,*) 
+    WRITE(*,*)
+    WRITE(*,*) 'Cube grid mesh: ',ngrid(1),'x',ngrid(2),'x',ngrid(3)
+    WRITE(*,*) 'Origin in:',rt
+    WRITE(*,*)
     
     DO ix=1,3
        dr(ix)=cell(ix,ix)/REAL(ngrid(ix),KIND=dp)
@@ -585,7 +640,7 @@ CONTAINS
     np = ngrid(1) * ngrid(2) * ngrid(3)    
     ALLOCATE(rho(np), rhot(np))
     CALL fes_write(idim, fes,  pos,  ndim, ngrid, dp_grid, x0, ndw, l_fes_int, rho)
-    WRITE(6,*) 'Internal FES transfer completed!'
+    WRITE(*,*) 'Internal FES transfer completed!'
 
     ! translate cell
     DO ix=1,3
@@ -641,7 +696,7 @@ CONTAINS
           IF (TRIM(label)==TRIM(labelp)) EXIT
        END DO
        IF (i == nelem+1) THEN
-          WRITE(6,*)TRIM(label), "In line: ", line
+          WRITE(*,*)TRIM(label), "In line: ", line
           STOP "Element not recognized!"
        END IF
        izat(natoms)=i

@@ -41,7 +41,6 @@ MODULE rt_propagator_init
                                              qs_environment_type
   USE qs_ks_methods,                   ONLY: qs_ks_update_qs_env
   USE qs_ks_types,                     ONLY: qs_ks_env_type
-  USE qs_rho_types,                    ONLY: qs_rho_type
   USE rt_make_propagators,             ONLY: compute_exponential,&
                                              compute_exponential_sparse,&
                                              propagate_arnoldi
@@ -75,6 +74,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prepares the initial matrices for the propagators
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -122,7 +123,6 @@ CONTAINS
        ELSE
           CALL get_maxabs_eigval(rtp,qs_env,error)
        END IF
-    ELSE
     END IF
     IF(rtp_control%mat_exp==do_pade.AND.rtp%linear_scaling) THEN
        ! get a useful output_unit
@@ -184,6 +184,9 @@ CONTAINS
 !> \brief gets an estimate for the 2-norm of KS (diagnaliztion of KS) and
 !>        calculates the order and number of squaring steps for Taylor or
 !>        Pade matrix exponential
+!> \param rtp ...
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -316,6 +319,9 @@ CONTAINS
 !> \brief gets an estimate for the 2-norm of KS (diagnaliztion of KS) and
 !>        calculates the order and number of squaring steps for Taylor or
 !>        Pade matrix exponential. Based on the full matrix code.
+!> \param rtp ...
+!> \param qs_env ...
+!> \param error ...
 !> \author Samuel Andermatt (02.14)
 ! *****************************************************************************
 
@@ -392,6 +398,8 @@ CONTAINS
 ! *****************************************************************************
 !> \brief computs all matrices needed to initialize emd (S_derivs, SinvH,
 !>        SinvB and forces)
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -423,6 +431,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Computes the density matrix starting from the kohn-sham matrix
+!> \param qs_env ...
+!> \param rtp ...
+!> \param error ...
 !> \author Samuel Andermatt (03.14)
 ! *****************************************************************************
 
@@ -442,9 +453,8 @@ CONTAINS
     TYPE(cp_dbcsr_p_type), DIMENSION(:), &
       POINTER                                :: matrix_ks, matrix_s, rho_old
     TYPE(cp_dbcsr_type), POINTER             :: S_half, S_minus_half, tmp
-    TYPE(qs_rho_type), POINTER               :: rho
 
-    CALL get_qs_env(qs_env,rho=rho,matrix_ks=matrix_ks,matrix_s=matrix_s,error=error)
+    CALL get_qs_env(qs_env,matrix_ks=matrix_ks,matrix_s=matrix_s,error=error)
     CALL get_rtp(rtp=rtp,rho_old=rho_old,error=error)
     !The inverse of S will be calculated twice in the first step, but preventing that would make things more complicated
     NULLIFY(S_half)

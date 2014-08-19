@@ -83,6 +83,11 @@ MODULE cp_control_utils
 CONTAINS
 
 ! *****************************************************************************
+!> \brief ...
+!> \param dft_control ...
+!> \param dft_section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE read_dft_control(dft_control,dft_section, error)
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(section_vals_type), POINTER         :: dft_section
@@ -353,6 +358,12 @@ CPSourceFileRef,&
   END SUBROUTINE read_dft_control
 
 ! *****************************************************************************
+!> \brief ...
+!> \param qs_control ...
+!> \param dft_section ...
+!> \param para_env ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE read_mgrid_section(qs_control,dft_section,para_env,error)
 
     TYPE(qs_control_type), INTENT(INOUT)     :: qs_control
@@ -461,6 +472,11 @@ CPSourceFileRef,&
   END SUBROUTINE read_mgrid_section
 
 ! *****************************************************************************
+!> \brief ...
+!> \param qs_control ...
+!> \param qs_section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE read_qs_section(qs_control,qs_section,error)
 
     TYPE(qs_control_type), INTENT(INOUT)     :: qs_control
@@ -482,14 +498,15 @@ CPSourceFileRef,&
     TYPE(keyword_type), POINTER              :: keyword
     TYPE(section_type), POINTER              :: section
     TYPE(section_vals_type), POINTER :: becke_restraint_section, &
-      ddapc_restraint_section, dftb_parameter, dftb_section, mull_section, &
-      s2_restraint_section, scptb_section, se_section
+      ddapc_restraint_section, dftb_parameter, dftb_section, &
+      lri_optbas_section, mull_section, s2_restraint_section, scptb_section, &
+      se_section
 
     CALL timeset(routineN,handle)
 
     failure=.FALSE.
     was_present = .FALSE.
-    NULLIFY(mull_section,se_section,dftb_section,scptb_section)
+    NULLIFY(mull_section,se_section,dftb_section,scptb_section,lri_optbas_section)
 
     mull_section => section_vals_get_subs_vals(qs_section,"MULLIKEN_RESTRAINT", error=error)
     ddapc_restraint_section => section_vals_get_subs_vals(qs_section,"DDAPC_RESTRAINT", error=error)
@@ -499,6 +516,7 @@ CPSourceFileRef,&
     dftb_section => section_vals_get_subs_vals(qs_section,"DFTB", error=error)
     dftb_parameter => section_vals_get_subs_vals(dftb_section,"PARAMETER", error=error)
     scptb_section => section_vals_get_subs_vals(qs_section,"SCPTB", error=error)
+    lri_optbas_section => section_vals_get_subs_vals(qs_section,"OPTIMIZE_LRI_BASIS",error=error)
 
     ! Setup all defaults values and overwrite input parameters
     ! EPS_DEFAULT should set the target accuracy in the total energy (~per electron) or a closely related value
@@ -842,6 +860,20 @@ CPSourceFileRef,&
                error=error,failure=failure)
        END SELECT
 
+       ! dispersion pair potentials
+       CALL section_vals_val_get(se_section,"DISPERSION",&
+            l_val=qs_control%se_control%dispersion,error=error)
+       CALL section_vals_val_get(se_section,"DISPERSION_RADIUS",&
+            r_val=qs_control%se_control%rcdisp,error=error)
+       CALL section_vals_val_get(se_section,"COORDINATION_CUTOFF",&
+            r_val=qs_control%se_control%epscn,error=error)
+       CALL section_vals_val_get(se_section,"D3_SCALING",r_vals=scal,error=error)
+            qs_control%se_control%sd3(1) = scal(1)
+            qs_control%se_control%sd3(2) = scal(2)
+            qs_control%se_control%sd3(3) = scal(3)
+       CALL section_vals_val_get(se_section,"DISPERSION_PARAMETER_FILE",&
+            c_val=qs_control%se_control%dispersion_parameter_file,error=error)
+
        ! Stop the execution for non-implemented features
        IF (qs_control%se_control%periodic_type==do_se_lr_ewald_r3) THEN
           CALL cp_unimplemented_error(fromWhere=routineP, &
@@ -869,6 +901,8 @@ CPSourceFileRef,&
             l_val=qs_control%dftb_control%self_consistent,error=error)
        CALL section_vals_val_get(dftb_section,"DISPERSION",&
             l_val=qs_control%dftb_control%dispersion,error=error)
+       CALL section_vals_val_get(dftb_section,"DIAGONAL_DFTB3",&
+            l_val=qs_control%dftb_control%dftb3_diagonal,error=error)
        CALL section_vals_val_get(dftb_section,"HB_SR_GAMMA",&
             l_val=qs_control%dftb_control%hb_sr_damp,error=error)
        CALL section_vals_val_get(dftb_section,"EPS_DISP",&
@@ -879,6 +913,8 @@ CPSourceFileRef,&
             c_val=qs_control%dftb_control%sk_file_path,error=error)
        CALL section_vals_val_get(dftb_parameter,"PARAM_FILE_NAME",&
             c_val=qs_control%dftb_control%sk_file_list,error=error)
+       CALL section_vals_val_get(dftb_parameter,"HB_SR_PARAM",&
+            r_val=qs_control%dftb_control%hb_sr_para,error=error)
        CALL section_vals_val_get(dftb_parameter,"SK_FILE",n_rep_val=n_var,&
             error=error)
        ALLOCATE(qs_control%dftb_control%sk_pair_list(3,n_var),STAT=stat)
@@ -888,8 +924,22 @@ CPSourceFileRef,&
                c_vals=clist,error=error)
           qs_control%dftb_control%sk_pair_list(1:3,k) = clist(1:3)
        END DO
+       ! Dispersion type
+       CALL section_vals_val_get(dftb_parameter,"DISPERSION_TYPE",&
+            i_val=qs_control%dftb_control%dispersion_type,error=error)
        CALL section_vals_val_get(dftb_parameter,"UFF_FORCE_FIELD",&
             c_val=qs_control%dftb_control%uff_force_field,error=error)
+       ! D3 Dispersion
+       CALL section_vals_val_get(dftb_parameter,"DISPERSION_RADIUS",&
+            r_val=qs_control%dftb_control%rcdisp,error=error)
+       CALL section_vals_val_get(dftb_parameter,"COORDINATION_CUTOFF",&
+            r_val=qs_control%dftb_control%epscn,error=error)
+       CALL section_vals_val_get(dftb_parameter,"D3_SCALING",r_vals=scal,error=error)
+            qs_control%dftb_control%sd3(1) = scal(1)
+            qs_control%dftb_control%sd3(2) = scal(2)
+            qs_control%dftb_control%sd3(3) = scal(3)
+       CALL section_vals_val_get(dftb_parameter,"DISPERSION_PARAMETER_FILE",&
+            c_val=qs_control%dftb_control%dispersion_parameter_file,error=error)
 
        IF (qs_control%dftb_control%dispersion)      CALL cite_reference(Zhechkov2005)
        IF (qs_control%dftb_control%self_consistent) CALL cite_reference(Elstner1998)
@@ -924,9 +974,17 @@ CPSourceFileRef,&
             l_val=qs_control%scptb_control%do_scc,error=error)
     END IF
 
+   ! Optimize LRI basis set
+    CALL section_vals_get(lri_optbas_section,explicit=qs_control%lri_optbas,error=error)
+
     CALL timestop(handle)
   END SUBROUTINE read_qs_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param t_control ...
+!> \param dft_section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE read_tddfpt_control(t_control,dft_section,error)
     TYPE(tddfpt_control_type)                :: t_control
@@ -968,6 +1026,9 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief Write the DFT control parameters to the output unit.
+!> \param dft_control ...
+!> \param dft_section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE write_dft_control(dft_control, dft_section, error)
     TYPE(dft_control_type), POINTER          :: dft_control
@@ -1101,6 +1162,9 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief Purpose: Write the QS control parameters to the output unit.
+!> \param qs_control ...
+!> \param dft_section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE write_qs_control(qs_control,dft_section,error)
     TYPE(qs_control_type), INTENT(IN)        :: qs_control
@@ -1301,6 +1365,7 @@ CPSourceFileRef,&
 !> \param xc_rho_smooth_id the id that represent the smoothing
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \retval res ...
 !> \par History
 !>      05.2002 created [fawzi]
 !> \author Fawzi Mohamed
@@ -1339,6 +1404,7 @@ CPSourceFileRef,&
 !> \param xc_deriv_method_id the id that represent the derivative method
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \retval res ...
 !> \par History
 !>      06.2002 created [fawzi]
 !> \author Fawzi Mohamed
@@ -1382,6 +1448,7 @@ CPSourceFileRef,&
 !>        routine
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \retval res ...
 !> \author Fawzi Mohamed
 ! *****************************************************************************
   FUNCTION xc_get_routine_label(xc_functional_routine_id,error) RESULT(res)
@@ -1412,11 +1479,15 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief reads the input parameters needed for ddapc.
+!> \param qs_control ...
+!> \param qs_section ...
+!> \param ddapc_restraint_section ...
+!> \param error ...
+!> \author fschiff
 !> \note
 !>      either reads DFT%QS%DDAPC_RESTRAINT or PROPERTIES%ET_coupling
 !>      if(qs_section is present the DFT part is read, if ddapc_restraint_section
 !>      is present ET_COUPLING is read. Avoid having both!!!
-!> \author fschiff
 ! *****************************************************************************
   SUBROUTINE read_ddapc_section(qs_control,qs_section,ddapc_restraint_section,error)
 
@@ -1531,6 +1602,9 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief reads the input parameters needed for evaluating a becke weight population constraint
+!> \param qs_control ...
+!> \param becke_section ...
+!> \param error ...
 !> \author fschiff
 ! *****************************************************************************
   SUBROUTINE read_becke_section(qs_control,becke_section,error)
@@ -1598,6 +1672,12 @@ CPSourceFileRef,&
                          "Need no or the same number of coeff as there are atoms.")
   END SUBROUTINE read_becke_section
 
+! *****************************************************************************
+!> \brief ...
+!> \param dft_control ...
+!> \param efield_section ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE read_efield_sections(dft_control,efield_section,error)
     TYPE(dft_control_type), POINTER          :: dft_control
     TYPE(section_vals_type), POINTER         :: efield_section
@@ -1670,6 +1750,9 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief reads the input parameters needed real time propagation
+!> \param dft_control ...
+!> \param rtp_section ...
+!> \param error ...
 !> \author fschiff
 ! *****************************************************************************
   SUBROUTINE read_rtp_section(dft_control,rtp_section,error)

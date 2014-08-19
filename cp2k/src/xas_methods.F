@@ -7,11 +7,14 @@
 !> \brief driver for the xas calculation and xas_scf for the tp method
 !> \par History
 !>      created 05.2005
+!>      replace overlap integral routine [07.2014,JGH]
 !> \author MI (05.2005)
 ! *****************************************************************************
 MODULE xas_methods
 
-  USE ai_overlap_new,                  ONLY: overlap
+  USE ai_contraction,                  ONLY: block_add,&
+                                             contraction
+  USE ai_overlap,                      ONLY: overlap_ab
   USE atomic_kind_types,               ONLY: atomic_kind_type,&
                                              get_atomic_kind
   USE basis_set_types,                 ONLY: &
@@ -86,11 +89,11 @@ MODULE xas_methods
                                              set_loc_wfn_lists
   USE qs_matrix_pools,                 ONLY: mpools_get,&
                                              qs_matrix_pools_type
+  USE qs_mo_io,                        ONLY: write_mo_set
   USE qs_mo_methods,                   ONLY: calculate_subspace_eigenvalues
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type,&
-                                             set_mo_set,&
-                                             write_mo_set
+                                             set_mo_set
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
   USE qs_operators_ao,                 ONLY: p_xyz_ao,&
                                              rRc_xyz_ao
@@ -135,8 +138,12 @@ CONTAINS
 !>      An scf optimization using the TP scheme or TD-DFT is used
 !>      to evaluate the spectral energies and oscillator strengths
 !> \param qs_env the qs_env, the xas_env lives in
+!> \param dft_control ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \par History
+!>      05.2005 created [MI]
+!> \author MI
 !> \note
 !>      the iteration counter is not finilized yet
 !>      only the transition potential approach is active
@@ -144,9 +151,6 @@ CONTAINS
 !>      it uses by default the berry phase approach
 !>      The number of states to be localized is xas_control%nexc_search
 !>      In general only the core states are needed
-!> \par History
-!>      05.2005 created [MI]
-!> \author MI
 ! *****************************************************************************
   SUBROUTINE xas(qs_env, dft_control, error)
 
@@ -581,6 +585,8 @@ CONTAINS
 !> \param xas_env the environment for XAS  calculations
 !> \param xas_control parameters for the xas calculation
 !> \param qs_env the qs_env, the xas_env lives in
+!> \param xas_section ...
+!> \param logger ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -1036,15 +1042,19 @@ CONTAINS
 !> \brief Calculate and write the spectrum relative to the core level excitation
 !>      of a specific atom. It works for TP approach, because of the definition
 !>      of the oscillator strengths as  matrix elements of the dipole operator
+!> \param xas_control ...
+!> \param xas_env ...
+!> \param qs_env ...
+!> \param xas_section ...
 !> \param iatom index of the excited atom
-!> \param iter iteration of the xas calculation
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
-!>      for the tddft calculation should be re-thought
+!> \param iter iteration of the xas calculation UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      03.2006 created [MI]
 !> \author MI
+!> \note
+!>      for the tddft calculation should be re-thought
 ! *****************************************************************************
   SUBROUTINE cls_calculate_spectrum(xas_control,xas_env,qs_env,xas_section,&
              iatom,error)
@@ -1159,17 +1169,23 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief write the spectrum for each atom in a different output file
-!> \param spectrum temporary variable contaning the spectrum for the actual atom
-!> \param xas_rootfname root of the filename where the spectrum is written
+!> \param sp_em ...
+!> \param sp_ab ...
+!> \param estate ...
+!> \param xas_section ...
 !> \param iatom index of the excited atom
-!> \param ionode logical assigning the i/o node
+!> \param lfomo ...
+!> \param length ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
-!>      the iteration counter is not finilized yet
+!> \param ionode logical assigning the i/o node UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param spectrum temporary variable contaning the spectrum for the actual atom UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param xas_rootfname root of the filename where the spectrum is written UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      05.2005 created [MI]
 !> \author MI
+!> \note
+!>      the iteration counter is not finilized yet
 ! *****************************************************************************
   SUBROUTINE xas_write(sp_em, sp_ab, estate, xas_section, iatom, &
              lfomo, length, error)
@@ -1247,11 +1263,16 @@ CONTAINS
 ! *****************************************************************************
 !> \brief write the cube files for a set of selected states
 !> \param xas_control provide number ant indexes of the states to be printed
-!> \param qs_en v
+!> \param qs_env ...
+!> \param xas_section ...
 !> \param mos mos from which the states to be printed are extracted
-!> \param iter iteration step (e.g. along an md)
+!> \param all_vectors ...
 !> \param iatom index of the atom that has been excited
-!> \param ionod e
+!> \param append_cube ...
+!> \param error ...
+!> \param ionod e UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param iter iteration step (e.g. along an md) UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param qs_en v UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      08.2005 created [MI]
 !> \author MI
@@ -1323,12 +1344,17 @@ CONTAINS
 !>               calculated for the basis functions
 !> \param mos wavefunctions coefficients
 !> \param excvec coefficients of the excited orbital
+!> \param all_vectors ...
+!> \param all_evals ...
 !> \param fm_work work space
 !> \param cell parameters for the simulation cell
-!> \param spectrum temporary variable contaning the spectrum for the actual atom
+!> \param sp_em ...
+!> \param sp_ab ...
 !> \param estate index of the excited state
+!> \param nstate ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param spectrum temporary variable contaning the spectrum for the actual atom UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      06.2005 created [MI]
 !> \author MI
@@ -1427,11 +1453,16 @@ CONTAINS
 !>               calculated for the basis functions
 !> \param mos wavefunctions coefficients
 !> \param excvec coefficients of the excited orbital
+!> \param all_vectors ...
+!> \param all_evals ...
 !> \param fm_work work space
-!> \param spectrum temporary variable contaning the spectrum for the actual atom
+!> \param sp_em ...
+!> \param sp_ab ...
 !> \param estate index of the excited state
+!> \param nstate ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param spectrum temporary variable contaning the spectrum for the actual atom UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \par History
 !>      06.2005 created [MI]
 !> \author MI
@@ -1515,6 +1546,12 @@ CONTAINS
   END SUBROUTINE spectrum_dip_vel
 
 ! *****************************************************************************
+!> \brief ...
+!> \param base_a ...
+!> \param base_b ...
+!> \param matrix ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE calc_stogto_overlap(base_a, base_b, matrix,error)
 
     TYPE(gto_basis_set_type), POINTER        :: base_a, base_b
@@ -1524,8 +1561,8 @@ CONTAINS
     CHARACTER(LEN=*), PARAMETER :: routineN = 'calc_stogto_overlap', &
       routineP = moduleN//':'//routineN
 
-    INTEGER :: iset, istat, jset, ldai, ldsab, maxcoa, maxcob, maxl, maxla, &
-      maxlb, ncoa, ncob, nseta, nsetb, nsgfa, nsgfb, sgfa, sgfb
+    INTEGER :: iset, istat, jset, ldsab, maxcoa, maxcob, maxl, maxla, maxlb, &
+      na, nb, nseta, nsetb, nsgfa, nsgfb, sgfa, sgfb
     INTEGER, DIMENSION(:), POINTER           :: la_max, la_min, lb_max, &
                                                 lb_min, npgfa, npgfb, &
                                                 nsgfa_set, nsgfb_set
@@ -1533,10 +1570,8 @@ CONTAINS
     LOGICAL                                  :: failure
     REAL(dp)                                 :: rab(3)
     REAL(dp), ALLOCATABLE, DIMENSION(:, :)   :: sab, work
-    REAL(dp), ALLOCATABLE, &
-      DIMENSION(:, :, :)                     :: ai_work
-    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, sphi_a, sphi_b, &
-                                                zeta, zetb
+    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: rpgfa, rpgfb, scon_a, scon_b, &
+                                                sphi_a, sphi_b, zeta, zetb
 
     failure = .FALSE.
 
@@ -1547,52 +1582,41 @@ CONTAINS
 
     CALL get_gto_basis_set(gto_basis_set=base_a,nsgf=nsgfa,nsgf_set=nsgfa_set,lmax=la_max,&
                           lmin=la_min,npgf=npgfa,pgf_radius=rpgfa, &
-                          sphi=sphi_a,zet=zeta,first_sgf=first_sgfa, &
+                          sphi=sphi_a,scon=scon_a,zet=zeta,first_sgf=first_sgfa, &
                           maxco=maxcoa,nset=nseta, maxl=maxla)
 
     CALL get_gto_basis_set(gto_basis_set=base_b,nsgf=nsgfb,nsgf_set=nsgfb_set, lmax=lb_max,&
                           lmin=lb_min,npgf=npgfb,pgf_radius=rpgfb, &
-                          sphi=sphi_b,zet=zetb,first_sgf=first_sgfb, &
+                          sphi=sphi_b,scon=scon_b,zet=zetb,first_sgf=first_sgfb, &
                           maxco=maxcob,nset=nsetb,maxl=maxlb)
-    rab = 0.0_dp
     ! Initialize and allocate
+    rab = 0.0_dp
     matrix = 0.0_dp
 
     ldsab = MAX(maxcoa,maxcob,nsgfa,nsgfb)
     maxl = MAX(maxla,maxlb)
-    ldai = ncoset(maxl)
 
     ALLOCATE(sab(ldsab,ldsab),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
     ALLOCATE(work(ldsab,ldsab),STAT=istat)
     CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
-    ALLOCATE(ai_work(ldai,ldai,1),STAT=istat)
-    CPPostcondition(istat==0,cp_failure_level,routineP,error,failure)
 
     DO iset=1,nseta
 
-       ncoa = npgfa(iset)*ncoset(la_max(iset))
+       na = npgfa(iset)*(ncoset(la_max(iset))-ncoset(la_min(iset)-1))
        sgfa = first_sgfa(1,iset)
 
        DO jset=1,nsetb
 
-          ncob = npgfb(jset)*ncoset(lb_max(jset))
+          nb = npgfb(jset)*(ncoset(lb_max(jset))-ncoset(lb_min(iset)-1))
           sgfb = first_sgfb(1,jset)
 
-          ai_work = 0.0_dp
-
-          CALL overlap(la_max(iset),la_min(iset),npgfa(iset),&
-               rpgfa(:,iset),zeta(:,iset),&
-               lb_max(jset),lb_min(jset),npgfb(jset),&
-               rpgfb(:,jset),zetb(:,jset),rab,0.0_dp,sab,0,.FALSE.,ai_work,ldai)
-          CALL dgemm("N","N",ncoa,nsgfb_set(jset),ncob,&
-               1.0_dp,sab(1,1),SIZE(sab,1),&
-               sphi_b(1,sgfb),SIZE(sphi_b,1),&
-               0.0_dp,work(1,1),SIZE(work,1))
-          CALL dgemm("T","N",nsgfa_set(iset),nsgfb_set(jset),ncoa,&
-               1.0_dp,sphi_a(1,sgfa),SIZE(sphi_a,1),&
-               work(1,1),SIZE(work,1),&
-               1.0_dp,matrix(sgfa,sgfb), SIZE(matrix,1))
+          CALL overlap_ab(la_max(iset),la_min(iset),npgfa(iset),rpgfa(:,iset),zeta(:,iset),&
+                          lb_max(jset),lb_min(jset),npgfb(jset),rpgfb(:,jset),zetb(:,jset),&
+                          rab,sab,error=error)
+          CALL contraction(sab,work,ca=scon_a(:,sgfa:),na=na,ma=nsgfa_set(iset),&
+                                    cb=scon_b(:,sgfb:),nb=nb,mb=nsgfb_set(jset),error=error)
+          CALL block_add("IN",work,nsgfa_set(iset),nsgfb_set(jset),matrix,sgfa,sgfb,error=error)
 
        END DO  ! jset
     END DO  ! iset
@@ -1613,6 +1637,11 @@ CONTAINS
 !>      proceeding to the assignment of the type
 !>      The type is determined by computing the overalp with a
 !>      type specific, minimal, STO bais set
+!> \param xas_control ...
+!> \param xas_env ...
+!> \param localized_wfn_control ...
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>      03.2006 created [MI]
 !> \author MI

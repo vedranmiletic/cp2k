@@ -112,8 +112,9 @@ MODULE dbcsr_mm_sched
 
 
 ! *****************************************************************************
-! \brief Initialize the library
-! \author Ole Schuett
+!> \brief Initialize the library
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_lib_init(error)
     TYPE(dbcsr_error_type), INTENT(INOUT)    :: error
@@ -135,8 +136,11 @@ MODULE dbcsr_mm_sched
 
 
 ! *****************************************************************************
-! \brief Finalize the library and prints DBCSR statistics
-! \author Ole Schuett
+!> \brief Finalize the library and prints DBCSR statistics
+!> \param group ...
+!> \param output_unit ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_lib_finalize(group, output_unit, error)
     INTEGER, INTENT(IN)                      :: group, output_unit
@@ -162,6 +166,7 @@ MODULE dbcsr_mm_sched
 
 ! *****************************************************************************
 !> \brief Makes sure that the product_wm is cleared.
+!> \param this ...
 !> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE ensure_product_wm_cleared(this)
@@ -186,6 +191,11 @@ MODULE dbcsr_mm_sched
 
 ! *****************************************************************************
 !> \brief Initializes a multiplication cycle for new set of C-blocks.
+!> \param this ...
+!> \param left ...
+!> \param right ...
+!> \param product_wm ...
+!> \param error ...
 !> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_init(this, left, right, product_wm, error)
@@ -218,8 +228,10 @@ MODULE dbcsr_mm_sched
   END SUBROUTINE dbcsr_mm_sched_init
 
 ! *****************************************************************************
-! \brief Signal approaching end of multiplication
-! \author Ole Schuett
+!> \brief Signal approaching end of multiplication
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_phaseout(this, error)
     TYPE(dbcsr_mm_sched_type), INTENT(INOUT) :: this
@@ -233,6 +245,8 @@ MODULE dbcsr_mm_sched
 
 ! *****************************************************************************
 !> \brief Finalizes a multiplication cycle for a set of C-blocks.
+!> \param this ...
+!> \param error ...
 !> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_finalize(this, error)
@@ -258,8 +272,10 @@ MODULE dbcsr_mm_sched
   END SUBROUTINE dbcsr_mm_sched_finalize
 
 ! *****************************************************************************
-! \brief Signal begin of a burst of calls to dbcsr_mm_sched_process.
-! \author Ole Schuett
+!> \brief Signal begin of a burst of calls to dbcsr_mm_sched_process.
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_begin_burst(this, error)
     TYPE(dbcsr_mm_sched_type), INTENT(INOUT) :: this
@@ -269,8 +285,10 @@ MODULE dbcsr_mm_sched
   END SUBROUTINE dbcsr_mm_sched_begin_burst
 
 ! *****************************************************************************
-! \brief Signal end of a burst of calls to dbcsr_mm_sched_process.
-! \author Ole Schuett
+!> \brief Signal end of a burst of calls to dbcsr_mm_sched_process.
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_end_burst(this, error)
     TYPE(dbcsr_mm_sched_type), INTENT(INOUT) :: this
@@ -281,8 +299,10 @@ MODULE dbcsr_mm_sched
   END SUBROUTINE dbcsr_mm_sched_end_burst
 
 ! *****************************************************************************
-! \brief Signal that previous stacks should be processed first
-! \author Ole Schuett
+!> \brief Signal that previous stacks should be processed first
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_barrier(this, error)
     TYPE(dbcsr_mm_sched_type), INTENT(INOUT) :: this
@@ -295,8 +315,15 @@ MODULE dbcsr_mm_sched
   END SUBROUTINE dbcsr_mm_sched_barrier
 
 ! *****************************************************************************
-! \brief Processes a given stack.
-! \author Ole Schuett
+!> \brief Processes a given stack.
+!> \param this ...
+!> \param left ...
+!> \param right ...
+!> \param stack_data ...
+!> \param stack_fillcount ...
+!> \param stack_descr ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_sched_process(this, left, right, stack_data,&
                     stack_fillcount, stack_descr, error)
@@ -404,9 +431,14 @@ MODULE dbcsr_mm_sched
 
 
 ! ******************************************************************************
-! \brief Helper-routine used by dbcsr_mm_sched_process to supply statistics.
-! \author Ole Schuett
-! ******************************************************************************
+!> \brief Helper-routine used by dbcsr_mm_sched_process to supply statistics.
+!> \param m ...
+!> \param n ...
+!> \param k ...
+!> \param stacksize_cpu ...
+!> \param stacksize_acc ...
+!> \author Ole Schuett
+! *****************************************************************************
  SUBROUTINE stats_add(m,n,k, stacksize_cpu, stacksize_acc)
     INTEGER, INTENT(IN)                      :: m, n, k
     INTEGER(kind=int_8), OPTIONAL            :: stacksize_cpu, stacksize_acc
@@ -445,8 +477,10 @@ MODULE dbcsr_mm_sched
 
 
 ! *****************************************************************************
-! \brief Collects statistics from all OpenMP-threads
-! \author Ole Schuett
+!> \brief Collects statistics from all OpenMP-threads
+!> \param report ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE stats_collect_from_threads(report, error)
     TYPE(stats_type), INTENT(INOUT)          :: report
@@ -484,8 +518,11 @@ MODULE dbcsr_mm_sched
 
 
 ! *****************************************************************************
-! \brief Collects statistics from all MPI-ranks
-! \author Ole Schuett
+!> \brief Collects statistics from all MPI-ranks
+!> \param report ...
+!> \param group ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE stats_collect_from_ranks(report, group, error)
     TYPE(stats_type), INTENT(INOUT)          :: report
@@ -535,8 +572,11 @@ MODULE dbcsr_mm_sched
 
 
 ! *****************************************************************************
-! \brief Prints collected statistics
-! \author Ole Schuett
+!> \brief Prints collected statistics
+!> \param report ...
+!> \param output_unit ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE stats_print_report(report, output_unit, error)
     TYPE(stats_type), INTENT(INOUT)          :: report

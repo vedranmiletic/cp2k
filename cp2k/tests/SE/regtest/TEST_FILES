@@ -21,7 +21,7 @@ h2o_lsd-ot.inp                    3     2e-14
 # tests for high-spin ROKS
 O-ROKS.inp         3
 O2-ROKS.inp        3
-NO2-ROKS.inp       3
+NO2-ROKS.inp                      3     2e-14
 #RM1 Model
 c2h4_rm1.inp       3
 h2op_2.inp                        3     2e-10
@@ -33,7 +33,7 @@ hcn_pm6.inp                       3     1e-09
 # MNDOd (non-d element)
 H2O-MNDOD.inp      3
 hcl.inp            3
-brcl.inp           3
+brcl.inp                          3     9e-12
 sih_x.inp          3
 sih_y.inp          3
 tio.inp            3

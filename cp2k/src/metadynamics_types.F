@@ -132,7 +132,9 @@ CONTAINS
 !>      initialization)
 !> \param meta_env the meta env_ that will be allocated
 !> \param n_colvar number of collectiva variables
-!> \param do_hills if the hills should be added
+!> \param dt ...
+!> \param para_env ...
+!> \param metadyn_section ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -251,6 +253,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief sets the meta_env
+!> \param meta_env ...
+!> \param time ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author alessandro laio and fawzi mohamed
@@ -276,6 +280,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief retains the meta_env
+!> \param meta_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author alessandro laio and fawzi mohamed
@@ -298,6 +303,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief releases the meta_env
+!> \param meta_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author alessandro laio and fawzi mohamed
@@ -365,6 +371,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief releases the hills_env
+!> \param hills_env ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Teodoro Laino [tlaino] - University of Zurich 10.2008

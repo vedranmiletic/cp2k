@@ -369,7 +369,7 @@ CPPrecondition(.FALSE. ,cp_failure_level,routineP,error,failure)
 !> \brief check acceptance of energy calculated element and related childs,
 !>        when ready 
 !> \param tree_elem actual tree element with calculated energy
-!> \param tmc_params TMC environment parameters
+!> \param tmc_env TMC environment parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 12.2012
@@ -454,7 +454,7 @@ CPPrecondition(.FALSE. ,cp_failure_level,routineP,error,failure)
 !> \brief checking the elements and change the status
 !> \param act_elem actual tree element (new configuration)
 !> \param parent_elem parent tree element (old configuration)
-!> \param tmc_params TMC environment parameters
+!> \param tmc_env TMC environment parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 12.2012
@@ -754,12 +754,13 @@ CPPrecondition(.FALSE. ,cp_failure_level,routineP,error,failure)
 ! *****************************************************************************
 !> \brief searching tree nodes to check for Markov Chain, elements are marked 
 !>        and stored in lists ... (main entry point)
-!> \param 
 !> \param tmc_env TMC environment
-!> \param 
 !> \param result_acc checked configuration accepted? (result)
+!> \param something_updated ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
+!> \param 
 !> \author Mandes 12.2012
 ! *****************************************************************************
   SUBROUTINE tree_update(tmc_env, result_acc, something_updated, &
@@ -931,10 +932,10 @@ CPPrecondition(.FALSE. ,cp_failure_level,routineP,error,failure)
 ! *****************************************************************************
 !> \brief checks if element is ready for accaptance probability update
 !>        checks status and the amount of already received intermediate energies
-!> \param tree_elem sub tree element to update
-!> \param ready return value
+!> \param elem sub tree element to update
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param ready return value
 !> \author Mandes 12.2012
 ! *****************************************************************************
   FUNCTION ready_for_update_acc_prob(elem, error) RESULT(ready)

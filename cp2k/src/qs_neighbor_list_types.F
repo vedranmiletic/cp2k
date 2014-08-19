@@ -8,6 +8,8 @@
 !> \par History
 !>      - cleaned (23.07.2003,MK)
 !>      - full refactoring, list iterators (20.10.2010, JGH)
+!>      - add get_neighbor_list_set_p, return info for a set of neighborlists
+!>                                                             (07.2014,JGH)
 !> \author Matthias Krack (21.06.2000)
 ! *****************************************************************************
 MODULE qs_neighbor_list_types
@@ -115,7 +117,8 @@ MODULE qs_neighbor_list_types
             add_neighbor_node,&
             allocate_neighbor_list_set,&
             deallocate_neighbor_list_set,&
-            get_neighbor_list_set
+            get_neighbor_list_set,&
+            get_neighbor_list_set_p
 
 ! *** Iterator functions and types ***
 
@@ -131,8 +134,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Neighbor list iterator functions
-!> \author  jhu
+!> \param iterator_set ...
+!> \param nl ...
+!> \param search ...
+!> \param nthread ...
 !> \date    28.07.2010
+!> \author  jhu
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE neighbor_list_iterator_create(iterator_set,nl,search,nthread)
@@ -236,6 +243,10 @@ CONTAINS
 
   END SUBROUTINE neighbor_list_iterator_create
 
+! *****************************************************************************
+!> \brief ...
+!> \param iterator_set ...
+! *****************************************************************************
   SUBROUTINE neighbor_list_iterator_release(iterator_set)
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: iterator_set
@@ -279,6 +290,13 @@ CONTAINS
 
   END SUBROUTINE neighbor_list_iterator_release
 
+! *****************************************************************************
+!> \brief ...
+!> \param iterator_set ...
+!> \param ikind ...
+!> \param jkind ...
+!> \param iatom ...
+! *****************************************************************************
   SUBROUTINE nl_set_sub_iterator(iterator_set,ikind,jkind,iatom)
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: iterator_set
@@ -339,6 +357,12 @@ CONTAINS
 
   END SUBROUTINE nl_set_sub_iterator
 
+! *****************************************************************************
+!> \brief ...
+!> \param iterator_set ...
+!> \param mepos ...
+!> \retval istat ...
+! *****************************************************************************
   FUNCTION neighbor_list_iterate(iterator_set,mepos) RESULT(istat)
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: iterator_set
@@ -423,6 +447,11 @@ CONTAINS
 
   END FUNCTION neighbor_list_iterate
 
+! *****************************************************************************
+!> \brief ...
+!> \param iterator_set ...
+!> \retval istat ...
+! *****************************************************************************
   FUNCTION nl_sub_iterate(iterator_set) RESULT(istat)
     TYPE(neighbor_list_iterator_p_type), &
       DIMENSION(:), POINTER                  :: iterator_set
@@ -473,6 +502,22 @@ CONTAINS
 
   END FUNCTION nl_sub_iterate
 
+! *****************************************************************************
+!> \brief ...
+!> \param iterator_set ...
+!> \param mepos ...
+!> \param ikind ...
+!> \param jkind ...
+!> \param nkind ...
+!> \param ilist ...
+!> \param nlist ...
+!> \param inode ...
+!> \param nnode ...
+!> \param iatom ...
+!> \param jatom ...
+!> \param r ...
+!> \param cell ...
+! *****************************************************************************
   SUBROUTINE get_iterator_info(iterator_set,mepos,&
     ikind,jkind,nkind,ilist,nlist,inode,nnode,iatom,jatom,r,cell)
     TYPE(neighbor_list_iterator_p_type), &
@@ -517,8 +562,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Add a new neighbor list to a neighbor list set.
-!> \author  MK
+!> \param neighbor_list_set ...
+!> \param atom ...
+!> \param neighbor_list ...
 !> \date    13.09.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE add_neighbor_list(neighbor_list_set,atom,neighbor_list)
@@ -614,8 +662,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Add a new neighbor list node to a neighbor list.
-!> \author  MK
+!> \param neighbor_list ...
+!> \param neighbor ...
+!> \param cell ...
+!> \param r ...
+!> \param exclusion_list ...
+!> \param nkind ...
 !> \date    23.06.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE add_neighbor_node(neighbor_list,neighbor,cell,r,exclusion_list,nkind)
@@ -720,8 +774,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Allocate and initialize a set of neighbor lists.
-!> \author MK
+!> \param neighbor_list_set ...
+!> \param r_max ...
+!> \param symmetric ...
+!> \param mic ...
+!> \param molecular ...
 !> \date    23.06.2000
+!> \author MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE allocate_neighbor_list_set(neighbor_list_set,r_max,symmetric,mic,molecular)
@@ -759,8 +818,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Deallocate a neighbor list.
-!> \author  MK
+!> \param neighbor_list ...
 !> \date    20.09.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE deallocate_neighbor_list(neighbor_list)
@@ -798,8 +858,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Deallocate a neighbor list set.
-!> \author  MK
+!> \param neighbor_list_set ...
 !> \date    03.11.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE deallocate_neighbor_list_set(neighbor_list_set)
@@ -833,8 +894,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Return a pointer to the first neighbor list of a neighbor list set.
-!> \author  MK
+!> \param neighbor_list_set ...
+!> \retval first_neighbor_list ...
 !> \date    13.09.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   FUNCTION first_list(neighbor_list_set) RESULT(first_neighbor_list)
@@ -848,8 +911,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Return a pointer to the first neighbor node of a neighbor list.
-!> \author  MK
+!> \param neighbor_list ...
+!> \retval first_neighbor_node ...
 !> \date    23.06.2000,
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   FUNCTION first_node(neighbor_list) RESULT(first_neighbor_node)
@@ -863,8 +928,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Return the reqested data of a neighbor list.
-!> \author  MK
+!> \param neighbor_list ...
+!> \param atom ...
+!> \param nnode ...
 !> \date    13.09.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE get_neighbor_list(neighbor_list,atom,nnode)
@@ -891,8 +959,14 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Return the components of a neighbor list set.
-!> \author  MK
+!> \param neighbor_list_set ...
+!> \param r_max ...
+!> \param nlist ...
+!> \param symmetric ...
+!> \param mic ...
+!> \param molecular ...
 !> \date    10.11.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE get_neighbor_list_set(neighbor_list_set,r_max,nlist,symmetric,mic,molecular)
@@ -923,9 +997,67 @@ CONTAINS
   END SUBROUTINE get_neighbor_list_set
 
 ! *****************************************************************************
+!> \brief   Return the components of the first neighbor list set.
+!> \param neighbor_list_sets ...
+!> \param r_max ...
+!> \param nlist ...
+!> \param symmetric ...
+!> \param mic ...
+!> \param molecular ...
+!> \date    07.2014
+!> \author  JGH
+!> \version 1.0
+! *****************************************************************************
+  SUBROUTINE get_neighbor_list_set_p(neighbor_list_sets,r_max,nlist,symmetric,mic,molecular)
+
+    TYPE(neighbor_list_set_p_type), &
+      DIMENSION(:), POINTER                  :: neighbor_list_sets
+    REAL(dp), INTENT(OUT), OPTIONAL          :: r_max
+    INTEGER, INTENT(OUT), OPTIONAL           :: nlist
+    LOGICAL, INTENT(OUT), OPTIONAL           :: symmetric, mic, molecular
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'get_neighbor_list_set_p', &
+      routineP = moduleN//':'//routineN
+
+    INTEGER                                  :: i
+    TYPE(neighbor_list_set_type), POINTER    :: neighbor_list_set
+
+    IF (ASSOCIATED(neighbor_list_sets)) THEN
+
+      NULLIFY(neighbor_list_set)
+      DO i = 1, SIZE(neighbor_list_sets)
+         neighbor_list_set => neighbor_list_sets(i)%neighbor_list_set
+         IF (ASSOCIATED(neighbor_list_set)) EXIT
+      END DO
+
+      IF (ASSOCIATED(neighbor_list_set)) THEN
+         IF (PRESENT(r_max)) r_max = neighbor_list_set%r_max
+         IF (PRESENT(nlist)) nlist = neighbor_list_set%nlist
+         IF (PRESENT(symmetric)) symmetric = neighbor_list_set%symmetric
+         IF (PRESENT(mic)) mic = neighbor_list_set%mic
+         IF (PRESENT(molecular)) molecular = neighbor_list_set%molecular
+      ELSE
+         CALL stop_program(routineN,moduleN,__LINE__,&
+                        "No neighbor list set is associated")
+      END IF
+
+    ELSE
+
+      CALL stop_program(routineN,moduleN,__LINE__,&
+                        "The requested neighbor list sets are not associated")
+
+    END IF
+
+  END SUBROUTINE get_neighbor_list_set_p
+
+! *****************************************************************************
 !> \brief   Return the reqested data of a neighbor node.
-!> \author  MK
+!> \param neighbor_node ...
+!> \param neighbor ...
+!> \param cell ...
+!> \param r ...
 !> \date    23.06.2000
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE get_neighbor_node(neighbor_node,neighbor,cell,r)
@@ -959,8 +1091,13 @@ CONTAINS
 !> \brief Initialize a neighbor list set. Nothing is (de)allocated here.
 !>         This routine is also used to prepare a neighbor list set for
 !>         overwriting.
-!> \author  MK
+!> \param neighbor_list_set ...
+!> \param r_max ...
+!> \param symmetric ...
+!> \param mic ...
+!> \param molecular ...
 !> \date  20.09.2002
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE init_neighbor_list_set(neighbor_list_set,r_max,symmetric,mic,molecular)

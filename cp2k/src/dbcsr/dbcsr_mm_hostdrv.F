@@ -77,7 +77,12 @@ MODULE dbcsr_mm_hostdrv
 CONTAINS
 
 ! *****************************************************************************
-! \brief Initialize the library
+!> \brief Initialize the library
+!> \param this ...
+!> \param left ...
+!> \param right ...
+!> \param product_wm ...
+!> \param error ...
 ! *****************************************************************************
  SUBROUTINE dbcsr_mm_hostdrv_init(this, left, right, product_wm, error)
     TYPE(dbcsr_mm_hostdrv_type), &
@@ -101,8 +106,10 @@ CONTAINS
 
 
 ! *****************************************************************************
-! \brief Signal approaching end of multiplication
-! \author Ole Schuett
+!> \brief Signal approaching end of multiplication
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_hostdrv_phaseout(this, error)
     TYPE(dbcsr_mm_hostdrv_type), &
@@ -115,8 +122,10 @@ CONTAINS
 
 
 ! *****************************************************************************
-! \brief Signal that previous stacks should be processed first
-! \author Ole Schuett
+!> \brief Signal that previous stacks should be processed first
+!> \param this ...
+!> \param error ...
+!> \author Ole Schuett
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_hostdrv_barrier(this, error)
     TYPE(dbcsr_mm_hostdrv_type), &
@@ -129,7 +138,9 @@ CONTAINS
 
 
 ! *****************************************************************************
-! \brief Finalize the library
+!> \brief Finalize the library
+!> \param this ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_hostdrv_finalize(this, error)
     TYPE(dbcsr_mm_hostdrv_type), &
@@ -143,15 +154,22 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Calls the various drivers that process the stack.
 !>
+!> \param this ...
+!> \param left ...
+!> \param right ...
 !> \param[in] params           Stack of GEMM parameters
-!> \param[in] n                Number of parameters
-!> \param[in] ab%left   Left-matrix data
-!> \param[in] ab%right  Right-matrix data
+!> \param stack_size ...
+!> \param stack_descr ...
+!> \param success ...
+!> \param error ...
+!> \param[in] ab%left   Left-matrix data UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] ab%right  Right-matrix data UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] lastblk          Number of blocks in product UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in] n                Number of parameters UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in,out] this%data_area  Data for results UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \param[in,out] zero_first   Zero product data area starting from this
-!>                             element
-!> \param[in,out] zero_last    Zero product data area up to this element
-!> \param[in] lastblk          Number of blocks in product
-!> \param[in,out] this%data_area  Data for results
+!>                             element UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param[in,out] zero_last    Zero product data area up to this element UNMATCHED_PROCEDURE_ARGUMENT: please check 
 ! *****************************************************************************
   SUBROUTINE dbcsr_mm_hostdrv_process(this, left, right, params, stack_size, &
        stack_descr, success, error)
@@ -301,6 +319,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Helper-routine used by dbcsr_mm_hostdrv_process to print debug info.
+!> \param params ...
 ! *****************************************************************************
   SUBROUTINE print_gemm_parameters(params)
     INTEGER, DIMENSION(:, :), INTENT(in)     :: params

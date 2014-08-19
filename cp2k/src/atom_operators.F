@@ -12,9 +12,9 @@
 ! *****************************************************************************
 MODULE atom_operators
   USE ai_onecenter,                    ONLY: &
-       sg_conf, sg_coulomb, sg_erf, sg_erfc, sg_exchange, sg_gpot, &
-       sg_kinetic, sg_kinnuc, sg_nuclear, sg_overlap, sg_proj_ol, sto_conf, &
-       sto_kinetic, sto_nuclear, sto_overlap
+       sg_coulomb, sg_erf, sg_erfc, sg_exchange, sg_gpot, sg_kinetic, &
+       sg_kinnuc, sg_nuclear, sg_overlap, sg_proj_ol, sto_kinetic, &
+       sto_nuclear, sto_overlap
   USE atom_types,                      ONLY: &
        CGTO_BASIS, GTH_PSEUDO, GTO_BASIS, NO_PSEUDO, NUM_BASIS, STO_BASIS, &
        atom_basis_type, atom_integrals, atom_potential_type, atom_state
@@ -56,6 +56,15 @@ MODULE atom_operators
 CONTAINS
 
 ! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param basis ...
+!> \param potential ...
+!> \param eri_coulomb ...
+!> \param eri_exchange ...
+!> \param all_nu ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE atom_int_setup(integrals,basis,potential,&
                             eri_coulomb,eri_exchange,all_nu,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
@@ -74,7 +83,8 @@ CONTAINS
                                                 lwork, m, m1, m2, mm1, mm2, &
                                                 n, n1, n2, nn1, nn2, nu, nx
     LOGICAL                                  :: failure
-    REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: w, work
+    REAL(KIND=dp)                            :: rc, sc
+    REAL(KIND=dp), ALLOCATABLE, DIMENSION(:) :: cpot, w, work
     REAL(KIND=dp), ALLOCATABLE, &
       DIMENSION(:, :)                        :: omat, vmat
     REAL(KIND=dp), DIMENSION(:, :), POINTER  :: eri
@@ -123,6 +133,15 @@ CONTAINS
           ALLOCATE (integrals%conf(n,n,0:3),STAT=ierr)
           CPPostcondition(ierr==0, cp_failure_level, routineP, error, failure)
           integrals%conf = 0._dp
+          m = basis%grid%nr
+          ALLOCATE (cpot(1:m),STAT=ierr)
+          CPPostcondition(ierr==0, cp_failure_level, routineP, error, failure)
+          rc = potential%rcon
+          sc = potential%scon
+          cpot(1:m) = (basis%grid%rad(1:m)/rc)**sc
+          CALL numpot_matrix(integrals%conf,cpot,basis,0,error)
+          DEALLOCATE (cpot,STAT=ierr)
+          CPPostcondition(ierr==0, cp_failure_level, routineP, error, failure)
         END IF
       END IF
 
@@ -134,12 +153,6 @@ CONTAINS
             n = integrals%n(l)
             CALL  sg_overlap ( integrals%ovlp(1:n,1:n,l), l, basis%am(1:n,l), basis%am(1:n,l) )
             CALL  sg_kinetic ( integrals%kin(1:n,1:n,l), l, basis%am(1:n,l), basis%am(1:n,l) )
-            IF ( PRESENT(potential) ) THEN
-              IF ( potential%confinement ) THEN
-                CALL  sg_conf ( integrals%conf(1:n,1:n,l), potential%rcon, potential%ncon/2, &
-                                l, basis%am(1:n,l), basis%am(1:n,l) )
-              END IF
-            END IF
           END DO
           IF ( integrals%eri_coulomb ) THEN
             ll = 0
@@ -196,13 +209,6 @@ CONTAINS
               CALL contract2(integrals%ovlp(1:n,1:n,l),omat(1:m,1:m),basis%cm(1:m,1:n,l), error)
               CALL  sg_kinetic ( omat(1:m,1:m), l, basis%am(1:m,l), basis%am(1:m,l) )
               CALL contract2(integrals%kin(1:n,1:n,l),omat(1:m,1:m),basis%cm(1:m,1:n,l), error)
-              IF ( PRESENT(potential) ) THEN
-                IF ( potential%confinement ) THEN
-                  CALL  sg_conf ( omat(1:m,1:m), potential%rcon, potential%ncon/2, &
-                                  l, basis%am(1:m,l), basis%am(1:m,l) )
-                  CALL contract2(integrals%conf(1:n,1:n,l),omat(1:m,1:m),basis%cm(1:m,1:n,l), error)
-                END IF
-              END IF
               DEALLOCATE (omat,STAT=ierr)
               CPPostcondition(ierr==0, cp_failure_level, routineP, error, failure)
             END IF
@@ -279,12 +285,6 @@ CONTAINS
                                basis%ns(1:n,l), basis%as(1:n,l) )
             CALL sto_kinetic ( integrals%kin(1:n,1:n,l), l, basis%ns(1:n,l), basis%as(1:n,l), &
                                basis%ns(1:n,l), basis%as(1:n,l) )
-            IF ( PRESENT(potential) ) THEN
-              IF ( potential%confinement ) THEN
-                CALL sto_conf ( integrals%conf(1:n,1:n,l), potential%rcon, potential%ncon/2, &
-                                basis%ns(1:n,l), basis%as(1:n,l), basis%ns(1:n,l), basis%as(1:n,l) )
-              END IF
-            END IF
           END DO
           CPAssert(.NOT.integrals%eri_coulomb,cp_failure_level,routineP,error,failure)
           CPAssert(.NOT.integrals%eri_exchange,cp_failure_level,routineP,error,failure)
@@ -333,6 +333,12 @@ CONTAINS
     CALL timestop(handle)
 
   END SUBROUTINE atom_int_setup
+! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param basis ...
+!> \param potential ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE atom_ppint_setup(integrals,basis,potential,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
@@ -617,6 +623,14 @@ CONTAINS
 
   END SUBROUTINE atom_ppint_setup
 ! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param basis ...
+!> \param reltyp ...
+!> \param zcore ...
+!> \param alpha ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE atom_relint_setup(integrals,basis,reltyp,zcore,alpha,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
     TYPE(atom_basis_type), INTENT(INOUT)     :: basis
@@ -818,6 +832,16 @@ CONTAINS
 
   END SUBROUTINE atom_relint_setup
 ! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param basis ...
+!> \param order ...
+!> \param sp ...
+!> \param tp ...
+!> \param vp ...
+!> \param pvp ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE dkh_integrals(integrals,basis,order,sp,tp,vp,pvp,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
     TYPE(atom_basis_type), INTENT(INOUT)     :: basis
@@ -862,6 +886,10 @@ CONTAINS
     END DO
 
   END SUBROUTINE dkh_integrals
+! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE atom_int_release(integrals,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
@@ -910,6 +938,10 @@ CONTAINS
 
   END SUBROUTINE atom_int_release
 ! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE atom_ppint_release(integrals,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
     TYPE(cp_error_type), INTENT(INOUT)       :: error
@@ -939,6 +971,10 @@ CONTAINS
 
   END SUBROUTINE atom_ppint_release
 ! *****************************************************************************
+!> \brief ...
+!> \param integrals ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE atom_relint_release(integrals,error)
     TYPE(atom_integrals), INTENT(INOUT)      :: integrals
     TYPE(cp_error_type), INTENT(INOUT)       :: error
@@ -964,6 +1000,12 @@ CONTAINS
     integrals%dkhstat = 0
 
   END SUBROUTINE atom_relint_release
+! *****************************************************************************
+!> \brief ...
+!> \param modpot ...
+!> \param grid ...
+!> \param zcore ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calculate_model_potential(modpot,grid,zcore,error)
     REAL(dp), DIMENSION(:), INTENT(INOUT)    :: modpot
@@ -1020,6 +1062,12 @@ CONTAINS
 
   END SUBROUTINE calculate_model_potential
 ! *****************************************************************************
+!> \brief ...
+!> \param int ...
+!> \param omat ...
+!> \param cm ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE contract2 ( int, omat, cm, error )
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: int
     REAL(dp), DIMENSION(:, :), INTENT(IN)    :: omat, cm
@@ -1041,6 +1089,12 @@ CONTAINS
 
   END SUBROUTINE contract2
 ! *****************************************************************************
+!> \brief ...
+!> \param int ...
+!> \param omat ...
+!> \param cm ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE contract2add ( int, omat, cm, error )
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: int
     REAL(dp), DIMENSION(:, :), INTENT(IN)    :: omat, cm
@@ -1061,6 +1115,13 @@ CONTAINS
     CALL timestop(handle)
 
   END SUBROUTINE contract2add
+! *****************************************************************************
+!> \brief ...
+!> \param eri ...
+!> \param omat ...
+!> \param cm1 ...
+!> \param cm2 ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE contract4 ( eri, omat, cm1, cm2, error )
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: eri
@@ -1113,6 +1174,11 @@ CONTAINS
 
   END SUBROUTINE contract4
 ! *****************************************************************************
+!> \brief ...
+!> \param mat ...
+!> \param vec ...
+!> \param n ...
+! *****************************************************************************
   SUBROUTINE ipack(mat,vec,n)
     REAL(dp), DIMENSION(:, :), INTENT(IN)    :: mat
     REAL(dp), DIMENSION(:), INTENT(INOUT)    :: vec
@@ -1130,6 +1196,12 @@ CONTAINS
 
   END SUBROUTINE ipack
 
+! *****************************************************************************
+!> \brief ...
+!> \param mat ...
+!> \param vec ...
+!> \param n ...
+! *****************************************************************************
   SUBROUTINE iunpack(mat,vec,n)
     REAL(dp), DIMENSION(:, :), INTENT(INOUT) :: mat
     REAL(dp), DIMENSION(:), INTENT(IN)       :: vec

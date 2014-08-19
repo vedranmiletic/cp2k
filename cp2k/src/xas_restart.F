@@ -43,11 +43,11 @@ MODULE xas_restart
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_gspace_mixing,                ONLY: mixing_init
+  USE qs_mo_io,                        ONLY: wfn_restart_file_name
   USE qs_mo_methods,                   ONLY: calculate_density_matrix
   USE qs_mo_types,                     ONLY: get_mo_set,&
                                              mo_set_p_type,&
-                                             set_mo_occupation,&
-                                             wfn_restart_file_name
+                                             set_mo_occupation
   USE qs_rho_atom_types,               ONLY: rho_atom_type
   USE qs_rho_methods,                  ONLY: qs_rho_update_rho
   USE qs_rho_types,                    ONLY: qs_rho_type
@@ -75,11 +75,15 @@ CONTAINS
 !>      corresponing to the excitation of iatom
 !>      If the corresponding restart file does not exist
 !>      the GS orbitals are used as initial guess
+!> \param xas_env ...
 !> \param xas_section input section for XAS calculations
 !>      qs_env:
+!> \param qs_env ...
+!> \param xas_method ...
 !> \param iatom index of the absorbing atom
 !> \param estate index of the core-hole orbital
 !>      error:
+!> \param error ...
 !> \par History
 !>      09.2006 created [MI]
 !> \author MI
@@ -270,6 +274,14 @@ CPSourceFileRef,&
   END SUBROUTINE xas_read_restart
 
 ! *****************************************************************************
+!> \brief ...
+!> \param xas_env ...
+!> \param xas_section ...
+!> \param qs_env ...
+!> \param xas_method ...
+!> \param iatom ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE xas_write_restart(xas_env,xas_section,qs_env,xas_method,iatom,error)
 
     TYPE(xas_environment_type), POINTER      :: xas_env
@@ -362,6 +374,8 @@ CPSourceFileRef,&
 ! *****************************************************************************
 !> \brief Once the mos and the occupation numbers are initialized
 !>      the electronic density of the excited state can be calclated
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>      09-2006 MI created
 !> \author MI
@@ -418,6 +432,10 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief Find the index of the core orbital that has been excited by XAS
+!> \param xas_env ...
+!> \param mos ...
+!> \param matrix_s ...
+!> \param error ...
 !> \par History
 !>      03-2010 MI created
 !> \author MI

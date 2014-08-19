@@ -99,7 +99,7 @@ CONTAINS
          CALL cp_assert(.FALSE.,cp_warning_level,cp_assertion_failed,&
                   routineP,"try to add deleted element cancelation list ",&
                   error,failure)
-         WRITE(6,*)"WARNING: try to cancel subtree, element ",elem%sub_tree_nr, elem%nr, ", with status ", elem%stat
+         WRITE(*,*)"WARNING: try to cancel subtree, element ",elem%sub_tree_nr, elem%nr, ", with status ", elem%stat
       CASE DEFAULT
          CALL cp_assert(.FALSE.,cp_failure_level,cp_assertion_failed,&
                   routineP,"try to add element with unknown status to cancelation list (stat="&
@@ -120,9 +120,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief for correct finalizing deallocate the cancelation list
-!> \param
+!> \param cancel_list ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param
 !> \author Mandes 12.2012
 ! *****************************************************************************
   SUBROUTINE free_cancelation_list(cancel_list, error)

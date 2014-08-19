@@ -90,7 +90,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief tmc_entry point
-!> \param force_env the force environment for the simulation
+!> \param input_declaration ...
+!> \param root_section ...
+!> \param para_env ...
 !> \param globenv the global environment for the simulation
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -336,9 +338,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief analyze TMC trajectory files
-!> \param 
+!> \param input_declaration ...
+!> \param root_section ...
+!> \param para_env ...
+!> \param globenv ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param 
 !> \author Mandes 03.2013
 ! *****************************************************************************
   SUBROUTINE do_analyze_files(input_declaration, root_section, para_env, globenv, error)
@@ -482,8 +488,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates a new para environment for tmc analysis for each temperature
+!> \param input_declaration ...
 !> \param input global environment
-!> \param tmc_ana TMC analysis environment
+!> \param ana_list ...
+!> \param elem ...
+!> \param tmc_env TMC analysis environment
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 03.2013
@@ -592,7 +601,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief read the variables for distributing cores
-!> \param tmc_section points to the tmc subsection in the input file
+!> \param input ...
 !> \param tmc_env structure for storing all the tmc parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -722,7 +731,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief read the tmc subsection from the input file
-!> \param tmc_section points to the tmc subsection in the input file
+!> \param input points to the tmc subsection in the input file
 !> \param tmc_env structure for storing all the tmc parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
@@ -862,6 +871,8 @@ CONTAINS
 !> \brief creates a new para environment for tmc
 !> \param tmc_comp_set structure with parameters for computational setup
 !> \param para_env the old parallel environment
+!> \param ana_on_the_fly ...
+!> \param success ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 11.2012
@@ -1073,7 +1084,7 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief prints the most important parameters used for TMC
-!> \param tmc_enc structure with parameters for TMC
+!> \param tmc_env tructure with parameters for TMC
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author Mandes 11.2012

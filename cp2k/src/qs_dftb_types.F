@@ -39,6 +39,7 @@ MODULE qs_dftb_types
     REAL(KIND=dp)                          :: cutoff     !cutoff radius for f matrix
     REAL(KIND=dp)                          :: xi,di      !London parameter
     REAL(KIND=dp)                          :: rcdisp     !cutoff radius for vdW
+    REAL(KIND=dp)                          :: dudq       !DFTB3 hardness derivative
   END TYPE qs_dftb_atom_type
 
 ! *****************************************************************************
@@ -74,6 +75,10 @@ MODULE qs_dftb_types
 CONTAINS
 
 ! *****************************************************************************
+!> \brief ...
+!> \param pairpot ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE qs_dftb_pairpot_init(pairpot,error)
     TYPE(qs_dftb_pairpot_type), &
       DIMENSION(:, :), POINTER               :: pairpot
@@ -95,6 +100,13 @@ CONTAINS
 
   END SUBROUTINE qs_dftb_pairpot_init
 
+! *****************************************************************************
+!> \brief ...
+!> \param pairpot ...
+!> \param ngrd ...
+!> \param llm ...
+!> \param spdim ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE qs_dftb_pairpot_create(pairpot,ngrd,llm,spdim,error)
     TYPE(qs_dftb_pairpot_type)               :: pairpot
@@ -126,6 +138,10 @@ CONTAINS
 
   END SUBROUTINE qs_dftb_pairpot_create
 
+! *****************************************************************************
+!> \brief ...
+!> \param pairpot ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE qs_dftb_pairpot_release(pairpot,error)
     TYPE(qs_dftb_pairpot_type), &

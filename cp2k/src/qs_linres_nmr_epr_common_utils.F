@@ -44,16 +44,30 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Given the current density on the PW grid in reciprcal space
 !>       (obtained by FFT), calculate the integral
-!>         \int_{r}[ ((r-r') x j(r))/|r-r'|^3 ] = Bind(r')
-!>       which in reciprcal space reads  (for G/=0)
+!>         \int_{r}[ ((r-r') x j(r))/|r-r'|^3 ] = Bind(r') 
+!>       which in reciprcal space reads  (for G/=0) 
 !>          i G/|G|^2 x J(G)
+!> \param cell ...
+!> \param pw_pool ...
+!> \param rho_gspace ...
+!> \param funcG_times_rho ...
+!> \param idir ...
+!> \param my_chi ...
+!> \param error ...
+!> \param cell ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param error ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param funcG_times_rho ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param idir ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param my_chi ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param pw_pool ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \param rho_gspace ... UNMATCHED_PROCEDURE_ARGUMENT: please check 
+!> \author MI
 !> \note
 !>      The G=0 component is not comnputed here, but can be evaluated
 !>      through the susceptibility and added to the shift in a second time
 !>
 !>      This method would not work for a non periodic system
 !>      It should be generalized like the calculation of Hartree
-!> \author MI
 ! *****************************************************************************
   SUBROUTINE  mult_G_ov_G2_grid(cell,pw_pool,rho_gspace,funcG_times_rho,idir,my_chi,error)
 

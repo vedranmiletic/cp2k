@@ -46,11 +46,11 @@ MODULE  rt_propagation_utils
   USE qs_environment_types,            ONLY: get_qs_env,&
                                              qs_environment_type
   USE qs_force_types,                  ONLY: qs_force_type
+  USE qs_mo_io,                        ONLY: read_mo_set,&
+                                             read_rt_mos_from_restart
   USE qs_mo_methods,                   ONLY: calculate_density_matrix
   USE qs_mo_types,                     ONLY: get_mo_set,&
-                                             mo_set_p_type,&
-                                             read_mo_set,&
-                                             read_rt_mos_from_restart
+                                             mo_set_p_type
   USE qs_neighbor_list_types,          ONLY: neighbor_list_set_p_type
   USE qs_overlap,                      ONLY: build_overlap_matrix
   USE rt_propagation_types,            ONLY: get_rtp,&
@@ -76,7 +76,7 @@ MODULE  rt_propagation_utils
 !>        only needed for ehrenfest MD.
 !>
 !> \param qs_env the qs environment
-!> \param error
+!> \param error ...
 !>
 !> \par History
 !>      02.2009 created [Manuel Guidon]
@@ -230,6 +230,8 @@ MODULE  rt_propagation_utils
 
 ! *****************************************************************************
 !> \brief reads the restart file. At the moment only SCF (means only real)
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -319,6 +321,8 @@ MODULE  rt_propagation_utils
 !> \brief calculates the three additional force contributions needed in EMD
 !>        P_imag*C , P_imag*B*S^-1*S_der , P*S^-1*H*S_der
 !>        driver routine
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
@@ -341,6 +345,8 @@ MODULE  rt_propagation_utils
 ! *****************************************************************************
 !> \brief standard treatment for fm MO based calculations
 !>        P_imag*C , P_imag*B*S^-1*S_der , P*S^-1*H*S_der
+!> \param qs_env ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE calc_c_mat_force_fm(qs_env,error)
     TYPE(qs_environment_type), POINTER       :: qs_env
@@ -469,6 +475,8 @@ MODULE  rt_propagation_utils
 ! *****************************************************************************
 !> \brief special treatment ofr linear scaling
 !>        P_imag*C , P_imag*B*S^-1*S_der , P*S^-1*H*S_der
+!> \param qs_env ...
+!> \param error ...
 !> \par History
 !>      02.2014 switched to dbcsr matrices [Samuel Andermatt]
 !> \author Florian Schiffmann (02.09)
@@ -554,6 +562,17 @@ MODULE  rt_propagation_utils
 
   END SUBROUTINE
 
+! *****************************************************************************
+!> \brief ...
+!> \param force ...
+!> \param tmp ...
+!> \param S_der ...
+!> \param rho_im ...
+!> \param C_mat ...
+!> \param kind_of ...
+!> \param atom_of_kind ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE compute_forces(force,tmp,S_der,rho_im,C_mat,kind_of,atom_of_kind,error)
     TYPE(qs_force_type), DIMENSION(:), &
       POINTER                                :: force

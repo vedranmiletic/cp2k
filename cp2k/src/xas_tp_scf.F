@@ -110,9 +110,15 @@ CONTAINS
 !> \brief perform an scf loop to calculate the xas spectrum
 !>      given by the excitation of a inner state of a selected atom
 !>      by using the transition potential method
+!> \param dft_control ...
 !> \param xas_env the environment for XAS  calculations
+!> \param iatom ...
 !> \param scf_env the scf_env where to perform the scf procedure
 !> \param qs_env the qs_env, the scf_env and xas_env live in
+!> \param xas_section ...
+!> \param scf_section ...
+!> \param converged ...
+!> \param should_stop ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -137,8 +143,7 @@ CONTAINS
     INTEGER                                  :: handle, handle2, ispin, &
                                                 iter_count, output_unit
     LOGICAL                                  :: diis_step, energy_only, &
-                                                exit_loop, failure, gapw, &
-                                                use_jacobi
+                                                exit_loop, failure, gapw
     REAL(KIND=dp)                            :: t1, t2
     TYPE(atomic_kind_type), DIMENSION(:), &
       POINTER                                :: atomic_kind_set
@@ -198,7 +203,6 @@ CONTAINS
 
     iter_count = 0
     diis_step = .FALSE.
-    use_jacobi = .FALSE.
 
     IF (output_unit>0) THEN
        WRITE (UNIT=output_unit,&
@@ -237,7 +241,7 @@ CONTAINS
           scf_env%iter_count=iter_count
           CALL do_general_diag(scf_env,mos,matrix_ks,&
                                matrix_s,scf_control,scf_section, &
-                               diis_step,use_jacobi,xas_env,error)
+                               diis_step,xas_env,error)
 
        END SELECT
 
@@ -349,9 +353,12 @@ CONTAINS
 ! *****************************************************************************
 !> \brief  Post processing of the optimized wfn in XAS scheme, as preparation for
 !>         the calculation of the spectrum
+!> \param xas_control ...
 !> \param xas_env the environment for XAS  calculations
 !> \param qs_env the qs_env, the scf_env and xas_env live in
 !> \param iatom index of the excited atom
+!> \param xas_section ...
+!> \param output_unit ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History
@@ -604,9 +611,11 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief  SCF for emission spectra calculations: vacancy in valence
-!> \param xas_env the environment for XAS  calculations
 !> \param qs_env the qs_env, the scf_env and xas_env live in
-!> \param iatom index of the excited atom
+!> \param xas_env the environment for XAS  calculations
+!> \param scf_section ...
+!> \param converged ...
+!> \param should_stop ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \par History

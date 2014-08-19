@@ -98,7 +98,7 @@ MODULE dm_ls_scf_types
      INTEGER :: sign_sqrt_order
 
      LOGICAL               :: needs_s_inv, has_s_preconditioner, fixed_mu, dynamic_threshold
-     LOGICAL               :: restart_read, restart_write
+     LOGICAL               :: restart_read, restart_write, non_monotonic
      REAL(KIND=dp)         :: eps_filter, eps_scf
 
      REAL(KIND=dp)         :: eps_lanczos
@@ -131,6 +131,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief release the LS type.
+!> \param ls_scf_env ...
+!> \param error ...
 !> \par History
 !>       2012.11 created [Joost VandeVondele]
 !> \author Joost VandeVondele

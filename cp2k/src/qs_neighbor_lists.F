@@ -42,7 +42,8 @@ MODULE qs_neighbor_lists
                                              get_potential,&
                                              gth_potential_type
   USE f77_blas
-  USE input_constants,                 ONLY: do_method_lrigpw,&
+  USE input_constants,                 ONLY: dispersion_uff,&
+                                             do_method_lrigpw,&
                                              do_se_IS_slater,&
                                              vdw_pairpot_dftd3,&
                                              xc_vdw_fun_pairpot
@@ -52,6 +53,7 @@ MODULE qs_neighbor_lists
   USE kinds,                           ONLY: default_string_length,&
                                              dp,&
                                              int_8
+  USE kpoint_types,                    ONLY: kpoint_type
   USE message_passing,                 ONLY: mp_max,&
                                              mp_sum
   USE molecule_types_new,              ONLY: molecule_type
@@ -113,6 +115,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   free the internals of atom2d
+!> \param atom2d ...
+!> \param error ...
 !> \param
 ! *****************************************************************************
   SUBROUTINE atom2d_cleanup(atom2d,error)
@@ -156,7 +160,18 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Build some distribution structure of atoms, refactored from build_qs_neighbor_lists
-!> \param   atom2d,orb_radius,orb_present : output
+!> \param atom2d output
+!> \param orb_radius output
+!> \param orb_present output
+!> \param distribution_1d ...
+!> \param distribution_2d ...
+!> \param atomic_kind_set ...
+!> \param molecule_set ...
+!> \param molecule_only ...
+!> \param kg ...
+!> \param dftb ...
+!> \param particle_set ...
+!> \param error ...
 !> \author  JH
 ! *****************************************************************************
   SUBROUTINE atom2d_build(atom2d,orb_radius,orb_present,distribution_1d,distribution_2d,&
@@ -319,10 +334,15 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Build all the required neighbor lists for Quickstep.
-!> \author  MK
+!> \param qs_env ...
+!> \param para_env ...
+!> \param molecular ...
+!> \param force_env_section ...
+!> \param error ...
 !> \date    28.08.2000
 !> \par History
 !>          - Major refactoring (25.07.2010,jhu)
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE build_qs_neighbor_lists(qs_env,para_env,molecular,force_env_section,error)
@@ -338,9 +358,9 @@ CONTAINS
     CHARACTER(LEN=default_string_length)     :: print_key_path
     INTEGER                                  :: handle, ikind, iw, maxatom, &
                                                 nkind, stat, zat
-    LOGICAL :: all_potential_present, almo, dftb, failure, &
-      gth_potential_present, lrigpw, mic, molecule_only, nddo, paw_atom, &
-      paw_atom_present, scptb
+    LOGICAL :: all_potential_present, almo, dftb, dokp, failure, &
+      gth_potential_present, lri_optbas, lrigpw, mic, molecule_only, nddo, &
+      paw_atom, paw_atom_present, scptb
     LOGICAL, ALLOCATABLE, DIMENSION(:) :: all_present, aux_fit_present, &
       aux_present, core_present, default_present, oce_present, orb_present, &
       ppl_present, ppnl_present
@@ -363,6 +383,7 @@ CONTAINS
     TYPE(gto_basis_set_type), POINTER        :: aux_basis_set, &
                                                 aux_fit_basis_set, &
                                                 orb_basis_set
+    TYPE(kpoint_type), POINTER               :: kpoints
     TYPE(local_atoms_type), ALLOCATABLE, &
       DIMENSION(:)                           :: atom2d
     TYPE(molecule_type), DIMENSION(:), &
@@ -420,6 +441,7 @@ CONTAINS
     CALL get_qs_env(qs_env=qs_env,&
                     atomic_kind_set=atomic_kind_set,&
                     cell=cell,&
+                    kpoints=kpoints,&
                     distribution_2d=distribution_2d,&
                     local_particles=distribution_1d,&
                     particle_set=particle_set,&
@@ -442,11 +464,13 @@ CONTAINS
                     sab_almo=sab_almo, &
                     error=error)
 
+    dokp = (kpoints%nkp > 0)
     nddo = qs_env%dft_control%qs_control%semi_empirical
     dftb = qs_env%dft_control%qs_control%dftb
     scptb = qs_env%dft_control%qs_control%scptb
     almo = qs_env%dft_control%qs_control%do_almo_scf
     lrigpw = (qs_env%dft_control%qs_control%method_id == do_method_lrigpw)
+    lri_optbas = qs_env%dft_control%qs_control%lri_optbas
 
     CALL get_atomic_kind_set(atomic_kind_set=atomic_kind_set,&
                              gth_potential_present=gth_potential_present,&
@@ -581,11 +605,16 @@ CONTAINS
 
     END DO
 
-    ! enforce MIC for interaction lists in SE and DFTB
-    IF (nddo .OR. dftb .OR. scptb) THEN
-       mic = .TRUE.
-    ELSE
+    IF (dokp) THEN
+       ! no MIC for kpoints
        mic = .FALSE.
+    ELSE
+       ! enforce MIC for interaction lists in SE and DFTB
+       IF (nddo .OR. dftb .OR. scptb) THEN
+          mic = .TRUE.
+       ELSE
+          mic = .FALSE.
+       END IF
     END IF
 
     ! Build the orbital-orbital overlap neighbor lists
@@ -694,8 +723,6 @@ CONTAINS
          CALL build_neighbor_lists(sab_se,particle_set,atom2d,cell,pair_radius,mic=mic,&
               subcells=subcells,name="sab_se",error=error)
        ELSE
-!         CALL build_neighbor_lists(sab_se,particle_set,atom2d,cell,pair_radius,mic=mic,&
-!              subcells=subcells,name="sab_se",error=error)
          CALL build_neighbor_lists(sab_se,particle_set,atom2d,cell,pair_radius,&
               subcells=subcells,name="sab_se",error=error)
        END IF
@@ -714,9 +741,9 @@ CONTAINS
           CALL write_neighbor_lists(sab_lrc,particle_set,cell,para_env,neighbor_list_section,&
                "/SAB_LRC","sab_lrc","SE LONG-RANGE CORRECTION",error)
        END IF
+    END IF
 
-    ELSEIF (dftb) THEN
-
+    IF (dftb) THEN
        ! Build the neighbor lists for the DFTB Ewald methods
        IF ( qs_env%dft_control%qs_control%dftb_control%do_ewald ) THEN
           CALL get_qs_env(qs_env=qs_env,ewald_env=ewald_env,error=error)
@@ -730,47 +757,46 @@ CONTAINS
 
        ! Build the neighbor lists for the DFTB vdW pair potential
        IF ( qs_env%dft_control%qs_control%dftb_control%dispersion ) THEN
-          DO ikind = 1, nkind
-             atomic_kind => atomic_kind_set(ikind)
-             CALL get_atomic_kind(atomic_kind=atomic_kind,dftb_parameter=dftb_atom)
-             CALL get_dftb_atom_param(dftb_parameter=dftb_atom,&
-                                      rcdisp=c_radius(ikind),error=error)
-          END DO
-          default_present=.TRUE.
-          CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
-          CALL build_neighbor_lists(sab_vdw,particle_set,atom2d,cell,pair_radius,&
-               subcells=subcells,name="sab_vdw",error=error)
-          CALL set_qs_env(qs_env=qs_env,sab_vdw=sab_vdw,error=error)
-       END IF
-
-    ELSE
-
-       ! Build the neighbor lists for the vdW pair potential
-       CALL get_qs_env(qs_env=qs_env,dispersion_env=dispersion_env,error=error)
-       sab_vdw => dispersion_env%sab_vdw
-       sab_cn => dispersion_env%sab_cn
-       IF ( dispersion_env%type == xc_vdw_fun_pairpot ) THEN
-          c_radius(:) = dispersion_env%rc_disp
-          default_present=.TRUE. !include all atoms in vdW (even without basis)
-          CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
-          CALL build_neighbor_lists(sab_vdw,particle_set,atom2d,cell,pair_radius,&
-               subcells=subcells,operator_type="PP",name="sab_vdw",error=error)
-          dispersion_env%sab_vdw => sab_vdw
-
-          IF ( dispersion_env%pp_type == vdw_pairpot_dftd3 ) THEN
-             ! Build the neighbor lists for coordination numbers as needed by the DFT-D3 method
+          IF ( qs_env%dft_control%qs_control%dftb_control%dispersion_type == dispersion_uff ) THEN
              DO ikind = 1, nkind
                 atomic_kind => atomic_kind_set(ikind)
-                CALL get_atomic_kind(atomic_kind=atomic_kind,z=zat)
-                c_radius(ikind) = 4._dp*ptable(zat)%covalent_radius*bohr
+                CALL get_atomic_kind(atomic_kind=atomic_kind,dftb_parameter=dftb_atom)
+                CALL get_dftb_atom_param(dftb_parameter=dftb_atom,&
+                                         rcdisp=c_radius(ikind),error=error)
              END DO
+             default_present=.TRUE.
              CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
-             CALL build_neighbor_lists(sab_cn,particle_set,atom2d,cell,pair_radius,&
-                  subcells=subcells,operator_type="PP",name="sab_cn",error=error)
-             dispersion_env%sab_cn => sab_cn
+             CALL build_neighbor_lists(sab_vdw,particle_set,atom2d,cell,pair_radius,&
+                  subcells=subcells,name="sab_vdw",error=error)
+             CALL set_qs_env(qs_env=qs_env,sab_vdw=sab_vdw,error=error)
           END IF
        END IF
+    END IF
 
+    ! Build the neighbor lists for the vdW pair potential
+    CALL get_qs_env(qs_env=qs_env,dispersion_env=dispersion_env,error=error)
+    sab_vdw => dispersion_env%sab_vdw
+    sab_cn => dispersion_env%sab_cn
+    IF ( dispersion_env%type == xc_vdw_fun_pairpot ) THEN
+       c_radius(:) = dispersion_env%rc_disp
+       default_present=.TRUE. !include all atoms in vdW (even without basis)
+       CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
+       CALL build_neighbor_lists(sab_vdw,particle_set,atom2d,cell,pair_radius,&
+            subcells=subcells,operator_type="PP",name="sab_vdw",error=error)
+       dispersion_env%sab_vdw => sab_vdw
+
+       IF ( dispersion_env%pp_type == vdw_pairpot_dftd3 ) THEN
+          ! Build the neighbor lists for coordination numbers as needed by the DFT-D3 method
+          DO ikind = 1, nkind
+             atomic_kind => atomic_kind_set(ikind)
+             CALL get_atomic_kind(atomic_kind=atomic_kind,z=zat)
+             c_radius(ikind) = 4._dp*ptable(zat)%covalent_radius*bohr
+          END DO
+          CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)
+          CALL build_neighbor_lists(sab_cn,particle_set,atom2d,cell,pair_radius,&
+               subcells=subcells,operator_type="PP",name="sab_cn",error=error)
+          dispersion_env%sab_cn => sab_cn
+       END IF
     END IF
 
     IF (scptb) THEN
@@ -811,7 +837,7 @@ CONTAINS
           CALL set_qs_env(qs_env=qs_env,sab_scp=sab_scp,error=error)
        END IF
     END IF
-    IF(lrigpw) THEN
+    IF(lrigpw .OR. lri_optbas) THEN
        ! set neighborlists in lri_env environment
        CALL pair_radius_setup(orb_present,orb_present,orb_radius,orb_radius,pair_radius,error)
        soo_list => qs_env%lri_env%soo_list
@@ -890,10 +916,24 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Build simple pair neighbor lists.
-!> \author  MK
+!> \param ab_list ...
+!> \param particle_set ...
+!> \param atom ...
+!> \param cell ...
+!> \param pair_radius ...
+!> \param subcells ...
+!> \param mic ...
+!> \param symmetric ...
+!> \param molecular ...
+!> \param subset_of_mol ...
+!> \param current_subset ...
+!> \param operator_type ...
+!> \param name ...
+!> \param error ...
 !> \date    20.03.2002
 !> \par History
 !>          - Major refactoring (25.07.2010,jhu)
+!> \author  MK
 !> \version 2.0
 ! *****************************************************************************
   SUBROUTINE build_neighbor_lists(ab_list,particle_set,atom,cell,pair_radius,subcells,&
@@ -1291,6 +1331,14 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param list ...
+!> \param n ...
+!> \param ikind ...
+!> \param atom ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE combine_lists(list,n,ikind,atom,error)
     INTEGER, DIMENSION(:), POINTER           :: list
     INTEGER, INTENT(OUT)                     :: n
@@ -1343,6 +1391,15 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param present_a ...
+!> \param present_b ...
+!> \param radius_a ...
+!> \param radius_b ...
+!> \param pair_radius ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE pair_radius_setup(present_a,present_b,radius_a,radius_b,pair_radius,error)
     LOGICAL, DIMENSION(:), INTENT(IN)        :: present_a, present_b
     REAL(dp), DIMENSION(:), INTENT(IN)       :: radius_a, radius_b
@@ -1370,8 +1427,13 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Print the distribution of the simple pair neighbor list.
-!> \author  MK
+!> \param ab ...
+!> \param atomic_kind_set ...
+!> \param output_unit ...
+!> \param para_env ...
+!> \param error ...
 !> \date    19.06.2003
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE write_neighbor_distribution(ab,atomic_kind_set,output_unit,para_env,error)
@@ -1486,11 +1548,20 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief   Write a set of neighbor lists to the output unit.
-!> \author  MK
+!> \param ab ...
+!> \param particle_set ...
+!> \param cell ...
+!> \param para_env ...
+!> \param neighbor_list_section ...
+!> \param nl_type ...
+!> \param middle_name ...
+!> \param name ...
+!> \param error ...
 !> \date    04.03.2002
 !> \par History
 !>       - Adapted to the new parallelized neighbor list version
 !>         (26.06.2003,MK)
+!> \author  MK
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE write_neighbor_lists(ab,particle_set,cell,para_env,neighbor_list_section,&

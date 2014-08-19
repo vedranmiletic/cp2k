@@ -104,6 +104,7 @@ CONTAINS
 !> \param shortform string with the shortform of the functional name
 !> \param needs the components needed by this functional are set to
 !>        true (does not set the unneeded components to false)
+!> \param max_deriv ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author mguidon (01.2009)
@@ -148,6 +149,7 @@ CONTAINS
 !> \param shortform string with the shortform of the functional name
 !> \param needs the components needed by this functional are set to
 !>        true (does not set the unneeded components to false)
+!> \param max_deriv ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author mguidon (01.2009)
@@ -313,14 +315,24 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Low level routine that calls the three involved holes and puts them
 !>        together
-!> \param rho_set, norm_drho, laplace_rho, tau values on the grid
-!> \param e_0, e_rho, e_ndrho, e_tau, e_laplace_rho derivatives on the grid
+!> \param rho values on the grid
+!> \param norm_drho values on the grid
+!> \param laplace_rho values on the grid
+!> \param tau values on the grid
+!> \param e_0 derivatives on the grid
+!> \param e_rho derivatives on the grid
+!> \param e_ndrho derivatives on the grid
+!> \param e_tau derivatives on the grid
+!> \param e_laplace_rho derivatives on the grid
 !> \param grad_deriv degree of the derivative that should be evalated,
 !>        if positive all the derivatives up to the given degree are evaluated,
 !>        if negative only the given degree is calculated
-!> \params npoints number of gridpoints
-!> \params epsilon_rho, epsilon_norm_drho cutoffs
-!> \param sx, R, gamma, parameters for  functional
+!> \param npoints number of gridpoints
+!> \param epsilon_rho cutoffs
+!> \param epsilon_norm_drho cutoffs
+!> \param sx parameters for  functional
+!> \param R parameters for  functional
+!> \param gamma parameters for  functional
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author mguidon (01.2009)
@@ -639,14 +651,24 @@ CONTAINS
 ! *****************************************************************************
 !> \brief Low level routine that calls the three involved holes and puts them
 !>        together
-!> \param rho_set, norm_drho, laplace_rho, tau values on the grid
-!> \param e_0, e_rho, e_ndrho, e_tau, e_laplace_rho derivatives on the grid
+!> \param rho values on the grid
+!> \param norm_drho values on the grid
+!> \param laplace_rho values on the grid
+!> \param tau values on the grid
+!> \param e_0 derivatives on the grid
+!> \param e_rho derivatives on the grid
+!> \param e_ndrho derivatives on the grid
+!> \param e_tau derivatives on the grid
+!> \param e_laplace_rho derivatives on the grid
 !> \param grad_deriv degree of the derivative that should be evalated,
 !>        if positive all the derivatives up to the given degree are evaluated,
 !>        if negative only the given degree is calculated
-!> \params npoints number of gridpoints
-!> \params epsilon_rho, epsilon_norm_drho cutoffs
-!> \param sx, R, gamma, parameters for  functional
+!> \param npoints number of gridpoints
+!> \param epsilon_rho cutoffs
+!> \param epsilon_norm_drho cutoffs
+!> \param sx parameters for  functional 
+!> \param R parameters for  functional 
+!> \param gamma parameters for  functional 
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author mguidon (01.2009)

@@ -24,11 +24,11 @@ MODULE rt_propagation_methods
        cp_dbcsr_copy_into_existing, cp_dbcsr_create, &
        cp_dbcsr_deallocate_matrix, cp_dbcsr_deallocate_matrix_set, &
        cp_dbcsr_desymmetrize, cp_dbcsr_frobenius_norm, cp_dbcsr_get_block_p, &
-       cp_dbcsr_get_occupation, cp_dbcsr_init, cp_dbcsr_init_p, &
-       cp_dbcsr_iterator, cp_dbcsr_iterator_blocks_left, &
-       cp_dbcsr_iterator_next_block, cp_dbcsr_iterator_start, &
-       cp_dbcsr_iterator_stop, cp_dbcsr_multiply, cp_dbcsr_p_type, &
-       cp_dbcsr_release, cp_dbcsr_scale, cp_dbcsr_set, cp_dbcsr_type
+       cp_dbcsr_init, cp_dbcsr_init_p, cp_dbcsr_iterator, &
+       cp_dbcsr_iterator_blocks_left, cp_dbcsr_iterator_next_block, &
+       cp_dbcsr_iterator_start, cp_dbcsr_iterator_stop, cp_dbcsr_multiply, &
+       cp_dbcsr_p_type, cp_dbcsr_release, cp_dbcsr_scale, cp_dbcsr_set, &
+       cp_dbcsr_type
   USE cp_dbcsr_operations,             ONLY: cp_dbcsr_plus_fm_fm_t,&
                                              cp_dbcsr_sm_fm_multiply
   USE cp_fm_basic_linalg,              ONLY: cp_fm_scale_and_add
@@ -93,12 +93,18 @@ CONTAINS
 ! *****************************************************************************
 !> \brief performes a single propagation step a(t+Dt)=U(t+Dt,t)*a(0)
 !>        and calculates the new exponential
+!> \param qs_env ...
+!> \param rtp ...
+!> \param rtp_control ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
-  SUBROUTINE propagation_step(qs_env, error)
+  SUBROUTINE propagation_step(qs_env, rtp, rtp_control, error)
 
     TYPE(qs_environment_type), POINTER       :: qs_env
+    TYPE(rt_prop_type), POINTER              :: rtp
+    TYPE(rtp_control_type), POINTER          :: rtp_control
     TYPE(cp_error_type), INTENT(inout)       :: error
 
     CHARACTER(len=*), PARAMETER :: routineN = 'propagation_step', &
@@ -111,25 +117,21 @@ CONTAINS
       POINTER                                :: delta_mos, mos_new
     TYPE(qs_ks_env_type), POINTER            :: ks_env
     TYPE(qs_rho_type), POINTER               :: rho
-    TYPE(rt_prop_type), POINTER              :: rtp
-    TYPE(rtp_control_type), POINTER          :: rtp_control
 
     CALL timeset(routineN,handle)
-    NULLIFY(rho,ks_env,rtp)
+    NULLIFY(rho,ks_env,delta_P, rho_new,delta_mos, mos_new)
     ! get everything needed and set some values
     CALL get_qs_env(qs_env,&
          rho=rho,&
          ks_env=ks_env,&
-         rtp=rtp,&
          error=error)
-    rtp_control=>qs_env%dft_control%rtp_control
     IF(rtp%iter==1)THEN
        aspc_order=rtp_control%aspc_order
-       CALL aspc_extrapolate(qs_env,rtp,aspc_order,error)
+       CALL aspc_extrapolate(qs_env,rtp,aspc_order,error=error)
        IF(rtp%linear_scaling) THEN
-          CALL calc_update_rho_sparse(qs_env,error)
+          CALL calc_update_rho_sparse(qs_env,error=error)
        ELSE
-          CALL calc_update_rho(qs_env,error)
+          CALL calc_update_rho(qs_env,error=error)
        ENDIF
        CALL qs_ks_update_qs_env(ks_env,qs_env=qs_env,calculate_forces=.FALSE.,&
             error=error)
@@ -192,6 +194,11 @@ CONTAINS
 !>        convergence checks
 !>        copying stuff into right place for the next step 
 !>        updating the history for extrapolation 
+!> \param qs_env ...
+!> \param rtp_control ...
+!> \param delta_mos ...
+!> \param delta_P ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -234,9 +241,6 @@ CONTAINS
     IF(rtp%converged)THEN
        IF(rtp%linear_scaling) THEN
           CALL get_rtp(rtp=rtp,rho_old=rho_old,rho_new=rho_new,error=error) 
-          DO i=1,SIZE(rho_new)
-             rtp%sparsity(i)=cp_dbcsr_get_occupation(rho_new(i)%matrix)
-          END DO
           IF(rtp_control%mcweeny_max_iter>0.OR.rtp_control%calc_idempotency) THEN
              IF(SIZE(rho_new)==2) THEN
                 CALL cp_dbcsr_scale(rho_new(1)%matrix,one/2,error=error)
@@ -311,6 +315,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes the propagator matrix for EM/ETRS, RTP/EMD
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -350,6 +356,9 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief computes t*S_inv*H, if needed t*Sinv*B
+!> \param exp_H ...
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -430,6 +439,9 @@ CONTAINS
 ! *****************************************************************************
 !> \brief calculates the needed overlaplike matrices
 !>        depending on the way the exponential is calculated, only S^-1 is needed
+!> \param s_mat ...
+!> \param rtp ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -482,6 +494,10 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Calculates the frobenius norm of a omplex matrix represented by two real matrices
+!> \param frob_norm ...
+!> \param mat_re ...
+!> \param mat_im ...
+!> \param error ...
 !> \author Samuel Andermatt (04.14)
 ! *****************************************************************************
 
@@ -546,6 +562,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Does McWeeny for complex matrices
+!> \param P ...
+!> \param s_mat ...
+!> \param eps ...
+!> \param max_iter ...
+!> \param threshold ...
+!> \param error ...
 !> \author Samuel Andermatt (04.14)
 ! *****************************************************************************
 
@@ -571,10 +593,10 @@ CONTAINS
     CALL timeset(routineN,handle)
 
     NULLIFY(tmp,PS,PSP)
-    CALL cp_dbcsr_allocate_matrix_set(tmp,2,error=error)
-    CALL cp_dbcsr_allocate_matrix_set(PSP,2,error=error)
-    CALL cp_dbcsr_allocate_matrix_set(PS,2,error=error)
-    DO i=1,2
+    CALL cp_dbcsr_allocate_matrix_set(tmp,SIZE(P),error=error)
+    CALL cp_dbcsr_allocate_matrix_set(PSP,SIZE(P),error=error)
+    CALL cp_dbcsr_allocate_matrix_set(PS,SIZE(P),error=error)
+    DO i=1,SIZE(P)
        CALL cp_dbcsr_init_p(PS(i)%matrix,error=error)
        CALL cp_dbcsr_create(PS(i)%matrix,template=P(1)%matrix,error=error)
        CALL cp_dbcsr_init_p(PSP(i)%matrix,error=error)
@@ -620,6 +642,8 @@ CONTAINS
 ! *****************************************************************************
 !> \brief calculates the density from the complex MOs and passes the density to
 !>        qs_env.
+!> \param qs_env ...
+!> \param error ...
 !> \author Florian Schiffmann (02.09)
 ! *****************************************************************************
 
@@ -676,6 +700,8 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief Copies the density matrix back into the qs_env%rho%rho_ao
+!> \param qs_env ...
+!> \param error ...
 !> \author Samuel Andermatt (3.14)
 ! *****************************************************************************
 
@@ -712,6 +738,12 @@ CONTAINS
 
   END SUBROUTINE calc_update_rho_sparse
 
+! *****************************************************************************
+!> \brief ...
+!> \param rtp ...
+!> \param do_admm ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE calculate_P_imaginary(rtp,do_admm,error)
     TYPE(rt_prop_type), POINTER              :: rtp
     LOGICAL                                  :: do_admm
@@ -753,6 +785,13 @@ CONTAINS
   
   END SUBROUTINE calculate_P_imaginary
 
+! *****************************************************************************
+!> \brief ...
+!> \param qs_env ...
+!> \param rtp ...
+!> \param aspc_order ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE aspc_extrapolate(qs_env,rtp,aspc_order,error)
     TYPE(qs_environment_type), POINTER       :: qs_env
     TYPE(rt_prop_type), POINTER              :: rtp
@@ -910,6 +949,15 @@ CONTAINS
 
   END SUBROUTINE aspc_extrapolate
 
+! *****************************************************************************
+!> \brief ...
+!> \param rtp ...
+!> \param mos ...
+!> \param rho ...
+!> \param s_mat ...
+!> \param ihist ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE put_data_to_history(rtp,mos,rho,s_mat,ihist,error)
     TYPE(rt_prop_type), POINTER              :: rtp
     TYPE(cp_fm_p_type), DIMENSION(:), &

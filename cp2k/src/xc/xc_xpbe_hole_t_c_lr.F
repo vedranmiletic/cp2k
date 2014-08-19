@@ -152,10 +152,10 @@ MODULE xc_xpbe_hole_t_c_lr
 !> \param params input parameters (scaling,cutoff)
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
+!> \note
 ! *****************************************************************************
   SUBROUTINE xpbe_hole_t_c_lr_lda_eval ( rho_set, deriv_set, order, params, error )
 
@@ -265,17 +265,22 @@ MODULE xc_xpbe_hole_t_c_lr
 !>        taken
 !> \param npoints number of points on the grid
 !> \param order order of the derivatives
-!> \param rho, norm_drho values of density and gradient on the grid
-!> \param e_0, e_rho, e_ndrho derivatives of the energy on the grid
-!> \param epsilon_rho, epsilon_norm_drho cutoffs
-!> \param sx, R functional parameters
+!> \param rho value of density on the grid
+!> \param norm_drho value of gradient on the grid
+!> \param e_0 derivatives of the energy on the grid
+!> \param e_rho derivatives of the energy on the grid 
+!> \param e_ndrho derivatives of the energy on the grid
+!> \param epsilon_rho cutoffs
+!> \param epsilon_norm_drho cutoffs
+!> \param sx functional parameters
+!> \param R functional parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note For numerical reasons there are two different branches
-!>
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
+!> \note For numerical reasons there are two different branches
+!>
 ! *****************************************************************************
   SUBROUTINE xpbe_hole_t_c_lr_lda_calc(npoints, order, rho, norm_drho, e_0, e_rho, e_ndrho,&
                                        epsilon_rho, epsilon_norm_drho, sx, R,&
@@ -344,10 +349,10 @@ MODULE xc_xpbe_hole_t_c_lr
 !> \param params input parameters (scaling,cutoff)
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
+!> \note
 ! *****************************************************************************
   SUBROUTINE xpbe_hole_t_c_lr_lsd_eval ( rho_set, deriv_set, order, params, error )
 
@@ -471,17 +476,22 @@ MODULE xc_xpbe_hole_t_c_lr
 !>        taken
 !> \param npoints number of points on the grid
 !> \param order order of the derivatives
-!> \param rho, norm_drho values of density and gradient on the grid
-!> \param e_0, e_rho, e_ndrho derivatives of the energy on the grid
-!> \param epsilon_rho, epsilon_norm_drho cutoffs
-!> \param sx, R functional parameters
+!> \param rho density on the grid
+!> \param norm_drho gradient on the grid
+!> \param e_0 derivatives of the energy on the grid
+!> \param e_rho derivatives of the energy on the grid
+!> \param e_ndrho derivatives of the energy on the grid
+!> \param epsilon_rho cutoffs
+!> \param epsilon_norm_drho cutoffs
+!> \param sx functional parameters
+!> \param R functional parameters
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note For numerical reasons there are two different branches. This code calls
-!>       the lda version applying spin scaling relations
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
+!> \note For numerical reasons there are two different branches. This code calls
+!>       the lda version applying spin scaling relations
 ! *****************************************************************************
   SUBROUTINE xpbe_hole_t_c_lr_lsd_calc(npoints, order, rho, norm_drho, e_0, e_rho, e_ndrho,&
                                        epsilon_rho, epsilon_norm_drho, sx, R,&
@@ -545,12 +555,15 @@ MODULE xc_xpbe_hole_t_c_lr
 
 ! *****************************************************************************
 !> \brief low level routine that calculates the energy derivatives in one point
-!> \param e_0, e_rho, e_ndrho derivatives of the energy on the grid
-!> \param rho, ndrho values of density and gradient on the grid
-!> \param sscale, sx, R functional parameters
+!> \param e_0 derivatives of the energy on the grid
+!> \param e_rho derivatives of the energy on the grid
+!> \param e_ndrho derivatives of the energy on the grid
+!> \param rho value of density on the grid
+!> \param ndrho value of gradient on the grid
+!> \param sscale functional parameters
+!> \param sx functional parameters
+!> \param R functional parameters
 !> \param order order of the derivatives
-!> \param error variable to control error logging, stopping,...
-!>        see module cp_error_handling
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
@@ -914,12 +927,15 @@ MODULE xc_xpbe_hole_t_c_lr
 
 ! *****************************************************************************
 !> \brief low level routine that calculates the energy derivatives in one point
-!> \param e_0, e_rho, e_ndrho derivatives of the energy on the grid
-!> \param rho, ndrho values of density and gradient on the grid
-!> \param sscale, sx, R functional parameters
+!> \param e_0 derivatives of the energy on the grid
+!> \param e_rho derivatives of the energy on the grid
+!> \param e_ndrho derivatives of the energy on the grid
+!> \param rho value of density on the grid
+!> \param ndrho value of gradient on the grid
+!> \param sscale functional parameters
+!> \param sx functional parameters
+!> \param R functional parameters
 !> \param order order of the derivatives
-!> \param error variable to control error logging, stopping,...
-!>        see module cp_error_handling
 !> \par History
 !>      01.2009 created [Manuel Guidon]
 !> \author Manuel Guidon
@@ -1184,16 +1200,16 @@ MODULE xc_xpbe_hole_t_c_lr
 !> \brief These functions evaluate products exp(x)*Ei(x) and pi*exp(x)*erfc(sqrt(x)),
 !>      as well as their derivatives with respect to various combinations of
 !>      rho and norm_drho.
-!> \param Q, dQrho, dQndrho, P, dPrho, dPndrho where
-!>        Q = s^2*H*R^2*kf^2, P  = 9/4*s^2*H/A and dX = dP(Q)/drho(ndrho)
+!> \param P = 9/4*s^2*H/A
+!> \param Q = s^2*H*R^2*kf^2
+!> \par History
+!>      01.2009 created [Manuel Guidon]
+!> \author Manuel Guidon
 !> \note
 !>     - In order to avoid numerical instabilities, these routines use Taylor-
 !>       expansions for the above core-products for large arguments.
 !>     - red calculates the reduced gradient in a save way (i.e. using a fixed
 !>       cutoff EPS_RHO)
-!> \par History
-!>      01.2009 created [Manuel Guidon]
-!> \author Manuel Guidon
 ! *****************************************************************************
   FUNCTION exei(P,Q)
     REAL(dp), INTENT(IN)                     :: P, Q
@@ -1238,6 +1254,13 @@ MODULE xc_xpbe_hole_t_c_lr
     END IF
   END FUNCTION exei
 
+! *****************************************************************************
+!> \brief ...
+!> \param P ...
+!> \param Q ...
+!> \param dPrho ...
+!> \param dQrho ...
+! *****************************************************************************
   FUNCTION dexeirho(P,Q,dPrho,dQrho)
     REAL(dp), INTENT(IN)                     :: P, Q, dPrho, dQrho
     REAL(dp)                                 :: dexeirho
@@ -1245,6 +1268,13 @@ MODULE xc_xpbe_hole_t_c_lr
     dexeirho = dPrho * exei(P,Q) - (dPrho + dQrho)/(P+Q)*EXP(-Q)
   END FUNCTION dexeirho
 
+! *****************************************************************************
+!> \brief ...
+!> \param P ...
+!> \param Q ...
+!> \param dPndrho ...
+!> \param dQndrho ...
+! *****************************************************************************
   FUNCTION dexeindrho(P,Q,dPndrho,dQndrho)
     REAL(dp), INTENT(IN)                     :: P, Q, dPndrho, dQndrho
     REAL(dp)                                 :: dexeindrho
@@ -1252,6 +1282,11 @@ MODULE xc_xpbe_hole_t_c_lr
     dexeindrho = dPndrho * exei(P,Q) - (dPndrho + dQndrho)/(P+Q)*EXP(-Q)
   END FUNCTION dexeindrho
 
+! *****************************************************************************
+!> \brief ...
+!> \param rho ...
+!> \param ndrho ...
+! *****************************************************************************
   FUNCTION red(rho,ndrho)
     REAL(dp), INTENT(IN)                     :: rho, ndrho
     REAL(dp)                                 :: red
@@ -1261,6 +1296,11 @@ MODULE xc_xpbe_hole_t_c_lr
     red = red *MAX(1.0_dp/rho**(4.0_dp/3.0_dp),EPS_RHO)
   END FUNCTION red
 
+! *****************************************************************************
+!> \brief ...
+!> \param rho ...
+!> \param ndrho ...
+! *****************************************************************************
   FUNCTION dsdrho(rho,ndrho)
     REAL(dp), INTENT(IN)                     :: rho, ndrho
     REAL(dp)                                 :: dsdrho
@@ -1270,6 +1310,11 @@ MODULE xc_xpbe_hole_t_c_lr
     dsdrho = dsdrho*MAX(1.0_dp/rho**(7.0_dp/3.0_dp),EPS_RHO)
   END FUNCTION dsdrho
 
+! *****************************************************************************
+!> \brief ...
+!> \param rho ...
+!> \param ndrho ...
+! *****************************************************************************
   FUNCTION dsdndrho(rho,ndrho)
     REAL(dp), INTENT(IN)                     :: rho, ndrho
     REAL(dp)                                 :: dsdndrho

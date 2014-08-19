@@ -16,6 +16,7 @@ MODULE cp_cfm_basic_linalg
                                              cp_cfm_get_info,&
                                              cp_cfm_type
   USE cp_fm_struct,                    ONLY: cp_fm_struct_equivalent
+  USE cp_fm_types,                     ONLY: cp_fm_type
   USE kinds,                           ONLY: dp
   USE message_passing,                 ONLY: mp_sum
   USE timings,                         ONLY: timeset,&
@@ -28,10 +29,17 @@ MODULE cp_cfm_basic_linalg
   LOGICAL, PRIVATE, PARAMETER :: debug_this_module=.TRUE.
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'cp_cfm_basic_linalg'
 
-  PUBLIC :: cp_cfm_add, cp_cfm_gemm, cp_cfm_lu_decompose, cp_cfm_column_scale, cp_cfm_schur_product,&
+  PUBLIC :: cp_cfm_add, cp_cfm_add_fm, cp_cfm_gemm, cp_cfm_lu_decompose,&
+            cp_cfm_column_scale, cp_cfm_schur_product,&
             cp_cfm_solve, cp_cfm_cholesky_decompose, cp_cfm_triangular_multiply
 CONTAINS
 
+! *****************************************************************************
+!> \brief ...
+!> \param matrix_a ...
+!> \param matrix_b ...
+!> \param matrix_c ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE cp_cfm_schur_product(matrix_a,matrix_b,matrix_c,error)
 
@@ -69,6 +77,13 @@ CONTAINS
 
   END SUBROUTINE cp_cfm_schur_product
 
+! *****************************************************************************
+!> \brief ...
+!> \param matrix_a ...
+!> \param matrix_b ...
+!> \param matrix_c ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE cp_cfm_schur_product_cc(matrix_a,matrix_b,matrix_c,error)
 
     TYPE(cp_cfm_type), POINTER               :: matrix_a, matrix_b, matrix_c
@@ -106,8 +121,13 @@ CONTAINS
   END SUBROUTINE cp_cfm_schur_product_cc
 ! *****************************************************************************
 !> \brief   Scale and add two BLACS matrices (a <- alpha*a + beta*b).
-!> \author  Matthias Krack
+!> \param alpha ...
+!> \param matrix_a ...
+!> \param beta ...
+!> \param matrix_b ...
+!> \param error ...
 !> \date    11.06.2001
+!> \author  Matthias Krack
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE cp_cfm_add(alpha,matrix_a,beta,matrix_b,error)
@@ -194,6 +214,96 @@ CPSourceFileRef,&
     CALL timestop(handle)
 
   END SUBROUTINE cp_cfm_add
+! *****************************************************************************
+!> \brief   Scale and add two BLACS matrices (a <- alpha*a + beta*b).
+!>          where b is a real matrix (adapted from cp_cfm_add)
+!> \param alpha ...
+!> \param matrix_a ...
+!> \param beta ...
+!> \param matrix_b ...
+!> \param error ...
+!> \date    01.08.2014
+!> \author  JGH
+!> \version 1.0
+! *****************************************************************************
+  SUBROUTINE cp_cfm_add_fm(alpha,matrix_a,beta,matrix_b,error)
+    COMPLEX(KIND=dp), INTENT(IN)             :: alpha
+    TYPE(cp_cfm_type), POINTER               :: matrix_a
+    COMPLEX(KIND=dp), INTENT(IN)             :: beta
+    TYPE(cp_fm_type), POINTER                :: matrix_b
+    TYPE(cp_error_type), INTENT(inout)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'cp_cfm_add_fm', &
+      routineP = moduleN//':'//routineN
+
+    COMPLEX(KIND=dp), DIMENSION(:, :), &
+      POINTER                                :: a
+    INTEGER                                  :: handle, mypcol, myprow
+    LOGICAL                                  :: failure
+    REAL(KIND=dp), DIMENSION(:, :), POINTER  :: b
+
+    CALL timeset(routineN,handle)
+
+    failure=.FALSE.
+    NULLIFY(a,b)
+
+    CPPrecondition(ASSOCIATED(matrix_a),cp_failure_level,routineP,error,failure)
+    myprow=matrix_a%matrix_struct%context%mepos(1)
+    mypcol=matrix_a%matrix_struct%context%mepos(2)
+
+    a => matrix_a%local_data
+
+    IF (beta==CMPLX(0.0_dp,0.0_dp,dp)) THEN
+
+       IF (alpha==CMPLX(0.0_dp,0.0_dp,dp)) THEN
+          a(:,:)=CMPLX(0.0_dp,0.0_dp,dp)
+       ELSE IF (alpha == CMPLX(1.0_dp,0.0_dp,dp)) THEN
+          RETURN
+       ELSE
+          a(:,:) = alpha*a(:,:)
+       END IF
+
+    ELSE
+       CPPrecondition(ASSOCIATED(matrix_b),cp_failure_level,routineP,error,failure)
+       CALL cp_assert(matrix_a%matrix_struct%context%group==&
+            matrix_b%matrix_struct%context%group,cp_failure_level,&
+            cp_assertion_failed,fromWhere=routineP,&
+            message="matrices must be in the same blacs context"//&
+CPSourceFileRef,&
+            error=error,failure=failure)
+
+       IF (cp_fm_struct_equivalent(matrix_a%matrix_struct,&
+            matrix_b%matrix_struct,error=error)) THEN
+
+          b => matrix_b%local_data
+
+          IF (alpha == CMPLX(0.0_dp,0.0_dp,dp)) THEN
+             IF (beta == CMPLX(1.0_dp,0.0_dp,dp)) THEN
+                a(:,:) = b(:,:)
+             ELSE
+                a(:,:) = beta*b(:,:)
+             END IF
+          ELSE IF (alpha == CMPLX(1.0_dp,0.0_dp,dp)) THEN
+             IF (beta == CMPLX(1.0_dp,0.0_dp,dp)) THEN
+                a(:,:) = a(:,:) + b(:,:)
+             ELSE
+                a(:,:) = a(:,:) + beta*b(:,:)
+             END IF
+          ELSE
+             a(:,:) = alpha*a(:,:) + beta*b(:,:)
+          END IF
+       ELSE
+#ifdef __SCALAPACK
+          CALL cp_unimplemented_error(fromWhere=routineP, &
+               message="to do (pdscal,pdcopy,pdaxpy)", error=error)
+#else
+          CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
+#endif
+       END IF
+    END IF
+    CALL timestop(handle)
+
+  END SUBROUTINE cp_cfm_add_fm
 
 ! *****************************************************************************
 !> \brief   Computes the LU decomposition of a given matrix
@@ -201,8 +311,11 @@ CPSourceFileRef,&
 !>          which is most efficiently done this way, but, indeed, destroys the matrix
 !>          SERIOUS WARNING (KNOWN BUG) : the sign of the determinant depends on ipivot
 !>          one should be able to find out if ipivot is an even or an odd permutation...
-!> \author  Matthias Krack
+!> \param matrix_a ...
+!> \param almost_determinant ...
+!> \param error ...
 !> \date    11.06.2001
+!> \author  Matthias Krack
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE cp_cfm_lu_decompose(matrix_a,almost_determinant,error)
@@ -272,8 +385,20 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief   BLACS interface to the BLAS routine dgemm.
-!> \author  Matthias Krack
+!> \param transa ...
+!> \param transb ...
+!> \param m ...
+!> \param n ...
+!> \param k ...
+!> \param alpha ...
+!> \param matrix_a ...
+!> \param matrix_b ...
+!> \param beta ...
+!> \param matrix_c ...
+!> \param error ...
+!> \param b_first_col ...
 !> \date    07.06.2001
+!> \author  Matthias Krack
 !> \version 1.0
 ! *****************************************************************************
   SUBROUTINE cp_cfm_gemm(transa,transb,m,n,k,alpha,matrix_a,matrix_b,beta,&
@@ -333,6 +458,7 @@ CPSourceFileRef,&
 
 ! *****************************************************************************
 !> \brief scales column i of matrix a with scaling(i)
+!> \param matrixa ...
 !> \param scaling : an array used for scaling the columns, SIZE(scaling) determines the number of columns to be scaled
 !> \author Joost VandeVondele
 ! *****************************************************************************
@@ -381,6 +507,10 @@ CPSourceFileRef,&
 ! *****************************************************************************
 !> \brief computs the the solution to A*b=A_general using lu decomposition
 !>        pay attention, both matrices are overwritten, a_general contais the result
+!> \param matrix_a ...
+!> \param general_a ...
+!> \param determinant ...
+!> \param error ...
 !> \author Florian Schiffmann
 ! *****************************************************************************
   SUBROUTINE cp_cfm_solve(matrix_a,general_a,determinant,error)
@@ -543,13 +673,14 @@ CPSourceFileRef,&
 !>        size(matrix_b,1))
 !> \param n_cols the number of columns of the result (defaults to
 !>        size(matrix_b,2))
+!> \param alpha ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
-!> \note
-!>      needs an mpi env
 !> \par History
 !>      08.2002 created [fawzi]
 !> \author Fawzi Mohamed
+!> \note
+!>      needs an mpi env
 ! *****************************************************************************
 SUBROUTINE cp_cfm_triangular_multiply(triangular_matrix,matrix_b,side,&
      transpose_tr, invert_tr, uplo_tr,unit_diag_tr, n_rows, n_cols, &

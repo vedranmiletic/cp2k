@@ -13,8 +13,8 @@
 ! *****************************************************************************
 MODULE input_cp2k_mm
   USE bibliography,                    ONLY: &
-       Devynck2012, Dick1958, Foiles1986, Mitchell1993, Siepmann1995, &
-       Tersoff1988, Tosi1964a, Tosi1964b, Yamada2000
+       Devynck2012, Dick1958, Foiles1986, Mitchell1993, QUIP_ref, &
+       Siepmann1995, Tersoff1988, Tosi1964a, Tosi1964b, Yamada2000
   USE cp_output_handling,              ONLY: cp_print_key_section_create
   USE cp_units,                        ONLY: cp_unit_to_cp2k
   USE f77_blas
@@ -818,6 +818,7 @@ CONTAINS
 ! *****************************************************************************
 !> \brief This section specifies the bond of the MM atoms
 !> \param section the section to create
+!> \param label ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
 !> \author teo
@@ -872,7 +873,7 @@ CONTAINS
                           "Functional Form (CHARMM|AMBER): K*(R-R0)^2",&
                           "Functional Form (CHARMM|AMBER): K*(R-R0)^2",&
                           "Functional Form (HARMONIC|G87): 1/2*K*(R-R0)^2",&
-                          "Functional Form (G96): 1/4*K*(R-R0)^2",&
+                          "Functional Form (G96): 1/4*K*(R^2-R0^2)^2",&
                           "Functional Form (QUARTIC): (1/2*K1+[1/3*K2+1/4*K3*|R-R0|]*|R-R0|)(R-R0)^2",&
                           "Functional Form (MORSE): K1*[(1-exp(-K2*(R-R0)))^2-1])",&
                           "Functional Form (CUBIC): K*(R-R0)^2*(1+cs*(R-R0)+7/12*(cs^2*(R-R0)^2))",&
@@ -1359,6 +1360,10 @@ CONTAINS
        CALL section_add_subsection(section, subsection, error=error)
        CALL section_release(subsection,error=error)
 
+       CALL create_QUIP_section(subsection, error=error)
+       CALL section_add_subsection(section, subsection, error=error)
+       CALL section_release(subsection,error=error)
+
        CALL create_Goodwin_section(subsection, error=error)
        CALL section_add_subsection(section, subsection, error=error)
        CALL section_release(subsection,error=error)
@@ -1614,6 +1619,74 @@ CONTAINS
 
     END IF
   END SUBROUTINE create_EAM_section
+
+! *****************************************************************************
+!> \brief This section specifies the input parameters for QUIP  potential type
+!> \param section the section to create
+!> \param error variable to control error logging, stopping,...
+!>        see module cp_error_handling
+!> \author teo
+! *****************************************************************************
+  SUBROUTINE create_QUIP_section(section,error)
+    TYPE(section_type), POINTER              :: section
+    TYPE(cp_error_type), INTENT(inout)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'create_QUIP_section', &
+      routineP = moduleN//':'//routineN
+
+    LOGICAL                                  :: failure
+    TYPE(keyword_type), POINTER              :: keyword
+
+    failure=.FALSE.
+
+    CPPrecondition(.NOT.ASSOCIATED(section),cp_failure_level,routineP,error,failure)
+    IF (.NOT. failure) THEN
+       CALL section_create(section,name="QUIP",&
+            description="This section specifies the input parameters for QUIP potential type. " //&
+                        "Mainly intended for things like GAP corrections to DFT "//&
+                        "to achieve correlated-wavefunction-like accuracy. " //&
+                        "Requires linking with quip library from <a href=""http://www.libatoms.org"" "//&
+                        "target=""_blank"">http://www.libatoms.org</a> .",&
+            citations=(/QUIP_ref/),n_keywords=1, n_subsections=0, repeats=.TRUE., &
+            required=.TRUE., error=error)
+
+       NULLIFY(keyword)
+
+       CALL keyword_create(keyword, name="ATOMS",&
+            description="Defines the atomic kinds involved in the QUIP potential. "//&
+            "For more than 2 elements, &QUIP section must be repeated until each element "//&
+            "has been mentioned at least once. Set IGNORE_MISSING_CRITICAL_PARAMS to T "//&
+            "in enclosing &FORCEFIELD section to avoid having to list every pair of elements separately.",&
+            usage="ATOMS {KIND1} {KIND2}", required=.TRUE., type_of_var=char_t,&
+            n_var=2, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="PARM_FILE_NAME",&
+            variants=(/"PARMFILE"/),&
+            description="Specifies the filename that contains the QUIP potential.",&
+            usage="PARM_FILE_NAME {FILENAME}",default_lc_val="quip_params.xml",error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="INIT_ARGS",&
+            description="Specifies the potential initialization arguments for the QUIP potential. "//&
+            "If blank (default) first potential defined in QUIP parameter file will be used.",&
+            usage="INIT_ARGS",default_c_vals=(/""/),&
+            n_var=-1,type_of_var=char_t, error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+       CALL keyword_create(keyword, name="CALC_ARGS",&
+            description="Specifies the potential calculation arguments for the QUIP potential.",&
+            usage="CALC_ARGS",default_c_vals=(/""/), &
+            n_var=-1,type_of_var=char_t, required=.FALSE., error=error)
+       CALL section_add_keyword(section,keyword,error=error)
+       CALL keyword_release(keyword,error=error)
+
+    END IF
+  END SUBROUTINE create_QUIP_section
+
 
 ! *****************************************************************************
 !> \brief This section specifies the input parameters for Lennard-Jones potential type
@@ -2396,6 +2469,8 @@ CONTAINS
 ! *****************************************************************************
 !> \brief This section specifies the input parameters for Tersoff potential type
 !>      (Tersoff, J. PRB 39(8), 5566, 1989)
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
   SUBROUTINE create_Tersoff_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -2561,6 +2636,8 @@ CONTAINS
 !> \brief This section specifies the input parameters for Siepmann-Sprik
 !>        potential type
 !>      (Siepmann and Sprik, J. Chem. Phys. 102(1) 511, 1995)  
+!> \param section ...
+!> \param error ...
 ! *****************************************************************************
  SUBROUTINE create_Siepmann_section(section,error)
     TYPE(section_type), POINTER              :: section
@@ -2652,9 +2729,12 @@ CONTAINS
 
 ! *****************************************************************************
 !> \brief creates the input section for the qs part
-!> \param section the section to create
+!> \param print_key ...
+!> \param label ...
+!> \param print_level ...
 !> \param error variable to control error logging, stopping,...
 !>        see module cp_error_handling
+!> \param section the section to create UNMATCHED_PROCEDURE_ARGUMENT: please check 
 !> \author teo
 ! *****************************************************************************
   SUBROUTINE create_dipoles_section(print_key,label,print_level,error)

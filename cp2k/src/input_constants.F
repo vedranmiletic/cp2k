@@ -775,7 +775,8 @@ MODULE input_constants
   INTEGER, PARAMETER, PUBLIC               :: ls_s_inversion_hotelling=3,&
                                               ls_s_inversion_sign_sqrt=5
   
-  INTEGER, PARAMETER, PUBLIC               :: ls_scf_ns=17, ls_scf_trs4=18
+  INTEGER, PARAMETER, PUBLIC               :: ls_scf_ns=17, ls_scf_trs4=18,&
+                                              ls_scf_tc2=19
 
   INTEGER, PARAMETER, PUBLIC               :: ls_scf_line_search_3point=3,&
                                               ls_scf_line_search_3point_2d=6
@@ -887,5 +888,9 @@ MODULE input_constants
 ! fm matrix multiplication
   INTEGER, PARAMETER, PUBLIC               :: do_pdgemm  =1,&
                                               do_dbcsr   =2
+
+  ! Dispersion DFTB
+  INTEGER, PARAMETER, PUBLIC               :: dispersion_uff=100,&
+                                              dispersion_d3 =200
 
 END MODULE input_constants

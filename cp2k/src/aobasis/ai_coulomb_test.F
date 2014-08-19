@@ -44,6 +44,10 @@ MODULE ai_coulomb_test
 CONTAINS
 
 ! *****************************************************************************
+!> \brief ...
+!> \param iw ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE eri_test (iw,error)
 
     INTEGER, INTENT(IN)                      :: iw
@@ -253,6 +257,11 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param iw ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE geminal_test1 (iw,error)
 
     INTEGER, INTENT(IN)                      :: iw
@@ -353,7 +362,7 @@ CONTAINS
                             d1 = ABS(iab(1,iax,iay,ibx,iby)-intab)
                             dmax=MAX(d1,dmax)
                             IF(iw>0 .AND. d1 > 1.e-10) THEN
-                              WRITE(6,"(4I4,3F20.12)") iax,iay,ibx,iby,iab(1,iax,iay,ibx,iby),intab,d1
+                              WRITE(*,"(4I4,3F20.12)") iax,iay,ibx,iby,iab(1,iax,iay,ibx,iby),intab,d1
                             END IF
                           END DO
                         END DO
@@ -377,6 +386,11 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param iw ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE geminal_test2 (iw,error)
 
     INTEGER, INTENT(IN)                      :: iw
@@ -475,6 +489,11 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param iw ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE geminal_test3 (iw,error)
 
     INTEGER, INTENT(IN)                      :: iw
@@ -582,7 +601,7 @@ CONTAINS
                             d1 = ABS(iabd(1,iax,iay,ibx,iby,1)-intab)
                             dmax=MAX(d1,dmax)
                             IF(iw>0 .AND. d1 > 1.e-10) THEN
-                              WRITE(6,"('I    ',4I4,3F20.12)") iax,iay,ibx,iby,iabd(1,iax,iay,ibx,iby,1),intab,d1
+                              WRITE(*,"('I    ',4I4,3F20.12)") iax,iay,ibx,iby,iabd(1,iax,iay,ibx,iby,1),intab,d1
                             END IF
                             DO k=1,6
                               ra(k) = ra(k) + 0.5_dp*delta
@@ -596,7 +615,7 @@ CONTAINS
                               d1 = ABS(iabd(1,iax,iay,ibx,iby,k+1)-intab)
                               dmax=MAX(d1,dmax)
                               IF(iw>0 .AND. d1 > 1.e-7) THEN
-                                WRITE(6,"('dI/dR',I1,4x,4I4,3F18.10)") k,iax,iay,ibx,iby,&
+                                WRITE(*,"('dI/dR',I1,4x,4I4,3F18.10)") k,iax,iay,ibx,iby,&
                                       iabd(1,iax,iay,ibx,iby,k+1),intab,d1
                               END IF
                             END DO
@@ -622,6 +641,11 @@ CONTAINS
 
 ! *****************************************************************************
 
+! *****************************************************************************
+!> \brief ...
+!> \param iw ...
+!> \param error ...
+! *****************************************************************************
   SUBROUTINE geminal_test4 (iw,error)
 
     INTEGER, INTENT(IN)                      :: iw
@@ -767,17 +791,17 @@ CONTAINS
                             d1 = ABS(da-0.5_dp*(xr+xs))
                             dmax=MAX(d1,dmax)
                             IF(iw>0 .AND. d1 > 1.e-7) THEN
-                              WRITE(6,"('dI/da',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,0.5_dp*(xr+xs),da,d1
+                              WRITE(*,"('dI/da',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,0.5_dp*(xr+xs),da,d1
                             END IF
                             d1 = ABS(dc-0.5_dp*(xr-xs))
                             dmax=MAX(d1,dmax)
                             IF(iw>0 .AND. d1 > 1.e-7) THEN
-                              WRITE(6,"('dI/dc',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,0.5_dp*(xr-xs),dc,d1
+                              WRITE(*,"('dI/dc',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,0.5_dp*(xr-xs),dc,d1
                             END IF
                             d1 = ABS(db-(-xr))
                             dmax=MAX(d1,dmax)
                             IF(iw>0 .AND. d1 > 1.e-7) THEN
-                              WRITE(6,"('dI/db',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,-xr,db,d1
+                              WRITE(*,"('dI/db',I1,4x,4I4,3F18.10)") k,ia,ic,ir,is,-xr,db,d1
                             END IF
 
                           END DO

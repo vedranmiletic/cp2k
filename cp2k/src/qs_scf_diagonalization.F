@@ -13,12 +13,17 @@
 MODULE qs_scf_diagonalization
 
   USE cp_array_r_utils,                ONLY: cp_1d_r_p_type
+  USE cp_cfm_basic_linalg,             ONLY: cp_cfm_add_fm
+  USE cp_cfm_types,                    ONLY: cp_cfm_create,&
+                                             cp_cfm_release,&
+                                             cp_cfm_type
   USE cp_dbcsr_cp2k_link,              ONLY: cp_dbcsr_alloc_block_from_nbl
   USE cp_dbcsr_interface,              ONLY: &
        cp_dbcsr_allocate_matrix_set, cp_dbcsr_col_block_sizes, cp_dbcsr_copy, &
-       cp_dbcsr_create, cp_dbcsr_distribution, cp_dbcsr_init, &
-       cp_dbcsr_p_type, cp_dbcsr_row_block_sizes, cp_dbcsr_set, &
-       cp_dbcsr_type, dbcsr_type_symmetric
+       cp_dbcsr_create, cp_dbcsr_deallocate_matrix, cp_dbcsr_desymmetrize, &
+       cp_dbcsr_distribution, cp_dbcsr_init, cp_dbcsr_p_type, &
+       cp_dbcsr_row_block_sizes, cp_dbcsr_set, cp_dbcsr_type, &
+       dbcsr_type_no_symmetry, dbcsr_type_symmetric
   USE cp_dbcsr_operations,             ONLY: copy_dbcsr_to_fm,&
                                              copy_fm_to_dbcsr,&
                                              cp_dbcsr_sm_fm_multiply
@@ -26,12 +31,20 @@ MODULE qs_scf_diagonalization
                                              cp_fm_upper_to_full
   USE cp_fm_cholesky,                  ONLY: cp_fm_cholesky_reduce,&
                                              cp_fm_cholesky_restore
-  USE cp_fm_diag,                      ONLY: choose_eigv_solver
+  USE cp_fm_diag,                      ONLY: choose_eigv_solver,&
+                                             cp_fm_geeig
+  USE cp_fm_pool_types,                ONLY: cp_fm_pool_p_type,&
+                                             fm_pool_create_fm,&
+                                             fm_pool_give_back_fm
   USE cp_fm_struct,                    ONLY: cp_fm_struct_create,&
                                              cp_fm_struct_release,&
                                              cp_fm_struct_type
   USE cp_fm_types,                     ONLY: cp_fm_add_to_element,&
+                                             cp_fm_copy_general,&
                                              cp_fm_create,&
+                                             cp_fm_get_info,&
+                                             cp_fm_p_type,&
+                                             cp_fm_release,&
                                              cp_fm_to_fm,&
                                              cp_fm_type
   USE cp_gemm_interface,               ONLY: cp_gemm
@@ -44,6 +57,13 @@ MODULE qs_scf_diagonalization
        restart_guess
   USE input_section_types,             ONLY: section_vals_type
   USE kinds,                           ONLY: dp
+  USE kpoint_methods,                  ONLY: kpoint_density_matrices,&
+                                             kpoint_density_transform,&
+                                             kpoint_set_mo_occupation,&
+                                             rskp_transform
+  USE kpoint_types,                    ONLY: get_kpoint_info,&
+                                             kpoint_env_type,&
+                                             kpoint_type
   USE machine,                         ONLY: m_flush,&
                                              m_walltime
   USE preconditioner,                  ONLY: prepare_preconditioner,&
@@ -61,6 +81,8 @@ MODULE qs_scf_diagonalization
   USE qs_ks_methods,                   ONLY: qs_ks_did_change,&
                                              qs_ks_update_qs_env
   USE qs_ks_types,                     ONLY: qs_ks_env_type
+  USE qs_matrix_pools,                 ONLY: mpools_get,&
+                                             qs_matrix_pools_type
   USE qs_mo_methods,                   ONLY: calculate_density_matrix,&
                                              calculate_subspace_eigenvalues
   USE qs_mo_types,                     ONLY: get_mo_set,&
@@ -78,9 +100,9 @@ MODULE qs_scf_diagonalization
   USE qs_scf_methods,                  ONLY: combine_ks_matrices,&
                                              eigensolver,&
                                              eigensolver_dbcsr,&
+                                             eigensolver_simple,&
                                              eigensolver_symm,&
-                                             scf_env_density_mixing,&
-                                             simple_eigensolver
+                                             scf_env_density_mixing
   USE qs_scf_types,                    ONLY: qs_scf_env_type,&
                                              subspace_env_type
   USE scf_control_types,               ONLY: scf_control_type
@@ -97,7 +119,7 @@ MODULE qs_scf_diagonalization
 
   CHARACTER(len=*), PARAMETER, PRIVATE :: moduleN = 'qs_scf_diagonalization'
 
-  PUBLIC :: do_general_diag, do_roks_diag, &
+  PUBLIC :: do_general_diag, do_general_diag_kp, do_roks_diag, &
             do_special_diag, do_ot_diag, do_block_davidson_diag, &
             do_block_krylov_diag, do_scf_diag_subspace, diag_subspace_allocate
 
@@ -107,13 +129,22 @@ CONTAINS
 ! *****************************************************************************
 !> \brief the inner loop of scf, specific to diagonalization with S matrix
 !>       basically, in goes the ks matrix out goes a new p matrix
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param matrix_s ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param diis_step ...
+!> \param xas_env ...
+!> \param error ...
 !> \par History
 !>      03.2006 created [Joost VandeVondele]
 ! *****************************************************************************
 
   SUBROUTINE do_general_diag(scf_env,mos,matrix_ks,&
                              matrix_s,scf_control,scf_section,&
-                             diis_step,use_jacobi,xas_env,error)
+                             diis_step,xas_env,error)
 
     TYPE(qs_scf_env_type), POINTER           :: scf_env
     TYPE(mo_set_p_type), DIMENSION(:), &
@@ -122,7 +153,7 @@ CONTAINS
       POINTER                                :: matrix_ks, matrix_s
     TYPE(scf_control_type), POINTER          :: scf_control
     TYPE(section_vals_type), POINTER         :: scf_section
-    LOGICAL, INTENT(INOUT)                   :: diis_step, use_jacobi
+    LOGICAL, INTENT(INOUT)                   :: diis_step
     TYPE(xas_environment_type), OPTIONAL, &
       POINTER                                :: xas_env
     TYPE(cp_error_type), INTENT(inout)       :: error
@@ -131,7 +162,7 @@ CONTAINS
       routineP = moduleN//':'//routineN
 
     INTEGER                                  :: ispin, nspin
-    LOGICAL                                  :: do_level_shift
+    LOGICAL                                  :: do_level_shift, use_jacobi
     REAL(kind=dp)                            :: diis_error, eps_diis
     TYPE(cp_dbcsr_type), POINTER             :: ortho_dbcsr
     TYPE(cp_fm_type), POINTER                :: ortho
@@ -199,7 +230,6 @@ CONTAINS
       END IF
     END IF
 
-
     IF(scf_env%cholesky_method==cholesky_dbcsr) THEN
        ortho_dbcsr => scf_env%ortho_dbcsr
        DO ispin=1,nspin
@@ -266,11 +296,229 @@ CONTAINS
   END SUBROUTINE do_general_diag
 
 ! *****************************************************************************
+!> \brief Kpoint diagonalization routine 
+!>        Transforms matrices to kpoint, distributes kpoint groups, performs
+!>        general diagonalization (no storgae of overlap decomposition), stores
+!>        MOs, calculates occupation numbers, calculates density matrices 
+!>        in kpoint representation, transforms density matrices to real space
+!> \param scf_env      SCF environment
+!> \param matrix_ks    Kohn-sham matrices (RS indices, global)
+!> \param matrix_s     Overlap matrices (RS indices, global)
+!> \param kpoints      Kpoint environment
+!> \param scf_control  SCF control variables
+!> \param scf_section  SCF section (input)
+!> \param diis_step    Have we done a DIIS step
+!> \param error        CP2K error handling
+!> \par History
+!>      08.2014 created [JGH]
+! *****************************************************************************
+
+  SUBROUTINE do_general_diag_kp(scf_env,matrix_ks,matrix_s,kpoints,&
+                                scf_control,scf_section,diis_step,error)
+
+    TYPE(qs_scf_env_type), POINTER           :: scf_env
+    TYPE(cp_dbcsr_p_type), DIMENSION(:, :), &
+      POINTER                                :: matrix_ks, matrix_s
+    TYPE(kpoint_type), POINTER               :: kpoints
+    TYPE(scf_control_type), POINTER          :: scf_control
+    TYPE(section_vals_type), POINTER         :: scf_section
+    LOGICAL, INTENT(INOUT)                   :: diis_step
+    TYPE(cp_error_type), INTENT(inout)       :: error
+
+    CHARACTER(len=*), PARAMETER :: routineN = 'do_general_diag_kp', &
+      routineP = moduleN//':'//routineN
+
+    COMPLEX(KIND=dp) :: cone = CMPLX(1.0_dp,0.0_dp,KIND=dp), &
+      czero = CMPLX(0.0_dp,0.0_dp,KIND=dp), &
+      ione = CMPLX(0.0_dp,1.0_dp,KIND=dp)
+    INTEGER                                  :: ik, ikp, ikpgr, ispin, &
+                                                kplocal, nkp, nkp_groups, &
+                                                nspin, stat
+    INTEGER, DIMENSION(2)                    :: kp_range
+    INTEGER, DIMENSION(:, :), POINTER        :: kp_dist
+    INTEGER, DIMENSION(:, :, :), POINTER     :: cell_to_index
+    LOGICAL                                  :: do_level_shift, failure, &
+                                                use_real_wfn
+    REAL(kind=dp), DIMENSION(:), POINTER     :: eigenvalues
+    REAL(kind=dp), DIMENSION(:, :), POINTER  :: xkp
+    TYPE(cp_cfm_type), POINTER               :: cksmat, csmat
+    TYPE(cp_dbcsr_type), POINTER             :: cmatrix, rmatrix, tmpmat
+    TYPE(cp_fm_p_type), DIMENSION(:), &
+      POINTER                                :: fmwork
+    TYPE(cp_fm_pool_p_type), DIMENSION(:), &
+      POINTER                                :: ao_ao_fm_pools
+    TYPE(cp_fm_struct_type), POINTER         :: matrix_struct
+    TYPE(cp_fm_type), POINTER                :: fmlocal, mo_coeff, rksmat, &
+                                                rsmat
+    TYPE(kpoint_env_type), POINTER           :: kp
+    TYPE(neighbor_list_set_p_type), &
+      DIMENSION(:), POINTER                  :: sab_nl
+    TYPE(qs_matrix_pools_type), POINTER      :: mpools
+
+    failure = .FALSE.
+    diis_step = .FALSE.
+    nspin = SIZE(matrix_ks,1)
+
+    do_level_shift = ((scf_control%level_shift /= 0.0_dp).AND.&
+                      ((scf_control%density_guess == core_guess).OR.&
+                       (scf_env%iter_count > 1)))
+
+    IF(scf_env%mixing_method ==0) THEN
+       scf_env%iter_method = "NoMix/Diag."
+    ELSE IF(scf_env%mixing_method ==1) THEN
+       scf_env%iter_param = scf_env%p_mix_alpha
+       scf_env%iter_method = "P_Mix/Diag."
+    ELSEIF(scf_env%mixing_method>1) THEN
+       scf_env%iter_param = scf_env%mixing_store%alpha
+       scf_env%iter_method = TRIM(scf_env%mixing_store%iter_method)//"/Diag."
+    END IF
+
+    ! We always do Cholesky
+    CPAssert(scf_env%cholesky_method>cholesky_off,cp_failure_level,routineP,error,failure)
+
+    NULLIFY(sab_nl)
+    CALL get_kpoint_info(kpoints,nkp=nkp,xkp=xkp,use_real_wfn=use_real_wfn,kp_range=kp_range,&
+         nkp_groups=nkp_groups,kp_dist=kp_dist,sab_nl=sab_nl,&
+         cell_to_index=cell_to_index,error=error)
+    CPAssert(ASSOCIATED(sab_nl),cp_failure_level,routineP,error,failure)
+    kplocal = kp_range(2) - kp_range(1) + 1
+
+    ! allocate some work matrices
+    ALLOCATE(rmatrix,cmatrix,tmpmat,stat=stat)
+    CPPostcondition(stat==0,cp_failure_level,routineP,error,failure)
+    CALL cp_dbcsr_init(rmatrix,error=error)
+    CALL cp_dbcsr_init(cmatrix,error=error)
+    CALL cp_dbcsr_init(tmpmat,error=error)
+    CALL cp_dbcsr_create(rmatrix,template=matrix_ks(1,1)%matrix,error=error)
+    CALL cp_dbcsr_create(cmatrix,template=matrix_ks(1,1)%matrix,error=error)
+    CALL cp_dbcsr_create(tmpmat,template=matrix_ks(1,1)%matrix,&
+         matrix_type=dbcsr_type_no_symmetry,error=error)
+
+    ! init all blocks !?
+    CALL cp_dbcsr_copy(rmatrix, matrix_ks(1,1)%matrix, error=error)
+    CALL cp_dbcsr_copy(cmatrix, matrix_ks(1,1)%matrix, error=error)
+
+    fmwork => scf_env%scf_work1
+
+    ! fm pools to be used within a kpoint group
+    CALL get_kpoint_info(kpoints,mpools=mpools,error=error)
+    CALL mpools_get(mpools,ao_ao_fm_pools=ao_ao_fm_pools,error=error)
+
+    CALL fm_pool_create_fm(ao_ao_fm_pools(1)%pool,fmlocal,error=error)
+    CALL cp_fm_get_info(fmlocal,matrix_struct=matrix_struct,error=error)
+    IF(use_real_wfn) THEN
+       CALL cp_fm_create(rksmat,matrix_struct,error=error)
+       CALL cp_fm_create(rsmat,matrix_struct,error=error)
+    ELSE
+       CALL cp_cfm_create(cksmat,matrix_struct,error=error)
+       CALL cp_cfm_create(csmat,matrix_struct,error=error)
+    END IF
+
+    DO ikpgr = 1,kplocal
+       DO ispin=1,nspin
+          DO ikp = 1,nkp_groups
+             ! number of current kpoint
+             ik = kp_dist(1,ikp)+ikpgr-1
+             IF(use_real_wfn) THEN
+                ! FT of matrices KS and S, then transfer to FM type
+                CALL rskp_transform(rmatrix=rmatrix,rsmat=matrix_ks,ispin=ispin,&
+                     xkp=xkp(1:3,ik),cell_to_index=cell_to_index,sab_nl=sab_nl,error=error)
+                CALL cp_dbcsr_desymmetrize(rmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(1)%matrix,error=error)
+                CALL rskp_transform(rmatrix=rmatrix,rsmat=matrix_s,ispin=ispin,&
+                     xkp=xkp(1:3,ik),cell_to_index=cell_to_index,sab_nl=sab_nl,error=error)
+                CALL cp_dbcsr_desymmetrize(rmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(3)%matrix,error=error)
+             ELSE
+                ! FT of matrices KS and S, then transfer to FM type
+                CALL rskp_transform(rmatrix=rmatrix,cmatrix=cmatrix,rsmat=matrix_ks,ispin=ispin,&
+                     xkp=xkp(1:3,ik),cell_to_index=cell_to_index,sab_nl=sab_nl,error=error)
+                CALL cp_dbcsr_desymmetrize(rmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(1)%matrix,error=error)
+                CALL cp_dbcsr_desymmetrize(cmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(2)%matrix,error=error)
+                CALL rskp_transform(rmatrix=rmatrix,cmatrix=cmatrix,rsmat=matrix_s,ispin=ispin,&
+                     xkp=xkp(1:3,ik),cell_to_index=cell_to_index,sab_nl=sab_nl,error=error)
+                CALL cp_dbcsr_desymmetrize(rmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(3)%matrix,error=error)
+                CALL cp_dbcsr_desymmetrize(cmatrix,tmpmat,error=error)
+                CALL copy_dbcsr_to_fm(tmpmat,fmwork(4)%matrix,error=error)
+             END IF
+             ! transfer to kpoint group
+             ! redistribution of matrices, new blacs environment
+             IF(nkp_groups == 1) THEN
+                ! we need still to change the blacs environment
+                ! fmwork -> fmlocal -> rksmat
+                IF(use_real_wfn) THEN
+                   CALL cp_fm_copy_general(fmwork(1)%matrix,rksmat,kpoints%para_env%group,error)
+                   CALL cp_fm_copy_general(fmwork(3)%matrix,rsmat,kpoints%para_env%group,error)
+                ELSE
+                   ! Hermitian ??????
+                   CALL cp_fm_copy_general(fmwork(1)%matrix,fmlocal,kpoints%para_env%group,error)
+                   CALL cp_cfm_add_fm(czero,cksmat,cone,fmlocal,error)
+                   CALL cp_fm_copy_general(fmwork(2)%matrix,fmlocal,kpoints%para_env%group,error)
+                   CALL cp_cfm_add_fm(cone,cksmat,ione,fmlocal,error)
+                   CALL cp_fm_copy_general(fmwork(3)%matrix,fmlocal,kpoints%para_env%group,error)
+                   CALL cp_cfm_add_fm(czero,csmat,cone,fmlocal,error)
+                   CALL cp_fm_copy_general(fmwork(4)%matrix,fmlocal,kpoints%para_env%group,error)
+                   CALL cp_cfm_add_fm(cone,csmat,ione,fmlocal,error)
+                END IF
+             ELSE
+                ! this requires more complex reshuffling of data
+                ! CALL cp_fm_copy_general(fmwork(1)%matrix,rksmat,kpoints%para_env%group,error)
+                CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
+             END IF
+          END DO
+          ! Each kpoint group has now information on a kpoint to be diagonalized
+          ! General eigensolver Hermite or Symmetric
+          IF(use_real_wfn) THEN
+             kp => kpoints%kp_env(ikpgr)%kpoint_env
+             CALL get_mo_set(kp%mos(1,ispin)%mo_set,mo_coeff=mo_coeff,eigenvalues=eigenvalues)
+             CALL cp_fm_geeig(rksmat,rsmat,mo_coeff,eigenvalues,fmlocal,error)
+          ELSE
+!            CALL cp_cfm_geeig(cksamt,csmat,eigenvectors,eigenvalues,work,error)
+             CPAssert(.FALSE.,cp_failure_level,routineP,error,failure)
+          END IF
+       END DO
+    END DO
+    ! MO occupations
+    CALL kpoint_set_mo_occupation(kpoints,scf_control%smear,error)
+
+    ! density matrices
+    CALL kpoint_density_matrices(kpoints,error)
+    ! density matrices in real space
+    CALL kpoint_density_transform(kpoints,scf_env%p_mix_kp,fmwork,error)
+
+    CALL cp_dbcsr_deallocate_matrix(rmatrix,error=error)
+    CALL cp_dbcsr_deallocate_matrix(cmatrix,error=error)
+    CALL cp_dbcsr_deallocate_matrix(tmpmat,error=error)
+
+    IF(use_real_wfn) THEN
+       CALL cp_fm_release(rksmat,error=error)
+       CALL cp_fm_release(rsmat,error=error)
+    ELSE
+       CALL cp_cfm_release(cksmat,error=error)
+       CALL cp_cfm_release(csmat,error=error)
+    END IF
+    CALL fm_pool_give_back_fm(ao_ao_fm_pools(1)%pool, fmlocal, error=error)
+
+  END SUBROUTINE do_general_diag_kp
+
+! *****************************************************************************
 !> \brief inner loop within MOS subspace, to refine occupation and density,
 !>        before next diagonalization of the Hamiltonian
-!> \note  it is assumed that when diagonalization is used, also some mixing procedure is active
+!> \param qs_env ...
+!> \param scf_env ...
+!> \param subspace_env ...
+!> \param mos ...
+!> \param rho ...
+!> \param ks_env ...
+!> \param scf_section ...
+!> \param scf_control ...
+!> \param error ...
 !> \par History
 !>      09.2009 created [MI]
+!> \note  it is assumed that when diagonalization is used, also some mixing procedure is active
 ! *****************************************************************************
   SUBROUTINE do_scf_diag_subspace(qs_env,scf_env,subspace_env,mos,rho,&
                   ks_env,scf_section,scf_control,error)
@@ -476,6 +724,13 @@ CONTAINS
 END SUBROUTINE  do_scf_diag_subspace
 
 
+! *****************************************************************************
+!> \brief ...
+!> \param subspace_env ...
+!> \param qs_env ...
+!> \param mos ...
+!> \param error ...
+! *****************************************************************************
 SUBROUTINE diag_subspace_allocate(subspace_env,qs_env,mos,error)
 
     TYPE(subspace_env_type), POINTER         :: subspace_env
@@ -553,6 +808,13 @@ END SUBROUTINE diag_subspace_allocate
 ! *****************************************************************************
 !> \brief the inner loop of scf, specific to diagonalization without S matrix
 !>       basically, in goes the ks matrix out goes a new p matrix
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param diis_step ...
+!> \param error ...
 !> \par History
 !>      03.2006 created [Joost VandeVondele]
 ! *****************************************************************************
@@ -623,7 +885,7 @@ END SUBROUTINE diag_subspace_allocate
     scf_env%iter_delta = 0.0_dp
 
     DO ispin=1,nspin
-      CALL simple_eigensolver(matrix_ks=scf_env%scf_work1(ispin)%matrix,&
+      CALL eigensolver_simple(matrix_ks=scf_env%scf_work1(ispin)%matrix,&
                               mo_set=mos(ispin)%mo_set,&
                               work=scf_env%scf_work2,&
                               do_level_shift=do_level_shift,&
@@ -648,6 +910,14 @@ END SUBROUTINE diag_subspace_allocate
 ! *****************************************************************************
 !> \brief the inner loop of scf, specific to iterative diagonalization using OT
 !>        with S matrix; basically, in goes the ks matrix out goes a new p matrix
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param matrix_s ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param diis_step ...
+!> \param error ...
 !> \par History
 !>      10.2008 created [JGH]
 ! *****************************************************************************
@@ -759,11 +1029,20 @@ END SUBROUTINE diag_subspace_allocate
 ! *****************************************************************************
 !> \brief Solve a set restricted open Kohn-Sham (ROKS) equations based on the
 !>         alpha and beta Kohn-Sham matrices from unrestricted Kohn-Sham.
-!> \note
-!>         this is only a high-spin ROKS.
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param matrix_s ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param diis_step ...
+!> \param orthogonal_basis ...
+!> \param error ...
 !> \par History
 !>      04.2006 created [MK]
 !>      Revised (01.05.06,MK)
+!> \note
+!>         this is only a high-spin ROKS.
 ! *****************************************************************************
   SUBROUTINE do_roks_diag(scf_env,mos,matrix_ks,matrix_s,&
                                       scf_control,scf_section,diis_step,&
@@ -1038,6 +1317,13 @@ END SUBROUTINE diag_subspace_allocate
 
 ! *****************************************************************************
 !> \brief iterative diagonalization using the block Krylov-space approach
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param check_moconv_only ...
+!> \param error ...
 !> \param
 !> \par History
 !>      05.2009 created [MI]
@@ -1239,6 +1525,15 @@ END SUBROUTINE diag_subspace_allocate
 
 ! *****************************************************************************
 !> \brief iterative diagonalization using the block davidson space approach
+!> \param qs_env ...
+!> \param scf_env ...
+!> \param mos ...
+!> \param matrix_ks ...
+!> \param matrix_s ...
+!> \param scf_control ...
+!> \param scf_section ...
+!> \param check_moconv_only ...
+!> \param error ...
 !> \param
 !> \par History
 !>      05.2011 created [MI]
