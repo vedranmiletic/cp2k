@@ -168,8 +168,7 @@ USE basis_set_types,                 ONLY: &
      LOGICAL                                :: ghost = .FALSE.
      REAL(KIND = dp)                        :: alpha_scp = 0.0_dp
      REAL(KIND = dp)                        :: I_scp = 0.0_dp
-     REAL(KIND = dp)                        :: alpha_scp = 0.0_dp
-     REAL(KIND = dp)                        :: dudq_dftb3
+     REAL(KIND = dp)                        :: dudq_dftb3 = 0.0_dp
      INTEGER, DIMENSION(:,:), POINTER       :: addel  => Null()
      INTEGER, DIMENSION(:,:), POINTER       :: laddel => Null()
      INTEGER, DIMENSION(:,:), POINTER       :: naddel => Null()
@@ -349,7 +348,7 @@ CONTAINS
        se_parameter, scp_se_parameter, dftb_parameter, scptb_parameter, &
        aux_basis_set, ri_aux_basis_set, aux_fit_basis_set, orb_basis_set, scp_basis_set, geminal_basis_set, &
        lri_basis_set, &
-       alpha_scp, I_scp, zeff,&
+       alpha_scp, I_scp, dftb3_param, zeff,&
        ncgf, nsgf, elec_conf,&
        alpha_core_charge, ccore_charge, core_charge, core_charge_radius,&
        soft_basis_set, hard_basis_set, paw_proj_set, softb, &
@@ -391,6 +390,7 @@ CONTAINS
     TYPE(gto_basis_set_type), OPTIONAL, &
       POINTER                                :: lri_basis_set
     REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: alpha_scp, I_scp
+    REAL(KIND=dp), INTENT(OUT), OPTIONAL     :: dftb3_param
     INTEGER, INTENT(OUT), OPTIONAL           :: ncgf, nsgf
     TYPE(gto_basis_set_type), OPTIONAL, &
       POINTER                                :: soft_basis_set
@@ -474,6 +474,7 @@ CONTAINS
 !    IF (PRESENT(mass)) mass = qs_kind%mass
     IF (PRESENT(alpha_scp)) alpha_scp = qs_kind%alpha_scp
     IF (PRESENT(I_scp)) I_scp = qs_kind%I_scp
+    IF (PRESENT(dftb3_param)) dftb3_param = qs_kind%dudq_dftb3
 !    IF (PRESENT(kind_number)) kind_number = qs_kind%kind_number
 !    IF (PRESENT(natom)) natom = qs_kind%natom
 !    IF (PRESENT(atom_list)) atom_list => qs_kind%atom_list

@@ -1052,7 +1052,7 @@ CONTAINS
          dispersion_env%exp_pre = 0._dp
          dispersion_env%scaling = 0._dp
          dispersion_env%parameter_file_name = dftb_control%dispersion_parameter_file
-         CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,para_env=para_env,error=error)
+         CALL qs_dispersion_pairpot_init(atomic_kind_set,qs_kind_set,dispersion_env,para_env=para_env,error=error)
       ELSE
          dispersion_env%type = xc_vdw_fun_none
       END IF
@@ -1081,7 +1081,7 @@ CONTAINS
          dispersion_env%exp_pre = 0._dp
          dispersion_env%scaling = 0._dp
          dispersion_env%parameter_file_name = se_control%dispersion_parameter_file
-         CALL qs_dispersion_pairpot_init(atomic_kind_set,dispersion_env,para_env=para_env,error=error)
+         CALL qs_dispersion_pairpot_init(atomic_kind_set,qs_kind_set,dispersion_env,para_env=para_env,error=error)
       ELSE
          dispersion_env%type = xc_vdw_fun_none
       END IF

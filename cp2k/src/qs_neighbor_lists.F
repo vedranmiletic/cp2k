@@ -762,7 +762,7 @@ CONTAINS
        IF ( qs_env%dft_control%qs_control%dftb_control%dispersion ) THEN
           IF ( qs_env%dft_control%qs_control%dftb_control%dispersion_type == dispersion_uff ) THEN
              DO ikind = 1, nkind
-                CALL get_atomic_kind(atomic_kind_set(ikind),dftb_parameter=dftb_atom)
+                CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_atom)
                 CALL get_dftb_atom_param(dftb_parameter=dftb_atom,&
                                          rcdisp=c_radius(ikind),error=error)
              END DO
@@ -790,8 +790,7 @@ CONTAINS
        IF ( dispersion_env%pp_type == vdw_pairpot_dftd3 ) THEN
           ! Build the neighbor lists for coordination numbers as needed by the DFT-D3 method
           DO ikind = 1, nkind
-             atomic_kind => atomic_kind_set(ikind)
-             CALL get_atomic_kind(atomic_kind=atomic_kind,z=zat)
+             CALL get_atomic_kind(atomic_kind_set(ikind), z=zat)
              c_radius(ikind) = 4._dp*ptable(zat)%covalent_radius*bohr
           END DO
           CALL pair_radius_setup(default_present,default_present,c_radius,c_radius,pair_radius,error)

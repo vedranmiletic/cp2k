@@ -607,8 +607,9 @@ CPSourceFileRef,&
         file_name = TRIM(dftb_control%sk_file_path)//"/"//&
                     TRIM(dftb_control%uff_force_field)
         DO ikind = 1, nkind
-          CALL get_atomic_kind(atomic_kind_set(ikind),dftb_parameter=dftb_atom_a,&
-                               name=iname)
+          CALL get_atomic_kind(atomic_kind_set(ikind), name=iname)
+          CALL get_qs_kind(qs_kind_set(ikind),dftb_parameter=dftb_atom_a)
+
           m = LEN_TRIM(iname)
           NULLIFY(parser)
           CALL parser_create(parser,file_name,para_env=para_env,error=error)
@@ -673,8 +674,8 @@ CPSourceFileRef,&
     ! setup DFTB3 parameters
     IF ( dftb_control%dftb3_diagonal ) THEN
       DO ikind = 1, nkind
-        CALL get_atomic_kind(atomic_kind_set(ikind), dftb3_param=db)
-        CALL get_atomic_kind(atomic_kind_set(ikind), dftb_parameter=dftb_atom_a)
+        CALL get_qs_kind(qs_kind_set(ikind), dftb3_param=db)
+        CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_atom_a)
         CALL set_dftb_atom_param(dftb_parameter=dftb_atom_a,dudq=db,error=error)
       END DO
     END IF
@@ -684,13 +685,11 @@ CPSourceFileRef,&
       IF ( dftb_control%dispersion_type == dispersion_uff ) THEN
         eps_disp = dftb_control%eps_disp
         DO ikind = 1, nkind
-          atomic_kind_a => atomic_kind_set(ikind)
-          CALL get_atomic_kind(atomic_kind=atomic_kind_a,dftb_parameter=dftb_atom_a)
+          CALL get_qs_kind(qs_kind_set(ikind), dftb_parameter=dftb_atom_a)
           CALL get_dftb_atom_param(dftb_parameter=dftb_atom_a,xi=ra,di=da,error=error)
           rcdisp = 0._dp
           DO jkind = 1, nkind
-            atomic_kind_b => atomic_kind_set(jkind)
-            CALL get_atomic_kind(atomic_kind=atomic_kind_b,dftb_parameter=dftb_atom_b)
+            CALL get_qs_kind(qs_kind_set(jkind),dftb_parameter=dftb_atom_b)
             CALL get_dftb_atom_param(dftb_parameter=dftb_atom_b,xi=rb,di=db,error=error)
             xij = SQRT(ra*rb)
             dij = SQRT(da*db)
