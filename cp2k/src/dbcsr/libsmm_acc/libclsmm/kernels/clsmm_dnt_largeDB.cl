@@ -1,68 +1,80 @@
 /*****************************************************************************
  *  CP2K: A general program to perform molecular dynamics simulations        *
  *  Copyright (C) 2000 - 2014 the CP2K developers group                      *
- *  Authors: Peter Messmer <pmessmer@nvidia.com>,                            *
- *           Nikolay Markovskiy <nmarkovskiy@nvidia.com>                     *
- *           Ole Schuett <ole.schuett@mat.ethz.ch>                           *
- *           Andreas Gloess <andreas.gloess@chem.uzh.ch>                     *
+ *  Authors: Andreas Gloess <andreas.gloess@chem.uzh.ch>                     *
  *****************************************************************************/
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <CL/cl.h>
-
-#include "clsmm_common.cl"
-
-
-#ifndef CLSMM_DNT_LARGEDB_H
-#define CLSMM_DNT_LARGEDB_H
-
 #if defined (__ACC)
-//**************************************************************************//
-template < int m, int n, int k, int M, int N, int w, int v, int blockdim, int grouping, int minblocks >
-__global__
-__launch_bounds__(blockdim,minblocks)
-void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nruns, double *a_data, double *b_data, double *c_data){
 
+#include "clsmm_common.h"
+
+//**************************************************************************//
+__kernel void clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (
+                __global int    *param_stack,
+                         int    careful,
+                         int    nruns,
+                __global double *a_data,
+                __global double *b_data,
+                __global double *c_data,
+                __global int    *c_locks){
+
+    const int m = 23;
+    const int n = 23;
+    const int k = 23;
+    const int M = 2;
+    const int N = 3;
+    const int w = 10;
+    const int v = 12;
+    const int blockdim = 96;
+    const int grouping = 16;
+    const int minblocks = 12;
     // registers to store thread's result tile
-    double myc[N * M];
+    //double myc[N * M];
+    __private double myc[3 * 2];
 
     // registers to store input slabs during double buffering
     // If there are too few thread, each thread has to store
     // multiple elements of the input slabs in it's registers.
-    const int mya_size = (w*m + blockdim-1)/blockdim;
-    const int myb_size = (w*n + blockdim-1)/blockdim;
-    double mya[mya_size];
-    double myb[myb_size];
+    const int mya_size = (w * m + blockdim - 1) / blockdim;
+    const int myb_size = (w * n + blockdim - 1) / blockdim;
+    //double mya[mya_size];
+    //double myb[myb_size];
+    __private double mya[(10 * 23 + 96 - 1) / 96];
+    __private double myb[(10 * 23 + 96 - 1) / 96];
 
      // initialize the thread's result tile to zero
     for (int i = 0; i < N * M; i++)
         myc[i] = 0.0;
 
     // buffer needs to hold input and output slabs (not both simultaneously).
-    const int buff_size = MAX(m*w + w*n, v * m);
-    __shared__ double buff[buff_size];
+    //const int buff_size = MAX(m * w + w * n, v * m);
+    //__local double buff[buff_size];
+    const int buff_size = 460;
+    __local double buff[460];
 
     // conveniece pointers
-    double *buff_l = buff;
-    double *buff_r = &(buff[m * w]);
+    // double *buff_l = buff;
+    //double *buff_r = &(buff[m * w]);
+    __local double *buff_l = buff;
+    __local double *buff_r = &(buff[23 * 10]);
 
     // first stack entry to be processed by this thread-block
-    int psp = 7 * (blockIdx.x * grouping);
+    int psp = 7 * (get_group_id(0) * grouping);
 
     // grouping is the number of stack entries process by each thread-block
     // careful is the number of launched thread-blocks.
     // nruns is the number of stack entries process by the last thread-block
-    int nrun = (blockIdx.x == careful) ? nruns : grouping;
+    int nrun = (get_group_id(0) == careful) ? nruns : grouping;
 
     // all stack entries relavant for this thread-block are loaded at once
     // allows to look ahead and and flush result tile only when really needed
-    __shared__ int param_stack_s[4 * grouping];
+    //__local int param_stack_s[4 * grouping];
+    __local int param_stack_s[4 * 16];
 
     // load parameter stack, might read beyond
-    for (int i = threadIdx.x; i < 7 * nrun; i += blockdim) {
-        int p_tmp = __ldg(param_stack + psp + i);
+    for (int i = get_local_id(0); i < 7 * nrun; i += blockdim) {
+        //int p_tmp = __ldg(param_stack + psp + i);
+        int p_tmp = *(param_stack + psp + i);
         if (i % 7 > 2)
             param_stack_s[(i / 7) * 4 + i % 7 - 3] = p_tmp - 1;
     }
@@ -71,7 +83,7 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
     for (int run = 0; run < nrun; run++) {
         psp = run * 4;
 
-        syncthreads();
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         // get the offsets for the a-block and the b-block from the stack
         int srcA = param_stack_s[psp];
@@ -83,8 +95,8 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
         load_gmem_into_smem(b_data + srcB, buff_r, n * w, blockdim);
 
         // this is the actual double buffering loop
-        for (int t = 0; t < (k/w -1) * w ; t += w) {
-            syncthreads();
+        for (int t = 0; t < (k / w -1) * w ; t += w) {
+            barrier(CLK_LOCAL_MEM_FENCE);
             // load next input slab from global memory into registers
             srcA += m * w;
             srcB += n * w;
@@ -93,13 +105,13 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
             // multiply previous slab, which is stored in shared memory,
             // and accumulate the results in the registers myc
             multiply(buff_l, buff_r, myc, w, m, n, M, N, blockdim);
-            syncthreads();
+            barrier(CLK_LOCAL_MEM_FENCE);
             // copy next slab from registers to shared memory
             load_regs_into_smem(mya, buff_l, m * w, blockdim);
             load_regs_into_smem(myb, buff_r, n * w, blockdim);
         }
 
-        syncthreads();
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         // If the input slab witdh w is not a divisor of k,
         // a smaller tail-slab of width wa has to be process
@@ -114,16 +126,16 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
 
         // multiply last regular slab, which the loop left in shared memory
         multiply(buff_l, buff_r, myc, w, m, n, M, N, blockdim);
-        syncthreads();
+        barrier(CLK_LOCAL_MEM_FENCE);
 
         if (wa != 0) { // is there a tail-slab?
             // copy tail-slab from register into shared mem
             load_regs_into_smem(mya, buff_l, m * wa, blockdim);
             load_regs_into_smem(myb, buff_r, n * wa, blockdim);
-            syncthreads();
+            barrier(CLK_LOCAL_MEM_FENCE);
             // multiply the tail-slab
             multiply(buff_l, buff_r, myc, wa, m, n, M, N, blockdim);
-            syncthreads();
+            barrier(CLK_LOCAL_MEM_FENCE);
         }
 
 
@@ -133,18 +145,29 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
             || param_stack_s[psp + 3] != param_stack_s[psp + 3 + 4]) {
             int c_loc = param_stack_s[psp + 2];
 
-            syncthreads();
+            barrier(CLK_LOCAL_MEM_FENCE);
+
+            // lock for atomic updates
+            int my_id, lock_owner;
+            int c_id = param_stack[7 * (get_group_id(0) * grouping + run) + 6] - 1;
+            if (get_local_id(0) == 0) {
+              my_id = get_group_id(0) + 1;
+              lock_owner = 0;
+              while ((lock_owner != my_id))
+                lock_owner = atomic_cmpxchg(&(c_locks[c_id]), 0, my_id);
+            }
 
             // results are written in output-slabs of width v
             for (int t = 0; t < (n / v) * v; t += v) {
                 // copy output slab from registers to shared memory
                 store_results_into_smem(myc, buff, t, v, m, n, M, N, blockdim);
-                syncthreads();
+                barrier(CLK_LOCAL_MEM_FENCE);
                 // Add our results to the accumulator in global memory
-                for (int i = threadIdx.x; i < m * v; i += blockdim)
-                    atomicAdd(&c_data[c_loc + i], buff[i]);
+                for (int i = get_local_id(0); i < m * v; i += blockdim) {
+                    c_data[c_loc + i] += buff[i];
+                }
                 c_loc += m * v;
-                syncthreads();
+                barrier(CLK_LOCAL_MEM_FENCE);
             }
 
             // If the output slab witdh v is not a divisor of n,
@@ -153,11 +176,16 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
             if (va != 0) {  // is there a tail-slab?
                 int t = (n / v) * v;
                 store_results_into_smem(myc, buff, t, va, m, n, M, N, blockdim);
-                syncthreads();
-                for (int i = threadIdx.x; i < m * va; i += blockdim)
-                    atomicAdd(&c_data[c_loc + i], buff[i]);
-                syncthreads();
+                barrier(CLK_LOCAL_MEM_FENCE);
+                for (int i = get_local_id(0); i < m * va; i += blockdim)
+                    c_data[c_loc + i] += buff[i];
+                barrier(CLK_LOCAL_MEM_FENCE);
 
+            }
+
+            // unlock
+            if (get_local_id(0) == 0) {
+              c_locks[c_id] = 0;
             }
 
         }
@@ -165,104 +193,6 @@ void clsmm_dnt_largeDB(const int *__restrict__ param_stack, int careful, int nru
 }
 
 
-//**************************************************************************//
-__device__ inline void load_gmem_into_smem(double *from, double *dest,
-                                           const int length, const int blockdim)
-{
-    if (length < blockdim) { // are there enough threads to load in one step?
-        if (threadIdx.x < length)
-            dest[threadIdx.x] = __ldg(from + threadIdx.x);
-    } else {
-        for (int i = threadIdx.x; i < length; i += blockdim)
-            dest[i] = __ldg(from + i);
-    }
-}
-
-
-//**************************************************************************//
-__device__ inline void load_gmem_into_regs(double *from, double *dest,
-                                           const int length, const int blockdim)
-{
-    const int NR = (length + blockdim - 1) / blockdim;
-
-    if (length < blockdim) { // are there enough threads to load in one step?
-        if (threadIdx.x < length)
-            dest[0] = __ldg(from + threadIdx.x);
-    } else {
-        int i = threadIdx.x;
-        for (int ri = 0; ri < NR; ri++) {  //loop with fixed bounds
-            if (i < length)
-                dest[ri] = __ldg(from + i);
-            i += blockdim;
-        }
-    }
-}
-
-
-//**************************************************************************//
-__device__ inline void load_regs_into_smem(double *from, double *dest,
-                                           const int length, const int blockdim)
-{
-   const int NR = (length + blockdim - 1) / blockdim;
-
-   if (length < blockdim) { // are there enough threads to load in one step?
-       if (threadIdx.x < length)
-           dest[threadIdx.x] = from[0];
-   } else {
-        int i = threadIdx.x;
-        for (int ri = 0; ri < NR; ri++) {  //loop with fixed bounds
-            if (i < length)
-                dest[i] = from[ri];
-            i += blockdim;
-        }
-    }
-}
-
-
-//**************************************************************************//
-__device__ inline void multiply(double *buff_a, double *buff_b, double *buff_c,
-                                const int w, const int m, const int n,
-                                const int M, const int N, const int blockdim)
-{
-    // There might be more threads than needed for the calculation.
-    // Only the first cmax*rmax threads participate in the calculation.
-
-    const int cmax = (n + N - 1) / N; // max tile-column
-    const int rmax = (m + M - 1) / M; //  max tile-row
-    const int c = threadIdx.x / rmax; // this thread's tile-column
-    const int r = threadIdx.x - c * rmax; // this thread's tile-row
-
-    if (c < cmax && r < rmax) // is this thread participating?
-        for (int l = 0; l < w; l++)
-            for (int i = 0; i < N; i++)
-                for (int j = 0; j < M; j++)
-                    buff_c[M * i + j] +=
-                        buff_a[l * m + M * r + j] * buff_b[l * n + N * c + i];
-}
-
-
-//**************************************************************************//
-__device__ inline void store_results_into_smem(double *from, double *dest,
-                                               const int t, const int v,
-                                               const int m, const int n,
-                                               const int M, const int N,
-                                               const int blockdim)
-{
-    const int rmax = (m + M - 1) / M; //  max tile-row
-    const int c = threadIdx.x / rmax; // this thread's tile-column
-    const int r = threadIdx.x - c * rmax; // this thread's tile-row
-
-    int ctmp = c * N - t;
-    if (ctmp >= -(N - 1) && ctmp < v)
-        for (int i = 0; i < N; i++)
-            if (ctmp + i >= 0 && ctmp + i < v)
-                for (int j = 0; j < M; j++)
-                    if (M * r + j < m) {
-                        dest[(ctmp + i) * m + M * r + j] = from[M * i + j];
-                        from[M * i + j] = 0.0; // reset result tile
-                    }
-
-}
-
+#endif
 
 //EOF

@@ -7,6 +7,10 @@
 #define LIBCLSMM_H
 
 #if defined (__ACC) && defined (__OPENCL)
+
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 int libclsmm_process_d (int *param_stack, int stack_size,
     void stream, int m, int n, int k,
     double * a_data, double * b_data, double * c_data);

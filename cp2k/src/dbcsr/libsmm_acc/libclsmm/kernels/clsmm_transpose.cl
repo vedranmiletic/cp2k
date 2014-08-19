@@ -21,13 +21,14 @@ __kernel void transpose_23_23_d (__global int    *trs_stack,
   int n=23;
 
   int offset = trs_stack[trs_offset + get_group_id(0)];
-  for (int i = get_local_id(0); i < m * n; i += get_local_size(0)){
+  int local_id = get_local_id(0);
+  for (int i = local_id; i < m * n; i += m){
     local_buffer[i] = mat[offset + i]; 
   }
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  for (int i = get_local_id(0); i < m * n; i += get_local_size(0)){
+  for (int i = local_id; i < m * n; i += m){
     int r_out = i % n;
     int c_out = i / n;
     int idx = r_out * m + c_out;
