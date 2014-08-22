@@ -299,7 +299,8 @@ CONTAINS
 #if defined __USE_INTEL_CL
          CALL acc_set_active_device(1) ! just for now: debugging and only on single card machines with Intel processor
 #else
-         CALL acc_set_active_device(MOD(default_para_env%mepos, acc_get_ndevices()))
+!foxtest         CALL acc_set_active_device(MOD(default_para_env%mepos, acc_get_ndevices()))
+         CALL acc_set_active_device(0)
 #endif
 
        CALL pw_cuda_init()
