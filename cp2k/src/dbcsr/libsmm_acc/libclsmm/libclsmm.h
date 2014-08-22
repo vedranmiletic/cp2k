@@ -11,15 +11,18 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-int libclsmm_process_d (int *param_stack, int stack_size,
-    void stream, int m, int n, int k,
-    double * a_data, double * b_data, double * c_data);
+int libclsmm_process_d (void *param_stack, int stack_size,
+    void *stream, int m, int n, int k,
+    void *a_data, void *b_data, void *c_data);
 
-int libclsmm_transpose_d (int *trs_stack, int offset, int nblks, double *buffer,
+int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer,
                          int m, int n, void *stream);
 
 void libclsmm_list_blocksizes_d (const int **list, int *length);
 
+// keep compiled kernels
+static cl_kernel multiply_kernel = NULL;
+static cl_kernel transpose_kernel = NULL;
 #endif
 
 #endif

@@ -10,7 +10,7 @@
 
 // struct definition of linked list
 typedef struct buffer_node {
-  cl_mem             buffer;
+  cl_mem             host_buffer;
   void               *host_mem;
   struct buffer_node *next;
 } acc_opencl_host_buffer_node_type;

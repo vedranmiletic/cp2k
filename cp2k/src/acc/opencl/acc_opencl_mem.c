@@ -26,12 +26,6 @@ acc_opencl_host_buffer_node_type *host_buffer_list_tail = NULL;
 // defines the ACC interface
 #include "../include/acc.h"
 
-/*  ALIGN functions work only for: size = 2^n  */
-#define MEMORY_ALIGNMENT 128
-#define ALIGN_UP(x,size)   ( ((size_t)x + (size-1))&(~(size-1)) )
-#define ALIGN_DOWN(x,size) ( ((size_t)x - (size-1))&(~(size-1)) )
-#define SHIFT_BY(x,size)   ( ((size_t)x + size) )
-
 static const int verbose_print = 0;
 
 
@@ -53,20 +47,20 @@ int acc_dev_mem_allocate (void **dev_mem, size_t n){
 
   // create cl_mem buffer pointer
   *dev_mem = (void *) malloc(sizeof(cl_mem));
-  cl_mem *buffer = (cl_mem *) *dev_mem;
+  cl_mem *dev_buffer = (cl_mem *) *dev_mem;
 
   // get a device buffer object
-  *buffer = (cl_mem) clCreateBuffer(
-                       (*acc_opencl_my_device).ctx,                 // cl_context   context
-                       (CL_MEM_READ_WRITE),                         // cl_mem_flags flags
-                       (size_t) n,                                  // size_t       size [bytes]
-                       NULL,                                        // void         *host_ptr
-                       &cl_error);                                  // cl_int       *errcode_ret
+  *dev_buffer = clCreateBuffer(                // cl_mem
+                  (*acc_opencl_my_device).ctx, // cl_context   context
+                  (CL_MEM_READ_WRITE),         // cl_mem_flags flags
+                  (size_t) n,                  // size_t       size [bytes]
+                  NULL,                        // void         *host_ptr
+                  &cl_error);                  // cl_int       *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "      DEVICE buffer address:  HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "      DEVICE buffer address:  HEX=%p INT=%ld\n", dev_buffer, (uintptr_t) dev_buffer);
     fprintf(stdout, " <--- Leaving: acc_dev_mem_allocate.\n");
   }
 
@@ -90,17 +84,21 @@ int acc_dev_mem_deallocate (void *dev_mem){
   if (verbose_print){
     fprintf(stdout, "\n --- DEVICE MEMORY DEALLOCATION --- \n");
     fprintf(stdout, " ---> Entering: acc_dev_mem_deallocate.\n");
-    fprintf(stdout, "      DEVICE buffer address:  HEX=%p INT=%ld\n", dev_mem, (uintptr_t) dev_mem);
   }
 
   // local buffer object pointer 
-  cl_mem *buffer = (cl_mem *) dev_mem;
+  cl_mem *dev_buffer = (cl_mem *) dev_mem;
+
+  // debug info
+  if (verbose_print){
+    fprintf(stdout, "      DEVICE buffer address:  HEX=%p INT=%ld\n", dev_buffer, (uintptr_t) dev_buffer);
+  }
 
   // release device buffer object
-  cl_error = clReleaseMemObject(*buffer);
+  cl_error = clReleaseMemObject(*dev_buffer);
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
-  free(buffer);
-  buffer = NULL;
+  free(dev_buffer);
+  dev_buffer = NULL;
 
   // debug info
   if (verbose_print){
@@ -134,42 +132,46 @@ int acc_host_mem_allocate (void **host_mem, size_t n, void *stream){
     fprintf(stdout, " ---> Entering: acc_host_mem_allocate.\n");
   }
 
-  cl_mem buffer = clCreateBuffer(
-                   (*acc_opencl_my_device).ctx,                 // cl_context   context
-                   (CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR), // cl_mem_flags flags
-                   (size_t) n,                                  // size_t       size [bytes]
-                   NULL,                                        // void         *host_ptr
-                   &cl_error);                                  // cl_int       *errcode_ret
+  // local stream object and memory object pointers
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  acc_opencl_dev_type    opencl_device  = (*opencl_stream).device;
+  cl_context             opencl_ctx     = opencl_device.ctx;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
+
+  // create a host pointer and an associated host buffer object
+  cl_mem host_buffer = clCreateBuffer(                               // cl_mem
+                        opencl_ctx,                                  // cl_context   context
+                        (CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR), // cl_mem_flags flags
+                        (size_t) n,                                  // size_t       size [bytes]
+                        NULL,                                        // void         *host_ptr
+                        &cl_error);                                  // cl_int       *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
-  // local stream object and memory object pointers
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
-
-  *host_mem = (void *) clEnqueueMapBuffer(
-                         (*clstream).queue,             // cl_command_queue command_queue
-                         buffer,                        // cl_mem           buffer
-                         CL_TRUE,                       // cl_bool          blocking_map
-                         (CL_MAP_READ | CL_MAP_WRITE),  // cl_map_flags     map_flags
-                         (size_t) 0,                    // size_t           offset
-                         (size_t) n,                    // size_t           cb [bytes]
-                         (cl_uint) 0,                   // cl_uint          num_events_in_wait_list
-                         NULL,                          // const cl_event   *event_wait_list
-                         NULL,                          // cl_event         *event
-                         &cl_error);                    // cl_int           *errcode_ret
+  *host_mem = (void *) clEnqueueMapBuffer(             // cl_mem
+                         opencl_queue,                 // cl_command_queue command_queue
+                         host_buffer,                  // cl_mem           buffer
+                         CL_TRUE,                      // cl_bool          blocking_map
+                         (CL_MAP_READ | CL_MAP_WRITE), // cl_map_flags     map_flags
+                         (size_t) 0,                   // size_t           offset
+                         (size_t) n,                   // size_t           cb [bytes]
+                         (cl_uint) 0,                  // cl_uint          num_events_in_wait_list
+                         NULL,                         // const cl_event   *event_wait_list
+                         NULL,                         // cl_event         *event
+                         &cl_error);                   // cl_int           *errcode_ret
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // keep 'buffer' and 'host_mem' information for deletion
   if (host_buffer_list_head == NULL){
     // create linked list and add 'buffer' as head node
     acc_opencl_host_buffer_node_type *buffer_node = (acc_opencl_host_buffer_node_type *) malloc(sizeof(acc_opencl_host_buffer_node_type));
-    buffer_node->buffer = buffer;
+    buffer_node->host_buffer = host_buffer;
     buffer_node->host_mem = (void *) *host_mem;
     buffer_node->next = NULL;
     host_buffer_list_head = host_buffer_list_tail = buffer_node;
   } else {
     // add to end of linked list of buffers
     acc_opencl_host_buffer_node_type *buffer_node = (acc_opencl_host_buffer_node_type *) malloc(sizeof(acc_opencl_host_buffer_node_type));
-    buffer_node->buffer = buffer;
+    buffer_node->host_buffer = host_buffer;
     buffer_node->host_mem = (void *) *host_mem;
     buffer_node->next = NULL;
     host_buffer_list_tail->next = buffer_node;
@@ -202,11 +204,10 @@ int acc_host_mem_deallocate (void *host_mem, void *stream){
     fprintf(stdout, " ---> Entering: acc_host_mem_deallocate.\n");
     fprintf(stdout, "      HOST memory address:  HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
   }
-fflush(stdout);
-fflush(stderr);
 
   // local stream object and memory object pointers
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
 
   // find corresponding 'buffer' object in host_buffer list
   acc_opencl_host_buffer_node_type *buffer_node_ptr = host_buffer_list_head;
@@ -221,16 +222,16 @@ fflush(stderr);
         host_buffer_list_head = buffer_node_ptr->next;
       }
       // unmap buffer
-      cl_error = clEnqueueUnmapMemObject(
-                   (*clstream).queue,       // cl_command_queue command_queue
-                   buffer_node_ptr->buffer, // cl_mem           memobj
-                   host_mem,                // void             *mapped_ptr
-                   (cl_uint) 0,             // cl_uint          num_evenets_in_wait_list
-                   NULL,                    // cl_event         *event_wait_list
-                   NULL);                   // cl_event         *event
+      cl_error = clEnqueueUnmapMemObject(        // cl_int
+                   opencl_queue,                 // cl_command_queue command_queue
+                   buffer_node_ptr->host_buffer, // cl_mem           memobj
+                   host_mem,                     // void             *mapped_ptr
+                   (cl_uint) 0,                  // cl_uint          num_evenets_in_wait_list
+                   NULL,                         // cl_event         *event_wait_list
+                   NULL);                        // cl_event         *event
       if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
       // release buffer object
-      cl_error = clReleaseMemObject(buffer_node_ptr->buffer);
+      cl_error = clReleaseMemObject(buffer_node_ptr->host_buffer);
       if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
       // free buffer node
       free(buffer_node_ptr);
@@ -266,28 +267,29 @@ int acc_memcpy_h2d (const void *host_mem, void *dev_mem, size_t count, void *str
   }
 
   // local buffer object pointer 
-  cl_mem *buffer  = (cl_mem *) dev_mem;
+  cl_mem *dev_buffer  = (cl_mem *) dev_mem;
 
   // local stream object and memory object pointers
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
 
   // copy host memory to device buffer
-  cl_error = clEnqueueWriteBuffer(
-               (*clstream).queue, // cl_command_queue command_queue
-               *buffer,           // cl_mem           buffer
-               CL_TRUE,           // cl_bool          blocking_write
-               (size_t) 0,        // size_t           offset
-               (size_t) count,    // size_t           cb
-               host_mem,          // const            void *ptr
-               (cl_uint) 0,       // cl_uint          num_evenets_in_wait_list
-               NULL,              // cl_event         *event_wait_list
-               NULL);             // cl_event         *event
+  cl_error = clEnqueueWriteBuffer( // cl_int
+               opencl_queue,       // cl_command_queue command_queue
+               *dev_buffer,        // cl_mem           buffer
+               CL_TRUE,            // cl_bool          blocking_write
+               (size_t) 0,         // size_t           offset
+               (size_t) count,     // size_t           cb
+               host_mem,           // const void       *ptr
+               (cl_uint) 0,        // cl_uint          num_evenets_in_wait_list
+               NULL,               // cl_event         *event_wait_list
+               NULL);              // cl_event         *event
   if (acc_opencl_error_check(cl_error, __LINE__)) return -1;
 
   // debug info
   if (verbose_print){
     fprintf(stdout, "      HOST memory address:   HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
-    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", dev_buffer, (uintptr_t) dev_buffer);
     fprintf(stdout, "      SIZE [bytes]:          INT=%ld\n", count);
     fprintf(stdout, " <--- Leaving: acc_memcpy_h2d.\n");
   }
@@ -312,15 +314,16 @@ int acc_memcpy_d2h (const void *dev_mem, void *host_mem, size_t count, void *str
   }
 
   // local buffer object pointer 
-  const cl_mem *buffer = (const cl_mem *) dev_mem;
+  const cl_mem *dev_buffer = (const cl_mem *) dev_mem;
 
   // local stream object and memory object pointers
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
 
   // copy host memory to device buffer
-  cl_error = clEnqueueReadBuffer(
-               (*clstream).queue, // cl_command_queue command_queue
-               *buffer,           // cl_mem           buffer
+  cl_error = clEnqueueReadBuffer( // cl_int
+               opencl_queue,      // cl_command_queue command_queue
+               *dev_buffer,       // cl_mem           buffer
                CL_TRUE,           // cl_bool          blocking_read
                (size_t) 0,        // size_t           offset
                (size_t) count,    // size_t           cb
@@ -332,7 +335,7 @@ int acc_memcpy_d2h (const void *dev_mem, void *host_mem, size_t count, void *str
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "      DEVICE buffer address: HEX=%p INT=%ld\n", dev_buffer, (uintptr_t) dev_buffer);
     fprintf(stdout, "      HOST memory address:   HEX=%p INT=%ld\n", host_mem, (uintptr_t) host_mem);
     fprintf(stdout, "      SIZE [bytes]:          INT=%ld\n", count);
     fprintf(stdout, " <--- Leaving: acc_memcpy_d2h.\n");
@@ -362,11 +365,12 @@ int acc_memcpy_d2d (const void *devmem_src, void *devmem_dst, size_t count, void
   cl_mem *buffer_dst = (cl_mem *) devmem_dst;
 
   // local stream object and memory object pointers
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
 
   // copy device buffers from src to dst
-  cl_error = clEnqueueCopyBuffer(
-               (*clstream).queue, // cl_command_queue command_queue
+  cl_error = clEnqueueCopyBuffer( // cl_int
+               opencl_queue,      // cl_command_queue command_queue
                *buffer_src,       // cl_mem           src_buffer
                *buffer_dst,       // cl_mem           dst_buffer
                (size_t) 0,        // size_t           src_offset
@@ -412,18 +416,19 @@ int acc_memset_zero (void *dev_mem, size_t offset, size_t length, void *stream){
   }
 
   // local buffer object pointer 
-  cl_mem *buffer = (cl_mem *) dev_mem;
+  cl_mem *dev_buffer = (cl_mem *) dev_mem;
 
   // local stream object pointer
-  acc_opencl_stream_type *clstream = (acc_opencl_stream_type *) stream;
+  acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
+  cl_command_queue       opencl_queue   = (*opencl_stream).queue;
 
   // zero the values starting from offset in dev_mem
 #ifdef CL_VERSION_1_2
   const cl_uchar zero = (cl_uchar) 0;
 
-  cl_error = clEnqueueFillBuffer(
-               (*clstream).queue,         // cl_command_queue command_queue
-               *clmem,                    // cl_mem           buffer
+  cl_error = clEnqueueFillBuffer(         // cl_int
+               opencl_queue,              // cl_command_queue command_queue
+               *dev_buffer,               // cl_mem           buffer
                &zero,                     // const void       *pattern
                (size_t) sizeof(cl_uchar), // size_t           pattern_size
                (size_t) offset,           // size_t           offset
@@ -440,13 +445,13 @@ int acc_memset_zero (void *dev_mem, size_t offset, size_t length, void *stream){
     host_mem[i] = (cl_uchar) 0;
   }
   // transfer the 'zero_mem' to device buffer
-  cl_error = clEnqueueWriteBuffer(
-               (*clstream).queue,       // cl_command_queue command_queue
-               *buffer,                 // cl_mem           buffer
+  cl_error = clEnqueueWriteBuffer(      // cl_int
+               opencl_queue,            // cl_command_queue command_queue
+               *dev_buffer,             // cl_mem           buffer
                CL_TRUE,                 // cl_bool          blocking_write
                (size_t) offset,         // size_t           offset
                (size_t) length,         // size_t           cb
-               (const void *) host_mem, // const            void *ptr
+               (const void *) host_mem, // const void       *ptr
                (cl_uint) 0,             // cl_uint          num_event_in_wait_list
                NULL,                    // const cl_event   *event_wait_list
                NULL);                   // cl_event         *event
@@ -457,7 +462,7 @@ int acc_memset_zero (void *dev_mem, size_t offset, size_t length, void *stream){
 
   // debug info
   if (verbose_print){
-    fprintf(stdout, "     DEVICE buffer address:  HEX=%p INT=%ld\n", buffer, (uintptr_t) buffer);
+    fprintf(stdout, "     DEVICE buffer address:  HEX=%p INT=%ld\n", dev_buffer, (uintptr_t) dev_buffer);
     fprintf(stdout, " <-- Leaving: acc_memset_zero.\n");
   }
 

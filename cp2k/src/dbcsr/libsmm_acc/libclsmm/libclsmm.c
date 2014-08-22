@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 #include "../include/libsmm_acc.h"
+#include "libclsmm.h"
 
 
 // global definitions
@@ -44,7 +45,12 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (void *param_sta
   int careful = (stack_size / 16);
   int nruns = stack_size - careful * 16;
 
-  int i;
+  int i, c_locks_size;
+  int *c_locks = NULL;
+  cl_mem host_buf_c_locks = NULL;
+  cl_mem dev_buf_c_locks = NULL;
+  cl_kernel opencl_kernel = NULL;
+  cl_program opencl_program = NULL;
 
   // local queue pointer and device + context value 
   acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
@@ -56,12 +62,9 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (void *param_sta
   // C matrix locking (groupwise)
   // arrays and buffers for transfer and calculations
   if (verbose_print) fprintf(stdout,"create c_lock buffers ...\n");
-  int    c_locks_size;
-  int    *c_locks = NULL;
-  cl_mem host_buf_c_locks = NULL, dev_buf_c_locks = NULL;
 
   // get size of c_locks buffer (correct: max(param_stack[i * 7 + 6]))
-  c_locks_size = 10000;
+  c_locks_size = 70000;
 
   // create host memory buffer
   host_buf_c_locks = clCreateBuffer(                                // cl_mem
@@ -86,68 +89,98 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (void *param_sta
                       opencl_queue,                           // cl_command_queue  command_queue
                       host_buf_c_locks,                       // cl_mem            buffer
                       CL_TRUE,                                // cl_bool           blocking_map
-                      (CL_MAP_READ | CL_MAP_WRITE),           // cl_map_flags      map_flags
+                      CL_MAP_READ,                            // cl_map_flags      map_flags
                       (size_t) 0,                             // size_t            offset
                       (size_t) c_locks_size * sizeof(int),    // size_t            cb
                       (cl_uint) 0,                            // cl_uint           num_events_in_wait_list
                       NULL,                                   // const cl_event    *event_wait_list
                       NULL,                                   // cl_event          *event
                       &cl_error);                             // cl_int            *errcode_ret
+  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueMapBuffer %d\n", (int) cl_error);
 
   // set initial values for c_locks and submit changes to device  
-  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueMapBuffer %d\n", (int) cl_error);
   for (i = 0; i < c_locks_size; i++) {
     c_locks[i] = 0;
   }
-  cl_error = clEnqueueWriteBuffer(opencl_queue, dev_buf_c_locks, CL_TRUE, (size_t) 0, (size_t) c_locks_size * sizeof(int), (void *) c_locks, (cl_uint) 0, NULL, NULL);
+  cl_error = clEnqueueWriteBuffer(                  // cl_int
+               opencl_queue,                        // cl_command_queue command_queue
+               dev_buf_c_locks,                     // cl_mem           buffer
+               CL_FALSE,                            // cl_bool          blocking_write
+               (size_t) 0,                          // size_t           offset
+               (size_t) c_locks_size * sizeof(int), // size_t           cb
+               (void *) c_locks,                    // const void       *ptr
+               (cl_uint) 0,                         // cl_uint          num_events_in_wait_list
+               NULL,                                // const cl_event   *cl_event_wait_list
+               NULL);                               // cl_event         *event
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueWriteBuffer %d\n", (int) cl_error);
-  
-  // read kernel code
-  if (verbose_print) fprintf(stdout,"reading multiplication kernel ...\n");
-  FILE *fIn = fopen("clsmm_dnt_largeDB.cl", "r");
-  fseek(fIn, 0L, SEEK_END);
-  size_t sz = ftell(fIn); 
-  rewind(fIn);
-  char *file = (char*) malloc(sizeof(char) * sz + 1);
-  fread(file, sizeof(char), sz, fIn);
-  const char* cfile = (const char *) file;
-  fclose(fIn);
-  
-  // get kernel code, build program and kernel
-  if (verbose_print) fprintf(stdout,"building multiplication kernel ...\n");
-  cl_program opencl_program = clCreateProgramWithSource(opencl_ctx, 1, &cfile, &sz, &cl_error);
-  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
-  cl_error = clBuildProgram(opencl_program, 1, (const cl_device_id *) &opencl_dev, "-D__ACC", NULL, NULL); // hard coded -D__ACC
-  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clBuildProgram %d\n", (int) cl_error);
 
-  if (cl_error != CL_SUCCESS){
-    size_t param_value_size_ret;
-    cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, (size_t) 0, NULL, &param_value_size_ret);
-    if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 1 %d\n", (int) cl_error);
-    char *build_log = (char *) malloc(param_value_size_ret * sizeof(char));
-    cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, param_value_size_ret, (void *) build_log, NULL);
-    if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 2 %d\n", (int) cl_error);
-    fprintf(stdout, "BUILD LOG:\n %s\n", build_log);
+  // get or create kernel
+  if (multiply_kernel) {
+    opencl_kernel = multiply_kernel;
+  } else {
+    // read kernel code
+    if (verbose_print) fprintf(stdout,"reading multiplication kernel ...\n");
+    FILE *fIn = fopen("clsmm_dnt_largeDB.cl", "r");
+    fseek(fIn, 0L, SEEK_END);
+    size_t sz = ftell(fIn); 
+    rewind(fIn);
+    char *file = (char*) malloc(sizeof(char) * sz + 1);
+    fread(file, sizeof(char), sz, fIn);
+    const char* cfile = (const char *) file;
+    fclose(fIn);
+    
+    // get kernel code, build program and kernel
+    if (verbose_print) fprintf(stdout,"building multiplication kernel ...\n");
+    opencl_program = clCreateProgramWithSource( // cl_program
+                       opencl_ctx,              // cl_context   context
+                       (cl_uint) 1,             // cl_uint      count
+                       &cfile,                  // const char   **strings
+                       &sz,                     // const size_t *lengths
+                       &cl_error);              // cl_int       *errcode_ret
+    if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
+    cl_error = clBuildProgram(                       // cl_int
+                 opencl_program,                     // cl_program                     program
+                 (cl_uint) 1,                        // cl_uint                        num_devices
+                 (const cl_device_id *) &opencl_dev, // const cl_device_id             *device_list
+                 "-D__ACC",                          // const char                     *options
+                 NULL,                               // void (CL_CALLBACK* pfn_notify) (cl_program program, void *user_data)
+                 NULL);                              // void                           *user_data
+    if (cl_error != CL_SUCCESS){
+      size_t param_value_size_ret;
+      cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, (size_t) 0, NULL, &param_value_size_ret);
+      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 1 %d\n", (int) cl_error);
+      char *build_log = (char *) malloc(param_value_size_ret * sizeof(char));
+      cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, param_value_size_ret, (void *) build_log, NULL);
+      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 2 %d\n", (int) cl_error);
+      fprintf(stdout, "BUILD LOG:\n %s\n", build_log);
+      fprintf(stdout,"Error in: clBuildProgram %d\n", (int) cl_error);
+    }
+  
+    opencl_kernel = clCreateKernel(                                    // cl_kernel
+                      opencl_program,                                  // cl_program program
+                      "clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10", // const char *kernel_name
+                      &cl_error);                                      // cl_int     *errcode_ret
+    if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
+
+    // keep for later usage
+    multiply_kernel = opencl_kernel;
   }
-
-  cl_kernel opencl_kernel = clCreateKernel(opencl_program, "clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10", &cl_error);
-  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
 
   // set kernel parameters
   if (verbose_print) fprintf(stdout,"set multiplication kernel parameters ...\n");
-  cl_error = clSetKernelArg(opencl_kernel, 0, sizeof(cl_mem), (void *) param_stack);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 0, sizeof(cl_mem), (void *) param_stack);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(0) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 1, sizeof(int), &careful);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 1, sizeof(int), &careful);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(1) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 2, sizeof(int), &nruns);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 2, sizeof(int), &nruns);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(2) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 3, sizeof(cl_mem), (void *) a_data);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 3, sizeof(cl_mem), (void *) a_data);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(3) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 4, sizeof(cl_mem), (void *) b_data);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 4, sizeof(cl_mem), (void *) b_data);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(4) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 5, sizeof(cl_mem), (void *) c_data);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 5, sizeof(cl_mem), (void *) c_data);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(5) %d\n", (int) cl_error);
-  cl_error = clSetKernelArg(opencl_kernel, 6, sizeof(cl_mem), (void *) &dev_buf_c_locks);
+  cl_error = clSetKernelArg(opencl_kernel, (cl_uint) 6, sizeof(cl_mem), (void *) &dev_buf_c_locks);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clSetKernelArg(6) %d\n", (int) cl_error);
 
   // set kernel sizes and submit kernel
@@ -158,32 +191,44 @@ static int launch_clsmm_dnt_largeDB_16_23_23_12_23_96_2_3_12_10 (void *param_sta
   size_t local_work_size[1] = {work_items};
 
   if (verbose_print) fprintf(stdout,"calling multiplication kernel ...\n");
-  cl_error = clEnqueueNDRangeKernel(
-               opencl_queue,           // command_queue
-               opencl_kernel,          // kernel
-               1,                      // work_dim
-               NULL,                   // global_work_offset
-               global_work_size,       // global_work_size
-               local_work_size,        // local_work_size
-               0,                      // num_events_in_wait_list
-               NULL,                   // event_wait_list
-               NULL);                  // event
+  cl_error = clEnqueueNDRangeKernel( // cl_int
+               opencl_queue,         // cl_command_queue command_queue
+               opencl_kernel,        // cl_kernel        kernel
+               (cl_uint) 1,          // cl_uint          work_dim
+               NULL,                 // const size_t     *global_work_offset
+               global_work_size,     // const size_t     *global_work_size
+               local_work_size,      // const size_t     *local_work_size
+               (cl_uint) 0,          // cl_uint          num_events_in_wait_list
+               NULL,                 // const cl_event   *event_wait_list
+               NULL);                // cl_event         *event
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueNDRangeKernel %d\n", (int) cl_error);
-  cl_error = clFinish(opencl_queue);
-  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clFinish %d\n", (int) cl_error);
 
-  cl_error = clEnqueueUnmapMemObject(opencl_queue, host_buf_c_locks, (void *) c_locks, 0, NULL, NULL);
+  // clean up c_locks memory
+  cl_error = clEnqueueUnmapMemObject( // cl_int 
+               opencl_queue,          // cl_command_queue command_queue
+               host_buf_c_locks,      // cl_mem           mem_obj
+               (void *) c_locks,      // void             *mapped_ptr
+               (cl_uint) 0,           // cl_uint          num_events_in_wait_list
+               NULL,                  // cl_event         *event_wait_list
+               NULL);                 // cl_event         *event
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueUnmapMemObject %d\n", (int) cl_error);
   cl_error = clReleaseMemObject(host_buf_c_locks);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clReleaseMemObject %d\n", (int) cl_error);
   cl_error = clReleaseMemObject(dev_buf_c_locks);
   if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clReleaseMemObject %d\n", (int) cl_error);
+
+//  cl_error = clFinish(opencl_queue);
+//  if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clFinish %d\n", (int) cl_error);
+
   return 0;
 }
 
 
 /****************************************************************************/
 // Kernel switch
+//
+// NOTE: All arrays are device buffers - no access from host side.
+//
 int libclsmm_process_d (void *param_stack, int stack_size, void *stream, int m, int n, int k, void *a_data, void *b_data, void *c_data){
   int idx = 0;
   int missing = 0; // false
@@ -219,9 +264,14 @@ int libclsmm_process_d (void *param_stack, int stack_size, void *stream, int m, 
 
 /****************************************************************************/
 // Transpose kernel switch and launch
+//
+// NOTE: All arrays are device buffers - no access from host side.
+//
 int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer, int m, int n, void *stream){
   int idx = 0;
   int missing = 0; //false
+  cl_kernel opencl_kernel = NULL;
+  cl_program opencl_program = NULL;
 
   // local queue pointer and device + context value 
   acc_opencl_stream_type *opencl_stream = (acc_opencl_stream_type *) stream;
@@ -248,36 +298,57 @@ int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer, 
 
   switch(idx){
     case 0:
-      // read kernel code
-      if (verbose_print) fprintf(stdout,"reading transpose kernel ...\n");
-      FILE *fIn = fopen("clsmm_transpose.cl", "r");
-      fseek(fIn, 0L, SEEK_END);
-      size_t sz = ftell(fIn); 
-      rewind(fIn);
-      char *file = (char*) malloc(sizeof(char) * sz + 1);
-      fread(file, sizeof(char), sz, fIn);
-      const char* cfile = (const char *) file;
-      fclose(fIn);
+      // get or create kernel
+      if (transpose_kernel) {
+        opencl_kernel = transpose_kernel;
+      } else {
+        // read kernel code
+        if (verbose_print) fprintf(stdout,"reading transpose kernel ...\n");
+        FILE *fIn = fopen("clsmm_transpose.cl", "r");
+        fseek(fIn, 0L, SEEK_END);
+        size_t sz = ftell(fIn); 
+        rewind(fIn);
+        char *file = (char*) malloc(sizeof(char) * sz + 1);
+        fread(file, sizeof(char), sz, fIn);
+        const char* cfile = (const char *) file;
+        fclose(fIn);
+    
+        // get kernel code, build program and kernel
+        if (verbose_print) fprintf(stdout,"building transpose kernel ...\n");
+        opencl_program = clCreateProgramWithSource( // cl_program
+                           opencl_ctx,              // cl_context   context
+                           (cl_uint) 1,             // cl_uint      count
+                           &cfile,                  // const char   **strings
+                           &sz,                     // const size_t *lengths
+                           &cl_error);              // cl_int       *errcode_ret
+        if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
+        cl_error = clBuildProgram(                       // cl_int
+                   opencl_program,                     // cl_program                     program
+                   (cl_uint) 1,                        // cl_uint                        num_devices
+                   (const cl_device_id *) &opencl_dev, // const cl_device_id             *device_list
+                   "-D__ACC",                          // const char                     *options
+                   NULL,                               // void (CL_CALLBACK* pfn_notify) (cl_program program, void *user_data)
+                   NULL);                              // void                           *user_data
+        if (cl_error != CL_SUCCESS){
+          size_t param_value_size_ret;
+          cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, (size_t) 0, NULL, &param_value_size_ret);
+          if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 1 %d\n", (int) cl_error);
+          char *build_log = (char *) malloc(param_value_size_ret * sizeof(char));
+          cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, param_value_size_ret, (void *) build_log, NULL);
+          if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 2 %d\n", (int) cl_error);
+          fprintf(stdout, "BUILD LOG:\n %s\n", build_log);
+          fprintf(stdout,"Error in: clBuildProgram %d\n", (int) cl_error);
+        }
   
-      // get kernel code, build program and kernel
-      if (verbose_print) fprintf(stdout,"building transpose kernel ...\n");
-      cl_program opencl_program = clCreateProgramWithSource(opencl_ctx, 1, &cfile, &sz, &cl_error);
-      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateProgramWithSource %d\n", (int) cl_error);
-      cl_error = clBuildProgram(opencl_program, 1, (const cl_device_id *) &opencl_dev, "-D__ACC", NULL, NULL); // hard coded -D__ACC
-      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clBuildProgram %d\n", (int) cl_error);
-
-      if (cl_error != CL_SUCCESS){
-        size_t param_value_size_ret;
-        cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, (size_t) 0, NULL, &param_value_size_ret);
-        if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 1 %d\n", (int) cl_error);
-        char *build_log = (char *) malloc(param_value_size_ret * sizeof(char));
-        cl_error = clGetProgramBuildInfo(opencl_program, opencl_dev, CL_PROGRAM_BUILD_LOG, param_value_size_ret, (void *) build_log, NULL);
-        if (cl_error != CL_SUCCESS) fprintf(stdout,"Error 2 %d\n", (int) cl_error);
-        fprintf(stdout, "BUILD LOG:\n %s\n", build_log);
+        opencl_kernel = clCreateKernel(        // cl_kernel
+                          opencl_program,      // cl_program program
+                          "transpose_23_23_d", // const char *kernel_name
+                          &cl_error);          // cl_int     *errcode_ret
+        if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
+  
+        // keep for later usage
+        transpose_kernel = opencl_kernel;
       }
-
-      cl_kernel opencl_kernel = clCreateKernel(opencl_program, "transpose_23_23_d", &cl_error);
-      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clCreateKernel %d\n", (int) cl_error);
   
       // set kernel parameters
       if (verbose_print) fprintf(stdout,"set transpose kernel parameters ...\n");
@@ -297,19 +368,20 @@ int libclsmm_transpose_d (void *trs_stack, int offset, int nblks, void *buffer, 
       size_t local_work_size[1] = {work_items};
 
       if (verbose_print) fprintf(stdout,"calling transpose kernel ...\n");
-      cl_error = clEnqueueNDRangeKernel(
-                   opencl_queue,           // command_queue
-                   opencl_kernel,          // kernel
-                   1,                      // work_dim
-                   NULL,                   // global_work_offset
-                   global_work_size,       // global_work_size
-                   local_work_size,        // local_work_size
-                   0,                      // num_events_in_wait_list
-                   NULL,                   // event_wait_list
-                   NULL);                  // event
+      cl_error = clEnqueueNDRangeKernel( // cl_int
+                   opencl_queue,         // cl_command_queue command_queue
+                   opencl_kernel,        // cl_kernel        kernel
+                   (cl_uint) 1,          // cl_uint          work_dim
+                   NULL,                 // const size_t     *global_work_offset
+                   global_work_size,     // const size_t     *global_work_size
+                   local_work_size,      // const size_t     *local_work_size
+                   (cl_uint) 0,          // cl_uint          num_events_in_wait_list
+                   NULL,                 // const cl_event   *event_wait_list
+                   NULL);                // cl_event         *event
       if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clEnqueueNDRangeKernel %d\n", (int) cl_error);
-      cl_error = clFinish(opencl_queue);
-      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clFinish %d\n", (int) cl_error);
+
+//      cl_error = clFinish(opencl_queue);
+//      if (cl_error != CL_SUCCESS) fprintf(stdout,"Error in: clFinish %d\n", (int) cl_error);
 
       return 0;
     break;
