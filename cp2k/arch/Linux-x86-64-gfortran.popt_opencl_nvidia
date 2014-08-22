@@ -2,7 +2,7 @@
 # - gcc            4.8.2
 # - gfortran       4.8.2
 # - Intel MKL      Parallel Studio XE v2011-08-23
-# - OpenMPI        1.7.4
+# - OpenMPI        1.6.5
 # - FFTW3          3.3.3
 # - LIBXC          2.0.3
 # - LIBINT         1.1.5 (with non default: --with-libint-max-am=5

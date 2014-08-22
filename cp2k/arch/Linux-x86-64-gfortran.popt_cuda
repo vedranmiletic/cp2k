@@ -2,12 +2,12 @@
 # - gcc            4.8.2
 # - gfortran       4.8.2
 # - Intel MKL      Parallel Studio XE v2011-08-23
-# - OpenMPI        1.7.4
+# - OpenMPI        1.6.5
 # - FFTW3          3.3.3
 # - LIBXC          2.0.3
 # - LIBINT         1.1.5 (with non default: --with-libint-max-am=5
 #                                           --with-libderiv-max-am1=4)
-# - CUDA           6.0 (device type: SM 3.5)
+# - CUDA           6.5 (device type: SM 3.5)
 #
 
 # LIB's ################################################################
